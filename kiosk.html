@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: black; width: 100vw; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+
+#stage {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+
+.slide {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 2s ease-in-out;
+  transform-origin: center center;
+}
+
+.slide.active {
+  opacity: 1;
+}
+
+.slide.kb {
+  animation: kenburns 30s ease-in-out forwards;
+}
+
+@keyframes kenburns {
+  0%   { transform: scale(1.0) translate(0px, 0px); }
+  25%  { transform: scale(1.08) translate(-2%, -2%); }
+  50%  { transform: scale(1.05) translate(2%, 1%); }
+  75%  { transform: scale(1.1) translate(-1%, 2%); }
+  100% { transform: scale(1.06) translate(1%, -1%); }
+}
+
+.slide.paused {
+  animation-play-state: paused;
+}
+
+#ribbon {
+  background: rgba(0,0,0,0.75);
+  color: white;
+  padding: 10px 16px;
+  font-family: Georgia, serif;
+  flex-shrink: 0;
+  transition: opacity 0.5s;
+}
+
+#title { font-size: 16px; font-style: italic; font-weight: bold; }
+#artist { font-size: 13px; margin-top: 3px; color: #ccc; }
+#meta { font-size: 11px; margin-top: 2px; color: #999; }
+
+#pause-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 60px;
+  color: rgba(255,255,255,0.7);
+  display: none;
+  pointer-events: none;
+  text-shadow: 0 0 20px black;
+}
+
+#settings-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.85);
+  color: white;
+  padding: 24px 32px;
+  border-radius: 12px;
+  font-family: Georgia, serif;
+  display: none;
+  z-index: 100;
+  min-width: 260px;
+  text-align: center;
+}
+
+#settings-panel h2 {
+  margin-bottom: 16px;
+  font-size: 18px;
+}
+
+#settings-panel label {
+  font-size: 13px;
+  color: #ccc;
+}
+
+#interval-display {
+  font-size: 28px;
+  margin: 10px 0;
+}
+
+.btn-row {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: white;
+  font-size: 22px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.btn:active { background: rgba(255,255,255,0.35); }
+
+#close-btn {
+  margin-top: 16px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: white;
+  padding: 8px 24px;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <img class="slide" id="img-a">
+  <img class="slide" id="img-b">
+  <div id="pause-indicator">⏸</div>
+  <div id="settings-panel">
+    <h2>Settings</h2>
+    <label>Image interval</label>
+    <div id="interval-display">30s</div>
+    <div class="btn-row">
+      <button class="btn" id="btn-minus">−</button>
+      <button class="btn" id="btn-plus">+</button>
+    </div>
+    <br>
+    <button id="close-btn">Resume</button>
+  </div>
+</div>
+
+<div id="ribbon">
+  <div id="title">Loading...</div>
+  <div id="artist"></div>
+  <div id="meta"></div>
+</div>
+
+<script>
+var data = [];
+var current = 0;
+var intervalSecs = 30;
+var timer = null;
+var paused = false;
+var showingSettings = false;
+var activeSlot = 'a';
+
+var imgA = document.getElementById('img-a');
+var imgB = document.getElementById('img-b');
+var indicator = document.getElementById('pause-indicator');
+var settingsPanel = document.getElementById('settings-panel');
+var intervalDisplay = document.getElementById('interval-display');
+
+function getActive() { return activeSlot === 'a' ? imgA : imgB; }
+function getInactive() { return activeSlot === 'a' ? imgB : imgA; }
+
+function cleanText(t) {
+  return t ? t.replace(/\\u[0-9a-fA-F]{4}/g, '').replace(/\n/g, ' ').trim() : '';
+}
+
+function updateRibbon(item) {
+  document.getElementById('title').textContent = cleanText(item.title) || 'Untitled';
+  document.getElementById('artist').textContent = cleanText(item.artist) || '';
+  var meta = [];
+  if (item.date) meta.push(cleanText(item.date));
+  if (item.department) meta.push(cleanText(item.department));
+  document.getElementById('meta').textContent = meta.join(' · ');
+}
+
+function showNext() {
+  if (paused) return;
+  var item = data[current];
+  current = (current + 1) % data.length;
+
+  var incoming = getInactive();
+  incoming.src = item.image;
+  incoming.classList.remove('kb', 'active');
+
+  incoming.onload = function() {
+    void incoming.offsetWidth;
+    incoming.classList.add('active', 'kb');
+    getActive().classList.remove('active');
+    activeSlot = activeSlot === 'a' ? 'b' : 'a';
+    updateRibbon(item);
+  };
+}
+
+function startTimer() {
+  if (timer) clearInterval(timer);
+  timer = setInterval(showNext, intervalSecs * 1000);
+}
+
+function pause() {
+  paused = true;
+  clearInterval(timer);
+  getActive().classList.add('paused');
+  indicator.style.display = 'block';
+}
+
+function resume() {
+  paused = false;
+  getActive().classList.remove('paused');
+  indicator.style.display = 'none';
+  settingsPanel.style.display = 'none';
+  showingSettings = false;
+  startTimer();
+}
+
+// Tap handling
+var tapTimer = null;
+document.getElementById('stage').addEventListener('click', function(e) {
+  if (e.target.closest('#settings-panel')) return;
+
+  if (!paused) {
+    pause();
+    tapTimer = setTimeout(function() {
+      settingsPanel.style.display = 'block';
+      showingSettings = true;
+    }, 400);
+  } else {
+    clearTimeout(tapTimer);
+    if (showingSettings) return;
+    resume();
+  }
+});
+
+document.getElementById('close-btn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  resume();
+});
+
+// Interval controls
+document.getElementById('btn-plus').addEventListener('click', function(e) {
+  e.stopPropagation();
+  intervalSecs = Math.min(300, intervalSecs + 5);
+  intervalDisplay.textContent = intervalSecs + 's';
+});
+
+document.getElementById('btn-minus').addEventListener('click', function(e) {
+  e.stopPropagation();
+  intervalSecs = Math.max(5, intervalSecs - 5);
+  intervalDisplay.textContent = intervalSecs + 's';
+});
+
+// Pinch to zoom
+var initialDist = null;
+var currentScale = 1;
+var baseScale = 1;
+
+document.getElementById('stage').addEventListener('touchstart', function(e) {
+  if (e.touches.length === 2) {
+    initialDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    baseScale = currentScale;
+  }
+}, {passive: true});
+
+document.getElementById('stage').addEventListener('touchmove', function(e) {
+  if (e.touches.length === 2 && initialDist) {
+    var dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    currentScale = Math.min(4, Math.max(1, baseScale * (dist / initialDist)));
+    getActive().style.transform = 'scale(' + currentScale + ')';
+    getActive().style.transition = 'transform 0.1s ease-out';
+  }
+}, {passive: true});
+
+document.getElementById('stage').addEventListener('touchend', function(e) {
+  if (e.touches.length < 2) initialDist = null;
+}, {passive: true});
+
+// Init
+fetch('images.json')
+  .then(r => r.json())
+  .then(json => {
+    data = json.sort(() => Math.random() - 0.5);
+    showNext();
+    startTimer();
+  });
+</script>
+</body>
+</html>

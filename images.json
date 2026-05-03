@@ -1,0 +1,2977 @@
+[
+  {
+    "title": "Starry Night and the Astronauts",
+    "artist": "Alma Thomas\nAmerican, 1891\u20131978",
+    "date": "1972",
+    "department": "Contemporary Art",
+    "image": "images/0000.jpg"
+  },
+  {
+    "title": "The Bedroom",
+    "artist": "Vincent van Gogh (Dutch, 1853\u20131890)",
+    "date": "1889",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0001.jpg"
+  },
+  {
+    "title": "Buddha Shakyamuni Seated in Meditation (Dhyanamudra)",
+    "artist": "India\nNagapattinam, Tamil Nadu",
+    "date": "Chola period, about 12th century",
+    "department": "Arts of Asia",
+    "image": "images/0002.jpg"
+  },
+  {
+    "title": "Many Mansions",
+    "artist": "Kerry James Marshall\nAmerican, born 1955",
+    "date": "1994",
+    "department": "Contemporary Art",
+    "image": "images/0003.jpg"
+  },
+  {
+    "title": "Untitled",
+    "artist": "Tanaka Atsuko\nJapanese, 1932-2005",
+    "date": "1964",
+    "department": "Contemporary Art",
+    "image": "images/0004.jpg"
+  },
+  {
+    "title": "Paris Street; Rainy Day",
+    "artist": "Gustave Caillebotte (French, 1848\u20131894)",
+    "date": "1877",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0005.jpg"
+  },
+  {
+    "title": "A Sunday on La Grande Jatte \u2014 1884",
+    "artist": "Georges Seurat (French, 1859\u20131891)",
+    "date": "1884\u201386, border added 1888\u201389",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0006.jpg"
+  },
+  {
+    "title": "Weaving",
+    "artist": "Diego Rivera (Mexican, 1886\u20131957)",
+    "date": "1936",
+    "department": "Arts of the Americas",
+    "image": "images/0007.jpg"
+  },
+  {
+    "title": "City Landscape",
+    "artist": "Joan Mitchell\nAmerican, 1925-1992",
+    "date": "1955",
+    "department": "Contemporary Art",
+    "image": "images/0008.jpg"
+  },
+  {
+    "title": "Coronation Stone of Moctezuma Xocoyotzin",
+    "artist": "Maker unknown (Mexica, Aztec)\nProbably Tenochtitlan (now Mexico City), Mexico",
+    "date": "c. 1503",
+    "department": "Arts of the Americas",
+    "image": "images/0009.jpg"
+  },
+  {
+    "title": "Nightlife",
+    "artist": "Archibald John Motley Jr. (American, 1891\u20131981)",
+    "date": "1943",
+    "department": "Arts of the Americas",
+    "image": "images/0010.jpg"
+  },
+  {
+    "title": "Hero Construction",
+    "artist": "Richard Hunt\nAmerican, 1935-2023",
+    "date": "1958",
+    "department": "Contemporary Art",
+    "image": "images/0011.jpg"
+  },
+  {
+    "title": "Nighthawks",
+    "artist": "Edward Hopper (American, 1882\u20131967)",
+    "date": "1942",
+    "department": "Arts of the Americas",
+    "image": "images/0012.jpg"
+  },
+  {
+    "title": "Veranda Post (\u00d2p\u00f3 \u00d2g\u00f2g\u00e1)",
+    "artist": "Olowe of Ise (died 1938)\nY\u00f2r\u00f9b\u00e1: \u00c8k\u00ect\u00ec; Ikere, Nigeria\nCoastal West Africa",
+    "date": "1910-14",
+    "department": "Arts of Africa",
+    "image": "images/0013.jpg"
+  },
+  {
+    "title": "Blue and Green Music",
+    "artist": "Georgia O'Keeffe (American, 1887\u20131986)",
+    "date": "1919\u201321",
+    "department": "Arts of the Americas",
+    "image": "images/0014.jpg"
+  },
+  {
+    "title": "Bathers by a River",
+    "artist": "Henri Matisse\nFrench, 1869\u20131954",
+    "date": "1909\u201310, 1913, and 1916\u201317",
+    "department": "Modern Art",
+    "image": "images/0015.jpg"
+  },
+  {
+    "title": "The Dugout",
+    "artist": "Norman Rockwell (American, 1894\u20131978)",
+    "date": "1948",
+    "department": "Arts of the Americas",
+    "image": "images/0016.jpg"
+  },
+  {
+    "title": "The Old Guitarist",
+    "artist": "Pablo Picasso\nSpanish, active France, 1881\u20131973",
+    "date": "late 1903\u2013early 1904",
+    "department": "Modern Art",
+    "image": "images/0017.jpg"
+  },
+  {
+    "title": "Under the Wave off Kanagawa (Kanagawa oki nami ura), also known as The Great Wave, from the series \"Thirty-Six Views of Mount Fuji (Fugaku sanjurokkei)\"",
+    "artist": "Katsushika Hokusai \u845b\u98fe \u5317\u658e\nJapanese, 1760-1849",
+    "date": "1830/33",
+    "department": "Arts of Asia",
+    "image": "images/0018.jpg"
+  },
+  {
+    "title": "The Assumption of the Virgin",
+    "artist": "El Greco (Dom\u00e9nikos Theotok\u00f3poulos; Greek, active in Spain, 1541\u20131614)",
+    "date": "1577\u201379",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0019.jpg"
+  },
+  {
+    "title": "Stacks of Wheat (End of Summer)",
+    "artist": "Claude Monet (French, 1840\u20131926)",
+    "date": "1890\u201391",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0020.jpg"
+  },
+  {
+    "title": "American Gothic",
+    "artist": "Grant Wood (American, 1891\u20131942)",
+    "date": "1930",
+    "department": "Arts of the Americas",
+    "image": "images/0021.jpg"
+  },
+  {
+    "title": "Water Lilies",
+    "artist": "Claude Monet (French, 1840\u20131926)",
+    "date": "1906",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0022.jpg"
+  },
+  {
+    "title": "Two Sisters (On the Terrace)",
+    "artist": "Pierre-Auguste Renoir (French, 1841\u20131919)",
+    "date": "1881",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0023.jpg"
+  },
+  {
+    "title": "Self-Portrait",
+    "artist": "Vincent van Gogh (Dutch, 1853\u20131890)",
+    "date": "1887",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0024.jpg"
+  },
+  {
+    "title": "The Child's Bath",
+    "artist": "Mary Cassatt (American, 1844\u20131926)",
+    "date": "1893",
+    "department": "Arts of the Americas",
+    "image": "images/0025.jpg"
+  },
+  {
+    "title": "White Crucifixion",
+    "artist": "Marc Chagall\nBorn Vitebsk (formerly Russian Empire, now Belarus), 1887; died Saint-Paul, France, 1985",
+    "date": "1938",
+    "department": "Modern Art",
+    "image": "images/0026.jpg"
+  },
+  {
+    "title": "La dur\u00e9e poignard\u00e9e (Time Transfixed)",
+    "artist": "Ren\u00e9 Magritte\nBelgian, 1898\u20131967",
+    "date": "1938",
+    "department": "Modern Art",
+    "image": "images/0027.jpg"
+  },
+  {
+    "title": "Excavation",
+    "artist": "Willem de Kooning\nAmerican, born Netherlands, 1904\u20131997",
+    "date": "1950",
+    "department": "Contemporary Art",
+    "image": "images/0028.jpg"
+  },
+  {
+    "title": "Cow's Skull with Calico Roses",
+    "artist": "Georgia O'Keeffe (American, 1887\u20131986)",
+    "date": "1931",
+    "department": "Arts of the Americas",
+    "image": "images/0029.jpg"
+  },
+  {
+    "title": "At the Moulin Rouge",
+    "artist": "Henri de Toulouse-Lautrec (French, 1864\u20131901)",
+    "date": "1892\u201395",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0030.jpg"
+  },
+  {
+    "title": "Sky above Clouds IV",
+    "artist": "Georgia O'Keeffe (American, 1887\u20131986)",
+    "date": "1965",
+    "department": "Arts of the Americas",
+    "image": "images/0031.jpg"
+  },
+  {
+    "title": "Arrival of the Normandy Train, Gare Saint-Lazare",
+    "artist": "Claude Monet (French, 1840\u20131926)",
+    "date": "1877",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0032.jpg"
+  },
+  {
+    "title": "Mao",
+    "artist": "Andy Warhol\nAmerican, 1928-1987",
+    "date": "1972",
+    "department": "Contemporary Art",
+    "image": "images/0033.jpg"
+  },
+  {
+    "title": "America Windows",
+    "artist": "Marc Chagall\nBorn Vitebsk (formerly Russian Empire, now Belarus), 1887; died Saint-Paul, France, 1985",
+    "date": "1977",
+    "department": "Modern Art",
+    "image": "images/0034.jpg"
+  },
+  {
+    "title": "Figure with Meat",
+    "artist": "Francis Bacon\nEnglish, born Ireland, 1909\u20131992",
+    "date": "1954",
+    "department": "Contemporary Art",
+    "image": "images/0035.jpg"
+  },
+  {
+    "title": "The Basket of Apples",
+    "artist": "Paul Cezanne (French, 1839\u20131906)",
+    "date": "c. 1893",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0036.jpg"
+  },
+  {
+    "title": "Inventions of the Monsters",
+    "artist": "Salvador Dal\u00ed\nSpanish, 1904\u20131989",
+    "date": "1937",
+    "department": "Modern Art",
+    "image": "images/0037.jpg"
+  },
+  {
+    "title": "The Rock",
+    "artist": "Peter Blume (American, born Smorgon, Russian Empire, now Belarus, 1906\u20131992)",
+    "date": "1944\u201348",
+    "department": "Arts of the Americas",
+    "image": "images/0038.jpg"
+  },
+  {
+    "title": "Greyed Rainbow",
+    "artist": "Jackson Pollock\nAmerican, 1912\u20131956",
+    "date": "1953",
+    "department": "Contemporary Art",
+    "image": "images/0039.jpg"
+  },
+  {
+    "title": "Daniel-Henry Kahnweiler",
+    "artist": "Pablo Picasso\nSpanish, active France, 1881\u20131973",
+    "date": "autumn 1910",
+    "department": "Modern Art",
+    "image": "images/0040.jpg"
+  },
+  {
+    "title": "Woman at Her Toilette",
+    "artist": "Berthe Morisot (French, 1841\u20131895)",
+    "date": "1875\u201380",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0041.jpg"
+  },
+  {
+    "title": "Saint George and the Dragon",
+    "artist": "Bernat Martorell (Spanish, active from 1427\u2013died 1452)",
+    "date": "1434\u201335",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0042.jpg"
+  },
+  {
+    "title": "American Collectors (Fred and Marcia Weisman)",
+    "artist": "David Hockney\nEnglish, born 1937",
+    "date": "1968",
+    "department": "Contemporary Art",
+    "image": "images/0043.jpg"
+  },
+  {
+    "title": "Portrait of Pablo Picasso",
+    "artist": "Juan Gris\nSpanish, 1887\u20131927",
+    "date": "January\u2013February 1912",
+    "department": "Modern Art",
+    "image": "images/0044.jpg"
+  },
+  {
+    "title": "Woman Descending the Staircase (Frau die Treppe herabgehend)",
+    "artist": "Gerhard Richter\nGerman, born 1932",
+    "date": "1965",
+    "department": "Contemporary Art",
+    "image": "images/0045.jpg"
+  },
+  {
+    "title": "Distant View of Niagara Falls",
+    "artist": "Thomas Cole (American, born England, 1801\u20131848)",
+    "date": "1830",
+    "department": "Arts of the Americas",
+    "image": "images/0046.jpg"
+  },
+  {
+    "title": "Black Cross, New Mexico",
+    "artist": "Georgia O'Keeffe (American, 1887\u20131986)",
+    "date": "1929",
+    "department": "Arts of the Americas",
+    "image": "images/0047.jpg"
+  },
+  {
+    "title": "The Red Armchair",
+    "artist": "Pablo Picasso\nSpanish, active France, 1881\u20131973",
+    "date": "December 16, 1931",
+    "department": "Modern Art",
+    "image": "images/0048.jpg"
+  },
+  {
+    "title": "The Beach at Sainte-Adresse",
+    "artist": "Claude Monet (French, 1840\u20131926)",
+    "date": "1867",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0049.jpg"
+  },
+  {
+    "title": "That Which I Should Have Done I Did Not Do (The Door)",
+    "artist": "Ivan Albright (American, 1897\u20131983)",
+    "date": "1931\u201341",
+    "department": "Arts of the Americas",
+    "image": "images/0050.jpg"
+  },
+  {
+    "title": "Venus de Milo with Drawers",
+    "artist": "Salvador Dal\u00ed\nSpanish, 1904\u20131989",
+    "date": "1936",
+    "department": "Modern Art",
+    "image": "images/0051.jpg"
+  },
+  {
+    "title": "The Crucifixion",
+    "artist": "Francisco de Zurbar\u00e1n (Spanish, 1598\u20131664)",
+    "date": "1627",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0052.jpg"
+  },
+  {
+    "title": "Improvisation No. 30 (Cannons)",
+    "artist": "Vasily Kandinsky\nBorn Moscow (formerly Russian Empire, now Russia), 1866; died Neuilly-sur-Seine, France, 1944",
+    "date": "1913",
+    "department": "Modern Art",
+    "image": "images/0053.jpg"
+  },
+  {
+    "title": "The Herring Net",
+    "artist": "Winslow Homer (American, 1836\u20131910)",
+    "date": "1885",
+    "department": "Arts of the Americas",
+    "image": "images/0054.jpg"
+  },
+  {
+    "title": "Clown Torture",
+    "artist": "Bruce Nauman\nAmerican, born 1941",
+    "date": "1987",
+    "department": "Contemporary Art",
+    "image": "images/0055.jpg"
+  },
+  {
+    "title": "The Girl by the Window",
+    "artist": "Edvard Munch (Norwegian, 1863\u20131944)",
+    "date": "1893",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0056.jpg"
+  },
+  {
+    "title": "Champs de Mars: The Red Tower",
+    "artist": "Robert Delaunay\nFrench, 1885\u20131941",
+    "date": "1911/23",
+    "department": "Modern Art",
+    "image": "images/0057.jpg"
+  },
+  {
+    "title": "Mother and Child",
+    "artist": "Pablo Picasso\nSpanish, active France, 1881\u20131973",
+    "date": "1921",
+    "department": "Modern Art",
+    "image": "images/0058.jpg"
+  },
+  {
+    "title": "The Bay of Marseille, Seen from L'Estaque",
+    "artist": "Paul Cezanne (French, 1839\u20131906)",
+    "date": "c. 1885",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0059.jpg"
+  },
+  {
+    "title": "Cupid Chastised",
+    "artist": "Bartolomeo Manfredi (Italian, 1582\u20131622)",
+    "date": "1613",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0060.jpg"
+  },
+  {
+    "title": "The Watermill with the Great Red Roof",
+    "artist": "Meindert Hobbema (Dutch, 1638\u20131709)",
+    "date": "c. 1665",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0061.jpg"
+  },
+  {
+    "title": "Into the World There Came a Soul Called Ida",
+    "artist": "Ivan Albright (American, 1897\u20131983)",
+    "date": "1929\u201330",
+    "department": "Arts of the Americas",
+    "image": "images/0062.jpg"
+  },
+  {
+    "title": "E-10: English Dining Room of the Georgian Period, 1770-90",
+    "artist": "Designed by Narcissa Niblack Thorne\nAmerican, 1882-1966",
+    "date": "c. 1937",
+    "department": "Applied Arts of Europe",
+    "image": "images/0063.jpg"
+  },
+  {
+    "title": "Ballet at the Paris Op\u00e9ra",
+    "artist": "Edgar Degas\nFrench, 1834-1917",
+    "date": "1877",
+    "department": "Prints and Drawings",
+    "image": "images/0064.jpg"
+  },
+  {
+    "title": "Chicago Stock Exchange Trading Room: Reconstruction at the Art Institute of Chicago",
+    "artist": "Adler & Sullivan, original architects; American, 1883-1896\nVinci & Kenny, reconstruction architects; American, 1970-1977",
+    "date": "1893/94 (original built)\n1972 (original demolished)\n1976/77 (reconstructed)",
+    "department": "Architecture and Design",
+    "image": "images/0065.jpg"
+  },
+  {
+    "title": "The Fountain, Villa Torlonia, Frascati, Italy",
+    "artist": "John Singer Sargent (American, 1856\u20131925)",
+    "date": "1907",
+    "department": "Arts of the Americas",
+    "image": "images/0066.jpg"
+  },
+  {
+    "title": "Lozenge Composition with Yellow, Black, Blue, Red, and Gray",
+    "artist": "Piet Mondrian\nDutch, 1872\u20131944",
+    "date": "1921",
+    "department": "Modern Art",
+    "image": "images/0067.jpg"
+  },
+  {
+    "title": "Nocturne: Blue and Gold\u2014Southampton Water",
+    "artist": "James McNeill Whistler (American, 1834\u20131903)",
+    "date": "1872",
+    "department": "Arts of the Americas",
+    "image": "images/0068.jpg"
+  },
+  {
+    "title": "Acrobats at the Cirque Fernando (Francisca and Angelina Wartenberg)",
+    "artist": "Pierre-Auguste Renoir (French, 1841\u20131919)",
+    "date": "1879",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0069.jpg"
+  },
+  {
+    "title": "The Shelton with Sunspots, N.Y.",
+    "artist": "Georgia O'Keeffe (American, 1887\u20131986)",
+    "date": "1926",
+    "department": "Arts of the Americas",
+    "image": "images/0070.jpg"
+  },
+  {
+    "title": "Landscape with Saint John on Patmos",
+    "artist": "Nicolas Poussin (French, 1594\u20131665)",
+    "date": "1640",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0071.jpg"
+  },
+  {
+    "title": "Fishing Boats with Hucksters Bargaining for Fish",
+    "artist": "Joseph Mallord William Turner (English, 1775\u20131851)",
+    "date": "1837\u201338",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0072.jpg"
+  },
+  {
+    "title": "Love of Winter",
+    "artist": "George Wesley Bellows (American, 1882\u20131925)",
+    "date": "1914",
+    "department": "Arts of the Americas",
+    "image": "images/0073.jpg"
+  },
+  {
+    "title": "The Millinery Shop",
+    "artist": "Edgar Degas (French, 1834\u20131917)",
+    "date": "1879-86",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0074.jpg"
+  },
+  {
+    "title": "Old Man with a Gold Chain",
+    "artist": "Rembrandt van Rijn (Dutch, 1606\u20131669)",
+    "date": "1631",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0075.jpg"
+  },
+  {
+    "title": "Golden Bird",
+    "artist": "Constantin Brancusi\nRomanian, active France, 1876\u20131957",
+    "date": "1919/20 (base c. 1922)",
+    "department": "Modern Art",
+    "image": "images/0076.jpg"
+  },
+  {
+    "title": "Hercules and the Lernaean Hydra",
+    "artist": "Gustave Moreau (French, 1826-1898)",
+    "date": "1875\u201376",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0077.jpg"
+  },
+  {
+    "title": "The Earth Is a Man",
+    "artist": "Roberto Matta\nChilean, 1911\u20132002",
+    "date": "1942",
+    "department": "Modern Art",
+    "image": "images/0078.jpg"
+  },
+  {
+    "title": "Shiva as Lord of the Dance (Nataraja)",
+    "artist": "India\nTamil Nadu",
+    "date": "Chola period, about 10th/11th century",
+    "department": "Arts of Asia",
+    "image": "images/0079.jpg"
+  },
+  {
+    "title": "Triptych Window from the Coonley Playhouse, Riverside, Illinois",
+    "artist": "Frank Lloyd Wright\nAmerican, 1867-1959",
+    "date": "1912 (removed 1967)",
+    "department": "Architecture and Design",
+    "image": "images/0080.jpg"
+  },
+  {
+    "title": "Earthly Paradise",
+    "artist": "Pierre Bonnard\nFrench, 1867\u20131947",
+    "date": "1916\u201320",
+    "department": "Modern Art",
+    "image": "images/0081.jpg"
+  },
+  {
+    "title": "Coffin and Mummy of Paankhaenamun",
+    "artist": "Egyptian; Thebes (now Luxor), Egypt",
+    "date": "Third Intermediate Period, Dynasty 22, reign of Osorkon I (about 924\u2013889 BCE)",
+    "department": "Arts of Africa",
+    "image": "images/0082.jpg"
+  },
+  {
+    "title": "Untitled (Purple, White, and Red)",
+    "artist": "Mark Rothko (Marcus Rothkowitz)\nAmerican, born Russia (Latvia), 1903\u20131970",
+    "date": "1953",
+    "department": "Contemporary Art",
+    "image": "images/0083.jpg"
+  },
+  {
+    "title": "Hinoki",
+    "artist": "Charles Ray\nAmerican, born 1953",
+    "date": "2007",
+    "department": "Contemporary Art",
+    "image": "images/0084.jpg"
+  },
+  {
+    "title": "Chicago",
+    "artist": "Harry Callahan\nAmerican, 1912\u20131999",
+    "date": "1950",
+    "department": "Photography and Media",
+    "image": "images/0085.jpg"
+  },
+  {
+    "title": "Male Figure (Nkisi Nkondi)",
+    "artist": "Kongo: Vili\nRepublic of the Congo\nCentral Africa",
+    "date": "Probably early to mid-19th century",
+    "department": "Arts of Africa",
+    "image": "images/0086.jpg"
+  },
+  {
+    "title": "Hang Up",
+    "artist": "Eva Hesse\nAmerican, born  Germany, 1936\u20131970",
+    "date": "1966",
+    "department": "Contemporary Art",
+    "image": "images/0087.jpg"
+  },
+  {
+    "title": "Woman before an Aquarium",
+    "artist": "Henri Matisse\nFrench, 1869\u20131954",
+    "date": "1921\u201323",
+    "department": "Modern Art",
+    "image": "images/0088.jpg"
+  },
+  {
+    "title": "Little Harbor in Normandy",
+    "artist": "Georges Braque\nFrench, 1882\u20131963",
+    "date": "spring 1909",
+    "department": "Modern Art",
+    "image": "images/0089.jpg"
+  },
+  {
+    "title": "Cotton Pickers",
+    "artist": "Thomas Hart Benton (American, 1889\u20131975)",
+    "date": "1945",
+    "department": "Arts of the Americas",
+    "image": "images/0090.jpg"
+  },
+  {
+    "title": "Target",
+    "artist": "Jasper Johns\nAmerican, born 1930",
+    "date": "1961",
+    "department": "Contemporary Art",
+    "image": "images/0091.jpg"
+  },
+  {
+    "title": "Equestrienne (At the Cirque Fernando)",
+    "artist": "Henri de Toulouse-Lautrec (French, 1864\u20131901)",
+    "date": "1887\u201388",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0092.jpg"
+  },
+  {
+    "title": "The Praying Jew",
+    "artist": "Marc Chagall\nBorn Vitebsk (formerly Russian Empire, now Belarus), 1887; died Saint-Paul, France, 1985",
+    "date": "1923 (one of two versions after a 1914 composition)",
+    "department": "Modern Art",
+    "image": "images/0093.jpg"
+  },
+  {
+    "title": "Alka Seltzer",
+    "artist": "Roy Lichtenstein\nAmerican, 1923-1997",
+    "date": "1966",
+    "department": "Prints and Drawings",
+    "image": "images/0094.jpg"
+  },
+  {
+    "title": "Jesus Mocked by the Soldiers",
+    "artist": "\u00c9douard Manet (French, 1832\u20131883)",
+    "date": "1865",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0095.jpg"
+  },
+  {
+    "title": "Mountain Brook",
+    "artist": "Albert Bierstadt (American, born Solingen, Prussia, now Germany, 1830\u20131902)",
+    "date": "1863",
+    "department": "Arts of the Americas",
+    "image": "images/0096.jpg"
+  },
+  {
+    "title": "A Young Lady with a Parrot",
+    "artist": "Rosalba Carriera\nItalian, 1673-1757",
+    "date": "c. 1730",
+    "department": "Prints and Drawings",
+    "image": "images/0097.jpg"
+  },
+  {
+    "title": "After the Hurricane, Bahamas",
+    "artist": "Winslow Homer\nAmerican, 1836-1910",
+    "date": "1899",
+    "department": "Prints and Drawings",
+    "image": "images/0098.jpg"
+  },
+  {
+    "title": "Still Life with Game Fowl",
+    "artist": "Juan S\u00e1nchez Cot\u00e1n (Spanish, 1560\u20131627)",
+    "date": "c. 1600\u20133",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0099.jpg"
+  },
+  {
+    "title": "Landscape at L'Estaque",
+    "artist": "Georges Braque\nFrench, 1882\u20131963",
+    "date": "1906",
+    "department": "Modern Art",
+    "image": "images/0100.jpg"
+  },
+  {
+    "title": "Arl\u00e9siennes (Mistral)",
+    "artist": "Paul Gauguin (French, 1848\u20131903)",
+    "date": "1888",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0101.jpg"
+  },
+  {
+    "title": "Zapata",
+    "artist": "Jos\u00e9 Clemente Orozco (Mexican, 1883\u20131949)",
+    "date": "1930",
+    "department": "Arts of the Americas",
+    "image": "images/0102.jpg"
+  },
+  {
+    "title": "A City Park",
+    "artist": "William Merritt Chase (American, 1849\u20131916)",
+    "date": "c. 1887",
+    "department": "Arts of the Americas",
+    "image": "images/0103.jpg"
+  },
+  {
+    "title": "Interior at Nice",
+    "artist": "Henri Matisse\nFrench, 1869\u20131954",
+    "date": "1919 or 1920",
+    "department": "Modern Art",
+    "image": "images/0104.jpg"
+  },
+  {
+    "title": "At Mouquin's",
+    "artist": "William Glackens (American, 1870\u20131938)",
+    "date": "1905",
+    "department": "Arts of the Americas",
+    "image": "images/0105.jpg"
+  },
+  {
+    "title": "The Captive Slave (Ira Aldridge)",
+    "artist": "John Philip Simpson (English, 1782\u20131847)",
+    "date": "1827",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0106.jpg"
+  },
+  {
+    "title": "...And the Home of the Brave",
+    "artist": "Charles Demuth (American, 1883\u20131935)",
+    "date": "1931",
+    "department": "Arts of the Americas",
+    "image": "images/0107.jpg"
+  },
+  {
+    "title": "The Philosopher's Conquest",
+    "artist": "Giorgio de Chirico\nItalian, born Greece, 1888\u20131978",
+    "date": "1913\u201314",
+    "department": "Modern Art",
+    "image": "images/0108.jpg"
+  },
+  {
+    "title": "Harvest Talk",
+    "artist": "Charles White\nAmerican, 1918-1979",
+    "date": "1953",
+    "department": "Prints and Drawings",
+    "image": "images/0109.jpg"
+  },
+  {
+    "title": "Gasthof zur Muldentalsperre",
+    "artist": "Peter Doig\nScottish, born 1959",
+    "date": "2000/2002",
+    "department": "Contemporary Art",
+    "image": "images/0110.jpg"
+  },
+  {
+    "title": "The Home of the Heron",
+    "artist": "George Inness (American, 1825\u20131894)",
+    "date": "1893",
+    "department": "Arts of the Americas",
+    "image": "images/0111.jpg"
+  },
+  {
+    "title": "Interrupted Reading",
+    "artist": "Jean-Baptiste-Camille Corot (French, 1796\u20131875)",
+    "date": "c. 1870",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0112.jpg"
+  },
+  {
+    "title": "Portrait of Marevna",
+    "artist": "Diego Rivera (Mexican, 1886\u20131957)",
+    "date": "c. 1915",
+    "department": "Arts of the Americas",
+    "image": "images/0113.jpg"
+  },
+  {
+    "title": "Bust of a Youth (Saint John the Baptist)",
+    "artist": "Francesco Mochi (Italian, 1580\u20131654)",
+    "date": "1630-40",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0114.jpg"
+  },
+  {
+    "title": "Fish (Still Life)",
+    "artist": "\u00c9douard Manet (French, 1832\u20131883)",
+    "date": "1864",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0115.jpg"
+  },
+  {
+    "title": "Judith",
+    "artist": "Jan Sanders van Hemessen (Netherlandish, active c. 1519\u20131556)",
+    "date": "c. 1540",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0116.jpg"
+  },
+  {
+    "title": "Frida Kahlo Rivera",
+    "artist": "Julien Levy\nAmerican, 1906-1981",
+    "date": "c. 1935",
+    "department": "Photography and Media",
+    "image": "images/0117.jpg"
+  },
+  {
+    "title": "The Interior of the Palm House on the Pfaueninsel Near Potsdam",
+    "artist": "Carl Blechen (German, 1798\u20131840)",
+    "date": "1834",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0118.jpg"
+  },
+  {
+    "title": "Croquet Scene",
+    "artist": "Winslow Homer (American, 1836\u20131910)",
+    "date": "1866",
+    "department": "Arts of the Americas",
+    "image": "images/0119.jpg"
+  },
+  {
+    "title": "View of Cotopaxi",
+    "artist": "Frederic Edwin Church (American, 1826\u20131900)",
+    "date": "1857",
+    "department": "Arts of the Americas",
+    "image": "images/0120.jpg"
+  },
+  {
+    "title": "In the Sea",
+    "artist": "Arnold B\u00f6cklin (Swiss, 1827\u20131901)",
+    "date": "1883",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0121.jpg"
+  },
+  {
+    "title": "Edtaonisl (Ecclesiastic)",
+    "artist": "Francis Picabia\nFrench, 1879\u20131953",
+    "date": "1913",
+    "department": "Modern Art",
+    "image": "images/0122.jpg"
+  },
+  {
+    "title": "Beata Beatrix",
+    "artist": "Dante Gabriel Rossetti (English, 1828\u20131882)",
+    "date": "1871\u201372",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0123.jpg"
+  },
+  {
+    "title": "Still Life with Dead Game, Fruits, and Vegetables in a Market",
+    "artist": "Frans Snyders (Flemish, 1579-1657)",
+    "date": "1614",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0124.jpg"
+  },
+  {
+    "title": "Reclining Woman",
+    "artist": "Fernand L\u00e9ger\nFrench, 1881\u20131955",
+    "date": "1922",
+    "department": "Modern Art",
+    "image": "images/0125.jpg"
+  },
+  {
+    "title": "The Room No. VI",
+    "artist": "Eldzier Cortor\nAmerican, 1916\u20132015",
+    "date": "1948",
+    "department": "Arts of the Americas",
+    "image": "images/0126.jpg"
+  },
+  {
+    "title": "Ready-to-Wear",
+    "artist": "Stuart Davis (American, 1892\u20131964)",
+    "date": "1955",
+    "department": "Arts of the Americas",
+    "image": "images/0127.jpg"
+  },
+  {
+    "title": "Painterly Realism of a Football Player\u2014Color Masses in the 4th Dimension",
+    "artist": "Kazimir Malevich\nBorn Kyiv (formerly Russian Empire, now Ukraine), 1878; died Saint Petersburg, 1935",
+    "date": "Summer/fall 1915",
+    "department": "Modern Art",
+    "image": "images/0128.jpg"
+  },
+  {
+    "title": "Human Nature/Life Death",
+    "artist": "Bruce Nauman\nAmerican, born 1941",
+    "date": "1983",
+    "department": "Contemporary Art",
+    "image": "images/0129.jpg"
+  },
+  {
+    "title": "The Advance-Guard, or The Military Sacrifice (The Ambush)",
+    "artist": "Frederic Remington (American, 1861\u20131909)",
+    "date": "1890",
+    "department": "Arts of the Americas",
+    "image": "images/0130.jpg"
+  },
+  {
+    "title": "Frederick Douglass",
+    "artist": "Samuel J. Miller\nAmerican, 1822\u20131888",
+    "date": "1847-52",
+    "department": "Photography and Media",
+    "image": "images/0131.jpg"
+  },
+  {
+    "title": "Head of a Woman (Fernande)",
+    "artist": "Pablo Picasso\nSpanish, active France, 1881\u20131973",
+    "date": "1909",
+    "department": "Modern Art",
+    "image": "images/0132.jpg"
+  },
+  {
+    "title": "Ceremonial Knife (Tumi)",
+    "artist": "Chim\u00fa\nLambayeque Valley, north coast, Peru",
+    "date": "1100\u20131470",
+    "department": "Arts of the Americas",
+    "image": "images/0133.jpg"
+  },
+  {
+    "title": "The Wedding",
+    "artist": "Jacob Lawrence\nAmerican, 1917\u20132000",
+    "date": "1948",
+    "department": "Arts of the Americas",
+    "image": "images/0134.jpg"
+  },
+  {
+    "title": "The Battle between the Gods and the Giants",
+    "artist": "Joachim Antonisz. Wtewael (Dutch, c. 1566\u20131638)",
+    "date": "c. 1608",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0135.jpg"
+  },
+  {
+    "title": "The Awakening of the Forest",
+    "artist": "Paul Delvaux\nBelgian, 1897\u20131994",
+    "date": "1939",
+    "department": "Modern Art",
+    "image": "images/0136.jpg"
+  },
+  {
+    "title": "Festival in Montmartre",
+    "artist": "Gino Severini\nItalian, 1883\u20131966",
+    "date": "1913",
+    "department": "Modern Art",
+    "image": "images/0137.jpg"
+  },
+  {
+    "title": "The Flooded Grave",
+    "artist": "Jeff Wall\nCanadian, born 1946",
+    "date": "1998\u20132000",
+    "department": "Contemporary Art",
+    "image": "images/0138.jpg"
+  },
+  {
+    "title": "Madame Cezanne in a Yellow Chair",
+    "artist": "Paul Cezanne (French, 1839\u20131906)",
+    "date": "1888\u201390",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0139.jpg"
+  },
+  {
+    "title": "Helmet Mask (Mukenga)",
+    "artist": "Kuba\nKasai region, Democratic Republic of the Congo\nCentral Africa",
+    "date": "Possibly late 19th to mid -20th century",
+    "department": "Arts of Africa",
+    "image": "images/0140.jpg"
+  },
+  {
+    "title": "Interrogation II",
+    "artist": "Leon Golub\nAmerican, 1922\u20132004",
+    "date": "1981",
+    "department": "Contemporary Art",
+    "image": "images/0141.jpg"
+  },
+  {
+    "title": "Brushstroke with Spatter",
+    "artist": "Roy Lichtenstein\nAmerican, 1923-1997",
+    "date": "1966",
+    "department": "Contemporary Art",
+    "image": "images/0142.jpg"
+  },
+  {
+    "title": "Flower Clouds",
+    "artist": "Odilon Redon\nFrench, 1840-1916",
+    "date": "c. 1903",
+    "department": "Prints and Drawings",
+    "image": "images/0143.jpg"
+  },
+  {
+    "title": "The First Part of the Return from Parnassus",
+    "artist": "Cy Twombly\nAmerican, 1928\u20132011",
+    "date": "1961",
+    "department": "Contemporary Art",
+    "image": "images/0144.jpg"
+  },
+  {
+    "title": "The Fountains",
+    "artist": "Hubert Robert (French, 1733-1808)",
+    "date": "1787\u201388",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0145.jpg"
+  },
+  {
+    "title": "Am\u00e9d\u00e9e-David, the Comte de Pastoret",
+    "artist": "Jean-Auguste-Dominique Ingres (French, 1780-1867)",
+    "date": "1823\u201326",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0146.jpg"
+  },
+  {
+    "title": "Weeping Woman I",
+    "artist": "Pablo Picasso (Spanish, 1881-1973)\nprinted by Roger Lacouri\u00e8re (French, 1892-1966)",
+    "date": "July 1, 1937",
+    "department": "Prints and Drawings",
+    "image": "images/0147.jpg"
+  },
+  {
+    "title": "Woman Reading",
+    "artist": "\u00c9douard Manet (French, 1832\u20131883)",
+    "date": "1880\u201382",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0148.jpg"
+  },
+  {
+    "title": "Virgin and Child with the Young Saint John the Baptist",
+    "artist": "Correggio (Antonio Allegri; Italian, 1489\u20131534)",
+    "date": "c. 1515",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0149.jpg"
+  },
+  {
+    "title": "Pair of Headdresses (Tyi Wara Kunw)",
+    "artist": "Bamana\nBaninko region, Mali\nNorthern Africa and the Sahel",
+    "date": "Mid\u201319th to early 20th century",
+    "department": "Arts of Africa",
+    "image": "images/0150.jpg"
+  },
+  {
+    "title": "The Annunciation",
+    "artist": "Jean Hey (Master of Moulins; Netherlandish, c. 1480-c.1504)",
+    "date": "1490\u201395",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0151.jpg"
+  },
+  {
+    "title": "The Titanic",
+    "artist": "Stanley Tigerman\nAmerican, 1930\u20132019",
+    "date": "1978",
+    "department": "Architecture and Design",
+    "image": "images/0152.jpg"
+  },
+  {
+    "title": "Train Station",
+    "artist": "Walter Ellison (American, 1899\u20131977)",
+    "date": "1935",
+    "department": "Arts of the Americas",
+    "image": "images/0153.jpg"
+  },
+  {
+    "title": "The Artist Looks at Nature",
+    "artist": "Charles Sheeler (American, 1883\u20131965)",
+    "date": "1943",
+    "department": "Arts of the Americas",
+    "image": "images/0154.jpg"
+  },
+  {
+    "title": "Stela of Amenemhat and Hemet",
+    "artist": "Egyptian; probably Thebes (now Luxor), Egypt",
+    "date": "Middle Kingdom, early Dynasty 12, about 1956\u20131877 BCE",
+    "department": "Arts of Africa",
+    "image": "images/0155.jpg"
+  },
+  {
+    "title": "Merahi metua no Tehamana (Tehamana Has Many Parents or The Ancestors of Tehamana)",
+    "artist": "Paul Gauguin (French, 1848\u20131903)",
+    "date": "1893",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0156.jpg"
+  },
+  {
+    "title": "The Policeman",
+    "artist": "Joan Mir\u00f3\nSpanish, 1893\u20131983",
+    "date": "1925",
+    "department": "Modern Art",
+    "image": "images/0157.jpg"
+  },
+  {
+    "title": "Madame de Pastoret and Her Son",
+    "artist": "Jacques-Louis David (French, 1748\u20131825)",
+    "date": "1791\u201392",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0158.jpg"
+  },
+  {
+    "title": "Portrait Vessel",
+    "artist": "Ceramist unknown (Moche)\nSouthern Moche region, north coast, Peru",
+    "date": "600\u2013700",
+    "department": "Arts of the Americas",
+    "image": "images/0159.jpg"
+  },
+  {
+    "title": "Magnolias on Light Blue Velvet Cloth",
+    "artist": "Martin Johnson Heade (American, 1819\u20131904)",
+    "date": "1885\u201395",
+    "department": "Arts of the Americas",
+    "image": "images/0160.jpg"
+  },
+  {
+    "title": "Caribs' Leap/Western Deep",
+    "artist": "Steve McQueen\nEnglish, born 1969",
+    "date": "2002",
+    "department": "Contemporary Art",
+    "image": "images/0161.jpg"
+  },
+  {
+    "title": "Boy on a Ram",
+    "artist": "Francisco Jos\u00e9 de Goya y Lucientes (Spanish, 1746\u20131828)",
+    "date": "1786\u201387",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0162.jpg"
+  },
+  {
+    "title": "The Nativity",
+    "artist": "Fra Bartolommeo (Baccio della Porta; Italian, 1472-1517)",
+    "date": "1504\u20137",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0163.jpg"
+  },
+  {
+    "title": "Red Yellow Blue White and Black II",
+    "artist": "Ellsworth Kelly\nAmerican, 1923-2015",
+    "date": "1953",
+    "department": "Contemporary Art",
+    "image": "images/0164.jpg"
+  },
+  {
+    "title": "Couple in Bed",
+    "artist": "Philip Guston\nAmerican, born Canada, 1913\u20131980",
+    "date": "1977",
+    "department": "Contemporary Art",
+    "image": "images/0165.jpg"
+  },
+  {
+    "title": "Autumn Maples with Poem Slips",
+    "artist": "Tosa Mitsuoki\nJapanese, 1617-1691",
+    "date": "c. 1675",
+    "department": "Arts of Asia",
+    "image": "images/0166.jpg"
+  },
+  {
+    "title": "Sunset",
+    "artist": "Paul Klee\nGerman, born Switzerland, 1879\u20131940",
+    "date": "1930",
+    "department": "Modern Art",
+    "image": "images/0167.jpg"
+  },
+  {
+    "title": "Portrait Bust of a Woman",
+    "artist": "Roman",
+    "date": "Mid\u20132nd century",
+    "department": "Arts of Greece, Rome, and Byzantium",
+    "image": "images/0168.jpg"
+  },
+  {
+    "title": "Self-Portrait",
+    "artist": "Max Beckmann\nGerman, 1884\u20131950",
+    "date": "1937",
+    "department": "Modern Art",
+    "image": "images/0169.jpg"
+  },
+  {
+    "title": "Retable and Frontal of the Life of Christ and the Virgin",
+    "artist": "Spanish",
+    "date": "1396",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0170.jpg"
+  },
+  {
+    "title": "Icebound",
+    "artist": "John Henry Twachtman (American, 1853\u20131902)",
+    "date": "c. 1889",
+    "department": "Arts of the Americas",
+    "image": "images/0171.jpg"
+  },
+  {
+    "title": "Henri Degas and His Niece Lucie Degas (The Artist's Uncle and Cousin)",
+    "artist": "Edgar Degas (French, 1834\u20131917)",
+    "date": "1875\u201376",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0172.jpg"
+  },
+  {
+    "title": "Still Life\u2014Strawberries, Nuts, &c.",
+    "artist": "Raphaelle Peale (American, 1774\u20131825)",
+    "date": "1822",
+    "department": "Arts of the Americas",
+    "image": "images/0173.jpg"
+  },
+  {
+    "title": "Cabin in the Cotton",
+    "artist": "Horace Pippin (American, 1888\u20131946)",
+    "date": "c. 1931\u201337",
+    "department": "Arts of the Americas",
+    "image": "images/0174.jpg"
+  },
+  {
+    "title": "Armida Encounters the Sleeping Rinaldo",
+    "artist": "Giovanni Battista Tiepolo (Italian, 1696\u20131770)",
+    "date": "c. 1742\u201345",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0175.jpg"
+  },
+  {
+    "title": "The Beheading of Saint John the Baptist",
+    "artist": "Giovanni di Paolo (Italian, 1398\u20131482)",
+    "date": "1455\u201360",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0176.jpg"
+  },
+  {
+    "title": "Seated Bodhisattva",
+    "artist": "Japan",
+    "date": "8th century",
+    "department": "Arts of Asia",
+    "image": "images/0177.jpg"
+  },
+  {
+    "title": "Jacques and Berthe Lipchitz",
+    "artist": "Amedeo Modigliani\nItalian, 1884\u20131920",
+    "date": "1916",
+    "department": "Modern Art",
+    "image": "images/0178.jpg"
+  },
+  {
+    "title": "Triptych Icon",
+    "artist": "Central Ethiopia\nEastern and Southern Africa",
+    "date": "Late 17th century",
+    "department": "Arts of Africa",
+    "image": "images/0179.jpg"
+  },
+  {
+    "title": "Spoon Woman",
+    "artist": "Alberto Giacometti\nSwiss, 1901\u20131966",
+    "date": "1926\u201327 (cast 1954)",
+    "department": "Contemporary Art",
+    "image": "images/0180.jpg"
+  },
+  {
+    "title": "The Holy Family with Saints Elizabeth and John the Baptist",
+    "artist": "Peter Paul Rubens (Flemish, 1577\u20131640)",
+    "date": "c. 1615",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0181.jpg"
+  },
+  {
+    "title": "Untitled",
+    "artist": "Robert Gober\nAmerican, born 1954",
+    "date": "1989",
+    "department": "Contemporary Art",
+    "image": "images/0182.jpg"
+  },
+  {
+    "title": "Early Morning, Tarpon Springs",
+    "artist": "George Inness (American, 1825\u20131894)",
+    "date": "1892",
+    "department": "Arts of the Americas",
+    "image": "images/0183.jpg"
+  },
+  {
+    "title": "Lamp with Hanging Head Dragonfly Shade and Mosaic and Turtleback Base",
+    "artist": "Design attributed to Clara Pierce Wolcott Driscoll (American, 1861\u20131944)\nTiffany Studios (American, 1902\u201332)\nCorona, New York",
+    "date": "By 1906",
+    "department": "Arts of the Americas",
+    "image": "images/0184.jpg"
+  },
+  {
+    "title": "Salome with the Head of Saint John the Baptist",
+    "artist": "Guido Reni (Italian, 1575\u20131642)",
+    "date": "c. 1639\u201342",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0185.jpg"
+  },
+  {
+    "title": "Landscape: Window Overlooking the Woods",
+    "artist": "\u00c9douard Vuillard (French, 1868-1940)",
+    "date": "1899",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0186.jpg"
+  },
+  {
+    "title": "Vase (Vase \u00e9trusque \u00e0 rouleau)",
+    "artist": "S\u00e8vres Porcelain Manufactory (1756\u2013present)\nModel designed by Charles Percier (born France, 1764\u20131838)\nDecoration designed by Alexandre-Theodore Brogniart (born France, 1739\u20131813)\nFlowers and ornament painted by Gilbert Drouet (active France, 1785\u20131825)\nBirds painted by Christophe-Ferdinand Caron (active France, 1792\u20131815)\nS\u00e8vres, France",
+    "date": "1813",
+    "department": "Applied Arts of Europe",
+    "image": "images/0187.jpg"
+  },
+  {
+    "title": "Carnival in Arcueil",
+    "artist": "Lyonel Feininger\nAmerican, worked in Germany, 1871\u20131956",
+    "date": "1911",
+    "department": null,
+    "image": "images/0188.jpg"
+  },
+  {
+    "title": "Adam",
+    "artist": "Auguste Rodin (French, 1840\u20131917)",
+    "date": "Modeled 1881, cast c. 1924",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0189.jpg"
+  },
+  {
+    "title": "Friar Pedro Shoots El Maragato as His Horse Runs Off",
+    "artist": "Francisco Jos\u00e9 de Goya y Lucientes (Spanish, 1746\u20131828)",
+    "date": "c. 1806",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0190.jpg"
+  },
+  {
+    "title": "The Railway Crossing (Sketch)",
+    "artist": "Fernand L\u00e9ger\nFrench, 1881\u20131955",
+    "date": "1919",
+    "department": "Modern Art",
+    "image": "images/0191.jpg"
+  },
+  {
+    "title": "For Sunday's Dinner",
+    "artist": "William Michael Harnett (American, born Ireland, 1848\u20131892)",
+    "date": "1888",
+    "department": "Arts of the Americas",
+    "image": "images/0192.jpg"
+  },
+  {
+    "title": "Stoke-by-Nayland",
+    "artist": "John Constable (English, 1776-1837)",
+    "date": "1836",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0193.jpg"
+  },
+  {
+    "title": "Golden Wings Brushing the Clouds Incarnated from Earthly Wide Star (Chikatsusei Maunkinshi)",
+    "artist": "Kazuo Shiraga \nJapanese, 1924-2008",
+    "date": "1960",
+    "department": "Contemporary Art",
+    "image": "images/0194.jpg"
+  },
+  {
+    "title": "Liz #3 [Early Colored Liz]",
+    "artist": "Andy Warhol\nAmerican, 1928\u20131987",
+    "date": "1963",
+    "department": "Contemporary Art",
+    "image": "images/0195.jpg"
+  },
+  {
+    "title": "Corpus of Christ, from the Altarpiece of the Crucifixion",
+    "artist": "Jacques de Baerze (Netherlandish, active before 1384\u20131399)\nMelchior Broederlam (Netherlandish, about 1355\u2013about 1411)",
+    "date": "1391\u201399",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0196.jpg"
+  },
+  {
+    "title": "Bar-room Scene",
+    "artist": "William Sidney Mount (American, 1807\u20131868)",
+    "date": "1835",
+    "department": "Arts of the Americas",
+    "image": "images/0197.jpg"
+  },
+  {
+    "title": "Landscape with the Ruins of the Castle of Egmond",
+    "artist": "Jacob van Ruisdael (Dutch, 1628/29-1682)",
+    "date": "1650\u201355",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0198.jpg"
+  },
+  {
+    "title": "The Combat of the Giaour and Hassan",
+    "artist": "Eug\u00e8ne Delacroix (French, 1798\u20131863)",
+    "date": "1826",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0199.jpg"
+  },
+  {
+    "title": "Lady Sarah Bunbury Sacrificing to the Graces",
+    "artist": "Sir Joshua Reynolds (English, 1723\u20131792)",
+    "date": "1763\u201365",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0200.jpg"
+  },
+  {
+    "title": "Forest and Sun",
+    "artist": "Max Ernst\nFrench, born Germany, 1891\u20131976",
+    "date": "1927",
+    "department": "Modern Art",
+    "image": "images/0201.jpg"
+  },
+  {
+    "title": "Karttikeya, Commander of the Divine Army, Seated on a Peacock",
+    "artist": "India\nAndhra Pradesh, Madanapalle",
+    "date": "Ganga Period, about 12th century",
+    "department": "Arts of Asia",
+    "image": "images/0202.jpg"
+  },
+  {
+    "title": "The Two Disciples at the Tomb",
+    "artist": "Henry Ossawa Tanner (American, 1859\u20131937)",
+    "date": "c. 1906",
+    "department": "Arts of the Americas",
+    "image": "images/0203.jpg"
+  },
+  {
+    "title": "Incense Burner in the Form of a Duck",
+    "artist": "China",
+    "date": "Song dynasty (960\u20131279), 12th century",
+    "department": "Arts of Asia",
+    "image": "images/0204.jpg"
+  },
+  {
+    "title": "Hy\u00e8res, France",
+    "artist": "Henri Cartier-Bresson\nFrench, 1908\u20132004",
+    "date": "1932, printed 1930/39",
+    "department": "Photography and Media",
+    "image": "images/0205.jpg"
+  },
+  {
+    "title": "Two Women's Torsos",
+    "artist": "Willem de Kooning \nAmerican, born the Netherlands, 1904\u20131997",
+    "date": "1952",
+    "department": "Prints and Drawings",
+    "image": "images/0206.jpg"
+  },
+  {
+    "title": "\"Untitled\"",
+    "artist": "Felix Gonzalez-Torres\nAmerican, born Cuba, 1957-1996",
+    "date": "1989",
+    "department": "Contemporary Art",
+    "image": "images/0207.jpg"
+  },
+  {
+    "title": "Statue of the Madonna in the Mountains",
+    "artist": "Caspar David Friedrich\nGerman, 1774-1840",
+    "date": "1804",
+    "department": "Prints and Drawings",
+    "image": "images/0208.jpg"
+  },
+  {
+    "title": "The Artist's Mother",
+    "artist": "Arshile Gorky\nAmerican, born Ottoman Empire (Present Day Turkey), c. 1904\u20131948",
+    "date": "1926 or 1936",
+    "department": "Prints and Drawings",
+    "image": "images/0209.jpg"
+  },
+  {
+    "title": "King Vulture",
+    "artist": "Meissen Porcelain Manufactory (1710\u2013present)\nModeled by Johann Joachim K\u00e4ndler (born Saxony [now Germany], 1706\u20131775)\nMeissen, Electorate of Saxony (now Germany)",
+    "date": "1734",
+    "department": "Applied Arts of Europe",
+    "image": "images/0210.jpg"
+  },
+  {
+    "title": "The Creation of Adam",
+    "artist": "Giovanni Benedetto Castiglione\nItalian, 1609-1664",
+    "date": "c. 1645/50",
+    "department": "Prints and Drawings",
+    "image": "images/0211.jpg"
+  },
+  {
+    "title": "Bust of Paris",
+    "artist": "Antonio Canova (Italian, 1757\u20131822)",
+    "date": "1809",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0212.jpg"
+  },
+  {
+    "title": "Head of an Apostle",
+    "artist": "French; Paris",
+    "date": "c. 1210",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0213.jpg"
+  },
+  {
+    "title": "The Freedman",
+    "artist": "John Quincy Adams Ward (American, 1830\u20131910)",
+    "date": "Modeled 1862\u201363",
+    "department": "Arts of the Americas",
+    "image": "images/0214.jpg"
+  },
+  {
+    "title": "Untitled (Butterfly Habitat)",
+    "artist": "Joseph Cornell\nAmerican, 1903\u20131972",
+    "date": "c. 1940",
+    "department": "Modern Art",
+    "image": "images/0215.jpg"
+  },
+  {
+    "title": "Near the Lagoon",
+    "artist": "Jasper Johns\nAmerican, born 1930",
+    "date": "2002",
+    "department": "Contemporary Art",
+    "image": "images/0216.jpg"
+  },
+  {
+    "title": "Silver Sun",
+    "artist": "Arthur Dove (American, 1880\u20131946)",
+    "date": "1929",
+    "department": "Arts of the Americas",
+    "image": "images/0217.jpg"
+  },
+  {
+    "title": "Maharana Bhim Singh in Procession",
+    "artist": "India\nRajasthan, Mewar, Udaipur, attributed to Ghasi (active c. 1820-36)",
+    "date": "c. 1820",
+    "department": "Arts of Asia",
+    "image": "images/0218.jpg"
+  },
+  {
+    "title": "Portrait of Jean Gros (recto); Coat of Arms of Jean Gros (verso)",
+    "artist": "Rogier van der Weyden (Netherlandish, c. 1399\u20131464)\nWorkshop of Rogier van der Weyden (Netherlandish, c. 1399\u20131464)",
+    "date": "1460\u201364",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0219.jpg"
+  },
+  {
+    "title": "Mirror #3 (Six Panels)",
+    "artist": "Roy Lichtenstein\nAmerican, 1923-1997",
+    "date": "1971",
+    "department": "Contemporary Art",
+    "image": "images/0220.jpg"
+  },
+  {
+    "title": "The Bronco Buster",
+    "artist": "Frederic Remington (American, 1861\u20131909)\nCast by Henry-Bonnard Bronze Company (American, 1872\u20131926)",
+    "date": "Modeled 1895, cast 1899",
+    "department": "Arts of the Americas",
+    "image": "images/0221.jpg"
+  },
+  {
+    "title": "Still Life with Geranium",
+    "artist": "Henri Matisse\nFrench, 1869\u20131954",
+    "date": "1906",
+    "department": "Modern Art",
+    "image": "images/0222.jpg"
+  },
+  {
+    "title": "Mural Fragment Depicting a Maguey Bloodletting Ritual",
+    "artist": "Teotihuacan\nTeotihuacan, Mexico",
+    "date": "500\u2013600 CE",
+    "department": "Arts of the Americas",
+    "image": "images/0223.jpg"
+  },
+  {
+    "title": "Movement",
+    "artist": "Marsden Hartley (American, 1877\u20131943)",
+    "date": "1913",
+    "department": "Arts of the Americas",
+    "image": "images/0224.jpg"
+  },
+  {
+    "title": "Mrs. Daniel Hubbard (Mary Greene)",
+    "artist": "John Singleton Copley (American, 1738\u20131815)",
+    "date": "c. 1764",
+    "department": "Arts of the Americas",
+    "image": "images/0225.jpg"
+  },
+  {
+    "title": "Cauldron",
+    "artist": "China",
+    "date": "Western Zhou dynasty (1046\u2013771 BC ), early 9th century BC",
+    "department": "Arts of Asia",
+    "image": "images/0226.jpg"
+  },
+  {
+    "title": "The Annunciation",
+    "artist": "Alessandro Vittoria (Italian, 1525\u20131608)",
+    "date": "c. 1583",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0227.jpg"
+  },
+  {
+    "title": "TAKEN FROM HERE TO WHERE IT CAME FROM AND TAKEN TO A PLACE AND USED IN SUCH A MANNER THAT IT CAN ONLY REMAIN AS A REPRESENTATION OF WHAT IT WAS WHERE IT CAME FROM",
+    "artist": "Lawrence Weiner\nAmerican, 1942-2021",
+    "date": "1980",
+    "department": "Contemporary Art",
+    "image": "images/0228.jpg"
+  },
+  {
+    "title": "Ceres",
+    "artist": "John Bradley Storrs (American, 1885\u20131956)",
+    "date": "1928",
+    "department": "Arts of the Americas",
+    "image": "images/0229.jpg"
+  },
+  {
+    "title": "Night Sky #2",
+    "artist": "Vija Celmins\nAmerican, born Latvia, 1938",
+    "date": "1991",
+    "department": "Contemporary Art",
+    "image": "images/0230.jpg"
+  },
+  {
+    "title": "View of Delphi with a Procession",
+    "artist": "Claude Lorrain (Claude Gell\u00e9e; French, 1600-1682)",
+    "date": "1673",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0231.jpg"
+  },
+  {
+    "title": "Two Ladies at the Automat (New York City)",
+    "artist": "Diane Arbus \nAmerican, 1923\u20131971",
+    "date": "1966, printed 1977",
+    "department": "Photography and Media",
+    "image": "images/0232.jpg"
+  },
+  {
+    "title": "The Ballad of Sexual Dependency",
+    "artist": "Nan Goldin\nAmerican, born 1953",
+    "date": "1979/2001",
+    "department": "Photography and Media",
+    "image": "images/0233.jpg"
+  },
+  {
+    "title": "Triptych with Scenes from the Life of Christ",
+    "artist": "German; Cologne",
+    "date": "1350\u201375",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0234.jpg"
+  },
+  {
+    "title": "Chalk-Mirror Displacement",
+    "artist": "Robert Smithson\nAmerican, 1938\u20131973",
+    "date": "1969",
+    "department": "Contemporary Art",
+    "image": "images/0235.jpg"
+  },
+  {
+    "title": "Monk (M\u00f6nch)",
+    "artist": "Katharina Fritsch\nGerman, born 1956",
+    "date": "1997/99",
+    "department": "Contemporary Art",
+    "image": "images/0236.jpg"
+  },
+  {
+    "title": "Tanktotem I",
+    "artist": "David Smith\nAmerican, 1906-1965",
+    "date": "1952",
+    "department": "Contemporary Art",
+    "image": "images/0237.jpg"
+  },
+  {
+    "title": "Evening Snow on a Floss Shaper (Nurioke no bosetsu), from the series \"Eight Views of the Parlor (Zashiki hakkei)\"",
+    "artist": "Suzuki Harunobu \u9234\u6728 \u6625\u4fe1 \nJapanese, 1725 (?)-1770",
+    "date": "c. 1766",
+    "department": "Arts of Asia",
+    "image": "images/0238.jpg"
+  },
+  {
+    "title": "The Young Emperor Akbar Arrests the Insolent Shah Abu\u2019l-Maali, Page from a Manuscript of the Akbarnama",
+    "artist": "India\nDesigned by Basawan, painted by Shankar",
+    "date": "Mughal dynasty (1526-1857), c. 1590-1595",
+    "department": "Arts of Asia",
+    "image": "images/0239.jpg"
+  },
+  {
+    "title": "PH-774",
+    "artist": "Clyfford Still\nAmerican, 1904-1980",
+    "date": "1958",
+    "department": "Contemporary Art",
+    "image": "images/0240.jpg"
+  },
+  {
+    "title": "M\u00e8re Gr\u00e9goire",
+    "artist": "Gustave Courbet (French, 1819\u20131877)",
+    "date": "1855, reworked 1857\u201359",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0241.jpg"
+  },
+  {
+    "title": "Spanish Dancer",
+    "artist": "Natalia Goncharova\nBorn Tula (formerly Russian Empire, now Russia), 1881; died Paris, 1962",
+    "date": "1920s",
+    "department": "Modern Art",
+    "image": "images/0242.jpg"
+  },
+  {
+    "title": "Art Institute of Chicago II, Chicago",
+    "artist": "Thomas Struth\nGerman, born 1954",
+    "date": "1990",
+    "department": "Contemporary Art",
+    "image": "images/0243.jpg"
+  },
+  {
+    "title": "Husking Bee, Island of Nantucket",
+    "artist": "Eastman Johnson (American, 1824\u20131906)",
+    "date": "1876",
+    "department": "Arts of the Americas",
+    "image": "images/0244.jpg"
+  },
+  {
+    "title": "Gian Lodovico Madruzzo",
+    "artist": "Giovanni Battista Moroni (Italian, 1520/24\u20131578)",
+    "date": "1551\u201352",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0245.jpg"
+  },
+  {
+    "title": "Equestrienne",
+    "artist": "China",
+    "date": "Tang dynasty (618\u2013907), mid-8th century",
+    "department": "Arts of Asia",
+    "image": "images/0246.jpg"
+  },
+  {
+    "title": "Vessel with Dancing Maize Gods",
+    "artist": "Aj Maxam (Maya)\nVicinity of Naranjo, Pet\u00e9n region, Guatemala",
+    "date": "780\u2013810",
+    "department": "Arts of the Americas",
+    "image": "images/0247.jpg"
+  },
+  {
+    "title": "The Plow and the Song",
+    "artist": "Arshile Gorky\nAmerican, born Ottoman Empire (Present Day Turkey) c.1904\u20131948",
+    "date": "1946\u201347",
+    "department": "Contemporary Art",
+    "image": "images/0248.jpg"
+  },
+  {
+    "title": "Spindle Cube Chair",
+    "artist": "Frank Lloyd Wright (American, 1867\u20131959)\nOak Park, Illinois",
+    "date": "1902\u20136",
+    "department": "Arts of the Americas",
+    "image": "images/0249.jpg"
+  },
+  {
+    "title": "Object",
+    "artist": "Claude Cahun\nFrench, 1894\u20131954",
+    "date": "1936",
+    "department": "Modern Art",
+    "image": "images/0250.jpg"
+  },
+  {
+    "title": "Arrangement in Flesh Color and Brown: Portrait of Arthur Jerome Eddy",
+    "artist": "James McNeill Whistler (American, 1834\u20131903)",
+    "date": "1894",
+    "department": "Arts of the Americas",
+    "image": "images/0251.jpg"
+  },
+  {
+    "title": "Skyscraper Cabinet",
+    "artist": "Paul Theodore Frankl (American, born Austria, 1886\u20131958)\nNew York",
+    "date": "c. 1927",
+    "department": "Arts of the Americas",
+    "image": "images/0252.jpg"
+  },
+  {
+    "title": "Juan Soriano De Lacand\u00f3n",
+    "artist": "Leonora Carrington\nEnglish, active Mexico, 1917\u20132011",
+    "date": "1964",
+    "department": "Modern Art",
+    "image": "images/0253.jpg"
+  },
+  {
+    "title": "Rodeo",
+    "artist": "Brice Marden\nAmerican, 1938-2023",
+    "date": "1971",
+    "department": "Contemporary Art",
+    "image": "images/0254.jpg"
+  },
+  {
+    "title": "Processional Cross with Saint Mary Magdalene and a Blessed Hermit",
+    "artist": "Lorenzo Monaco (Italian, 1370/75\u20131425)",
+    "date": "1392\u201395",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0255.jpg"
+  },
+  {
+    "title": "Candida and Her Mother, Celia, II",
+    "artist": "Dawoud Bey\nAmerican, born 1953",
+    "date": "1994",
+    "department": "Photography and Media",
+    "image": "images/0256.jpg"
+  },
+  {
+    "title": "Yang Pu Moving His Family",
+    "artist": "Artist Unknown\nChinese",
+    "date": "Yuan dynasty (1279\u20131368) \u5143\u671d",
+    "department": "Arts of Asia",
+    "image": "images/0257.jpg"
+  },
+  {
+    "title": "Reliquary Casket of Saints Adrian and Natalia",
+    "artist": "Le\u00f3n, Spain",
+    "date": "1100\u201350",
+    "department": "Applied Arts of Europe",
+    "image": "images/0258.jpg"
+  },
+  {
+    "title": "Corallo Chair",
+    "artist": "Campana Brothers (Brazilian, founded circa 1983)\nFernando Campana (Brazilian, born 1961) and Humberto Campana (Brazilian, born 1953)\n\nManufactured by Edra \nItalian, founded 1987",
+    "date": "2006",
+    "department": "Architecture and Design",
+    "image": "images/0259.jpg"
+  },
+  {
+    "title": "Interrelation of Volumes from the Ellipsoid",
+    "artist": "Georges Vantongerloo\nBelgian, 1886\u20131965",
+    "date": "1926",
+    "department": "Modern Art",
+    "image": "images/0260.jpg"
+  },
+  {
+    "title": "Saint Michael and the Devil",
+    "artist": "Spanish",
+    "date": "1475\u20131500",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0261.jpg"
+  },
+  {
+    "title": "The Frugal Meal, from The Saltimbanques",
+    "artist": "Pablo Picasso (Spanish, 1881-1973)\nprinted by Eug\u00e8ne Del\u00e2tre (French, 1864-1938)",
+    "date": "September 1904",
+    "department": "Prints and Drawings",
+    "image": "images/0262.jpg"
+  },
+  {
+    "title": "Sideboard",
+    "artist": "Designed by Edward William Godwin (English, 1833-1886)\nMade by William Watt (English, 1834-1885)\nLondon",
+    "date": "Designed 1867, made c. 1876",
+    "department": "Applied Arts of Europe",
+    "image": "images/0263.jpg"
+  },
+  {
+    "title": "Fragment of a Hanging",
+    "artist": "Egypt",
+    "date": "5th-6th century",
+    "department": "Textiles",
+    "image": "images/0264.jpg"
+  },
+  {
+    "title": "The Beginning",
+    "artist": "Barnett Newman\nAmerican, 1905-1970",
+    "date": "1946",
+    "department": "Contemporary Art",
+    "image": "images/0265.jpg"
+  },
+  {
+    "title": "Black and White",
+    "artist": "Lee Krasner\nAmerican, 1908-1984",
+    "date": "1953",
+    "department": "Prints and Drawings",
+    "image": "images/0266.jpg"
+  },
+  {
+    "title": "Chair (Kiti Cha Enzi)",
+    "artist": "Swahili\nLamu, Kenya\nEastern and Southern Africa",
+    "date": "19th century",
+    "department": "Arts of Africa",
+    "image": "images/0267.jpg"
+  },
+  {
+    "title": "Isabella Wolff",
+    "artist": "Sir Thomas Lawrence (English, 1769-1830)",
+    "date": "1803\u201315",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0268.jpg"
+  },
+  {
+    "title": "Untitled #12",
+    "artist": "Agnes Martin\nAmerican, born Canada, 1912-2004",
+    "date": "1977",
+    "department": "Contemporary Art",
+    "image": "images/0269.jpg"
+  },
+  {
+    "title": "Female Caryatid Drum (Pinge)",
+    "artist": "Senufo\nC\u00f4te d'Ivoire\nNorthern Africa and the Sahel",
+    "date": "c. 1930-c. 1950",
+    "department": "Arts of Africa",
+    "image": "images/0270.jpg"
+  },
+  {
+    "title": "Pastoral Scene",
+    "artist": "Giovanni Battista Piazzetta (Italian, 1682\u20131754)",
+    "date": "1740",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0271.jpg"
+  },
+  {
+    "title": "Head",
+    "artist": "Fang\nGabon\nCentral Africa",
+    "date": "Mid\u2013late 19th century",
+    "department": "Arts of Africa",
+    "image": "images/0272.jpg"
+  },
+  {
+    "title": "Portrait of Virgil Thomson",
+    "artist": "Florine Stettheimer (American, 1871\u20131944)",
+    "date": "1930",
+    "department": "Arts of the Americas",
+    "image": "images/0273.jpg"
+  },
+  {
+    "title": "Untitled",
+    "artist": "Yves Tanguy\nAmerican, born France, 1900\u20131955",
+    "date": "1928",
+    "department": "Modern Art",
+    "image": "images/0274.jpg"
+  },
+  {
+    "title": "Two Cows and a Young Bull beside a Fence in a Meadow",
+    "artist": "Paulus Potter (Dutch, 1625\u20131654)",
+    "date": "1647",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0275.jpg"
+  },
+  {
+    "title": "Wine Cistern",
+    "artist": "Francesco Durantino\nItalian, active 1543-after 1553",
+    "date": "1553",
+    "department": "Applied Arts of Europe",
+    "image": "images/0276.jpg"
+  },
+  {
+    "title": "Portrait of a Man in Costume",
+    "artist": "Jean-Honor\u00e9 Fragonard (French, 1732\u20131806)",
+    "date": "c. 1767\u201368",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0277.jpg"
+  },
+  {
+    "title": "Perilous Night",
+    "artist": "Jasper Johns\nAmerican, born 1930",
+    "date": "1982",
+    "department": "Prints and Drawings",
+    "image": "images/0278.jpg"
+  },
+  {
+    "title": "Christ Carrying the Cross",
+    "artist": "Sebastiano del Piombo (Italian, c. 1485\u20131547)",
+    "date": "c. 1515\u201317",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0279.jpg"
+  },
+  {
+    "title": "Watchtower with Geese (Hochsitz mit G\u00e4nsen)",
+    "artist": "Sigmar Polke\nGerman, 1941\u20132010",
+    "date": "1987/88",
+    "department": "Contemporary Art",
+    "image": "images/0280.jpg"
+  },
+  {
+    "title": "Explosion at Sea",
+    "artist": "Vija Celmins\nAmerican, born Latvia, 1938",
+    "date": "1966",
+    "department": "Contemporary Art",
+    "image": "images/0281.jpg"
+  },
+  {
+    "title": "Minnie",
+    "artist": "Ed Paschke\nAmerican, 1939-2004",
+    "date": "1974",
+    "department": "Contemporary Art",
+    "image": "images/0282.jpg"
+  },
+  {
+    "title": "The Night Is Stirring (Anger) (La Nuit remue [col\u00e8re])",
+    "artist": "Zao Wou-Ki\nFrench, born China, 1921-2013",
+    "date": "1956",
+    "department": "Contemporary Art",
+    "image": "images/0283.jpg"
+  },
+  {
+    "title": "System of Architectural Ornament, Plate 16, Impromptu!",
+    "artist": "Louis H. Sullivan\nAmerican, 1856-1924",
+    "date": "1922",
+    "department": "Architecture and Design",
+    "image": "images/0284.jpg"
+  },
+  {
+    "title": "A Monumental Portrait of a Monkey",
+    "artist": "India\nRajasthan, Mewar, Udaipur, attributed to the \u201cStipple Master\u201d (active c. 1692-c. 1715)",
+    "date": "c. 1705\u20131710",
+    "department": "Arts of Asia",
+    "image": "images/0285.jpg"
+  },
+  {
+    "title": "Georgia O'Keeffe\u2014Hands and Thimble",
+    "artist": "Alfred Stieglitz\nAmerican, 1864\u20131946",
+    "date": "1919",
+    "department": "Photography and Media",
+    "image": "images/0286.jpg"
+  },
+  {
+    "title": "Chaekgeori",
+    "artist": "Korea",
+    "date": "late 19th -early 20th century",
+    "department": "Arts of Asia",
+    "image": "images/0287.jpg"
+  },
+  {
+    "title": "Cabinet",
+    "artist": "Cabinet: Augsburg (now Germany); internal panels: Eger, Bohemia (now Cheb, Czech Republic)",
+    "date": "c. 1640\u201350",
+    "department": "Applied Arts of Europe",
+    "image": "images/0288.jpg"
+  },
+  {
+    "title": "Henry Ossawa Tanner",
+    "artist": "Hermann Dudley Murphy (American, 1867\u20131945)",
+    "date": "c. 1896",
+    "department": "Arts of the Americas",
+    "image": "images/0289.jpg"
+  },
+  {
+    "title": "Elizabeth Grant Bankson Beatty (Mrs. James Beatty) and Her Daughter Susan",
+    "artist": "Joshua Johnson (American, c. 1763\u2013after 1825)",
+    "date": "c. 1805",
+    "department": "Arts of the Americas",
+    "image": "images/0290.jpg"
+  },
+  {
+    "title": "Young Bull",
+    "artist": "Albrecht D\u00fcrer\nGerman, 1471\u20131528",
+    "date": "c. 1496, erroneously inscribed in another hand 1508",
+    "department": "Prints and Drawings",
+    "image": "images/0291.jpg"
+  },
+  {
+    "title": "Alabama Cotton Tenant Farmer's Wife",
+    "artist": "Walker Evans\nAmerican, 1903\u20131975",
+    "date": "1936, printed c. 1962",
+    "department": "Photography and Media",
+    "image": "images/0292.jpg"
+  },
+  {
+    "title": "Self-Portrait in a Fur Cap",
+    "artist": "Joseph Wright of Derby\nEnglish, 1734-1797",
+    "date": "1765/68",
+    "department": "Prints and Drawings",
+    "image": "images/0293.jpg"
+  },
+  {
+    "title": "Self-Portrait with a Visor",
+    "artist": "Jean-Sim\u00e9on Chardin\nFrench, 1699-1779",
+    "date": "c. 1776",
+    "department": "Prints and Drawings",
+    "image": "images/0294.jpg"
+  },
+  {
+    "title": "Self-Portrait of My Sister",
+    "artist": "Gertrude Abercrombie (American, 1909\u20131977)",
+    "date": "1941",
+    "department": "Arts of the Americas",
+    "image": "images/0295.jpg"
+  },
+  {
+    "title": "Cr\u00e8che",
+    "artist": "Neapolitan",
+    "date": "1725\u201375, with later additions",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0296.jpg"
+  },
+  {
+    "title": "Relaxing in the Shade",
+    "artist": "Yamakawa Shuho\nJapanese, 1898-1944",
+    "date": "c. 1933",
+    "department": "Arts of Asia",
+    "image": "images/0297.jpg"
+  },
+  {
+    "title": "Woodman (Waldarbeiter)",
+    "artist": "Georg Baselitz\nGerman, 1938-2026",
+    "date": "1969",
+    "department": "Contemporary Art",
+    "image": "images/0298.jpg"
+  },
+  {
+    "title": "Big River, from the Rancherie, Mendocino, California",
+    "artist": "Carleton E. Watkins\nAmerican, 1829-1916",
+    "date": "1863",
+    "department": "Photography and Media",
+    "image": "images/0299.jpg"
+  },
+  {
+    "title": "L'Estaque",
+    "artist": "\u00c9milie Charmy\nFrench, 1880\u20131974",
+    "date": "c. 1910",
+    "department": "Modern Art",
+    "image": "images/0300.jpg"
+  },
+  {
+    "title": "Ritual Cache",
+    "artist": "Salado branch of the Mogollon\nNew Mexico, United States",
+    "date": "1300\u20131400",
+    "department": "Arts of the Americas",
+    "image": "images/0301.jpg"
+  },
+  {
+    "title": "Feathered Tunic",
+    "artist": "Chim\u00fa\nPeru, south coast, Possibly Nazca Valley,",
+    "date": "1470-1532",
+    "department": "Textiles",
+    "image": "images/0302.jpg"
+  },
+  {
+    "title": "The Garden of Palazzo Contarini dal Zaffo",
+    "artist": "Francesco Guardi (Italian, 1712\u20131793)",
+    "date": "Late 1770s",
+    "department": "Painting and Sculpture of Europe",
+    "image": "images/0303.jpg"
+  },
+  {
+    "title": "Albino",
+    "artist": "Marlene Dumas\nSouth African, born 1953",
+    "date": "1986",
+    "department": "Contemporary Art",
+    "image": "images/0304.jpg"
+  },
+  {
+    "title": "Coffer",
+    "artist": "Attributed to Andr\u00e9-Charles Boulle (born France, 1642\u20131732)\nParis",
+    "date": "c. 1700\u201320",
+    "department": "Applied Arts of Europe",
+    "image": "images/0305.jpg"
+  },
+  {
+    "title": "Portrait of Otto Mueller",
+    "artist": "Ernst Ludwig Kirchner\nGerman, 1880-1938",
+    "date": "1915",
+    "department": "Prints and Drawings",
+    "image": "images/0306.jpg"
+  },
+  {
+    "title": "Seated Female Nude",
+    "artist": "Rembrandt van Rijn\nDutch, 1606-1669",
+    "date": "1660/62",
+    "department": "Prints and Drawings",
+    "image": "images/0307.jpg"
+  },
+  {
+    "title": "Seated Nude",
+    "artist": "Henri Matisse\nFrench, 1869\u20131954",
+    "date": "1922\u201329, cast 1951",
+    "department": "Modern Art",
+    "image": "images/0308.jpg"
+  },
+  {
+    "title": "Green and Blue: The Dancer",
+    "artist": "James McNeill Whistler\nAmerican, 1834-1903",
+    "date": "c. 1893",
+    "department": "Prints and Drawings",
+    "image": "images/0309.jpg"
+  },
+  {
+    "title": "Cabinet",
+    "artist": "Herter Brothers (American, 1864\u20131906)\nNew York",
+    "date": "1878\u201380",
+    "department": "Arts of the Americas",
+    "image": "images/0310.jpg"
+  },
+  {
+    "title": "Funerary Urn (Hunping)",
+    "artist": "China",
+    "date": "Western Jin dynasty (A.D. 265\u2013316), late 3rd century",
+    "department": "Arts of Asia",
+    "image": "images/0311.jpg"
+  },
+  {
+    "title": "Crouching Woman",
+    "artist": "Eug\u00e8ne Delacroix\nFrench, 1798-1863",
+    "date": "1827",
+    "department": "Prints and Drawings",
+    "image": "images/0312.jpg"
+  },
+  {
+    "title": "Landscape",
+    "artist": "Li Huayi\nAmerican, born China, 1948",
+    "date": "2002",
+    "department": "Arts of Asia",
+    "image": "images/0313.jpg"
+  },
+  {
+    "title": "Group Pilgrimage to the Jizo Nun",
+    "artist": "Ike Taiga\nJapanese, 1723-1776",
+    "date": "1755/65",
+    "department": "Arts of Asia",
+    "image": "images/0314.jpg"
+  },
+  {
+    "title": "Wall Clock",
+    "artist": "Case by Jean-Pierre Latz (born Cologne [now Germany], active France, 1691\u20131754)\nClockwork by Francis Bayley (active Austrian Netherlands [now Belgium], mid-1700s)\nCase: Paris; clock: Ghent, Flanders, Austrian Netherlands (now Belgium)",
+    "date": "c. 1735\u201340",
+    "department": "Applied Arts of Europe",
+    "image": "images/0315.jpg"
+  },
+  {
+    "title": "In Memory of My Father",
+    "artist": "Sylvia Plimack Mangold\nAmerican, born 1938",
+    "date": "1976",
+    "department": "Contemporary Art",
+    "image": "images/0316.jpg"
+  },
+  {
+    "title": "Portrait of Mary Adeline Williams",
+    "artist": "Thomas Eakins (American, 1844\u20131916)",
+    "date": "1899",
+    "department": "Arts of the Americas",
+    "image": "images/0317.jpg"
+  },
+  {
+    "title": "Lever #1",
+    "artist": "Martin Puryear\nAmerican, born 1941",
+    "date": "1988/89",
+    "department": "Contemporary Art",
+    "image": "images/0318.jpg"
+  },
+  {
+    "title": "Mondrian's Glasses and Pipe",
+    "artist": "Andr\u00e9 Kert\u00e9sz\nAmerican, born Hungary, 1894\u20131985",
+    "date": "1926",
+    "department": "Photography and Media",
+    "image": "images/0319.jpg"
+  },
+  {
+    "title": "Small Town by Day (Badische Kleinstadt bei Tage)",
+    "artist": "Georg Scholz\nGerman, 1890\u20131945",
+    "date": "1922\u201323",
+    "department": "Modern Art",
+    "image": "images/0320.jpg"
+  },
+  {
+    "title": "Cup in the Form of a Horse and Rider",
+    "artist": "Hans Ludwig Kienle (born Ulm [now Germany], 1591\u20131653)\nUlm (now Germany)",
+    "date": "1630",
+    "department": "Applied Arts of Europe",
+    "image": "images/0321.jpg"
+  },
+  {
+    "title": "The actor Bando Mitsugoro II as Ishii Genzo",
+    "artist": "Toshusai Sharaku \u6771\u6d32\u658e \u5199\u697d\nJapanese, active 1794-95",
+    "date": "1794",
+    "department": "Arts of Asia",
+    "image": "images/0322.jpg"
+  },
+  {
+    "title": "The Emperor Sailing from The Story of the Emperor of China",
+    "artist": "After a design by Guy-Louis Vernansal (French, 1648\u20131729) and others\nWoven at the Manufacture Royale de Beauvais under the direction of Pierre and Etienne Filleul (codirectors, 1711\u201322)\nFrance, Beauvais",
+    "date": "1716/22",
+    "department": "Textiles",
+    "image": "images/0323.jpg"
+  },
+  {
+    "title": "The Sick Child I",
+    "artist": "Edvard Munch (Norwegian, 1863-1944)\nprinted by Auguste Clot (French, 1858-1936)",
+    "date": "1896",
+    "department": "Prints and Drawings",
+    "image": "images/0324.jpg"
+  },
+  {
+    "title": "Sur, Long Island City, New York",
+    "artist": "Hern\u00e1n D\u00edaz Alonso\nAmerican, born Argentina, 1969\nXefirotarch \nAmerican, founded 2001",
+    "date": "2005",
+    "department": "Architecture and Design",
+    "image": "images/0325.jpg"
+  },
+  {
+    "title": "Richard Bill",
+    "artist": "John Smibert (American, born Scotland, 1688\u20131751)",
+    "date": "1733",
+    "department": "Arts of the Americas",
+    "image": "images/0326.jpg"
+  },
+  {
+    "title": "Talismanic Textile",
+    "artist": "Probably Senegal",
+    "date": "Late 19th/early 20th century",
+    "department": "Textiles",
+    "image": "images/0327.jpg"
+  },
+  {
+    "title": "Maize and Cockscombs",
+    "artist": "Artist unknown\nJapanese",
+    "date": "mid 17th century",
+    "department": "Arts of Asia",
+    "image": "images/0328.jpg"
+  },
+  {
+    "title": "Legends of the Y\u016bz\u016b Nembutsu Sect",
+    "artist": "Artist unknown\nJapanese, active 14th century",
+    "date": "Kamakura period (1185\u20131333), 14th century",
+    "department": "Arts of Asia",
+    "image": "images/0329.jpg"
+  },
+  {
+    "title": "Storage Jar with Horizontal Bands of Interlocking Scrolls",
+    "artist": "Ancestral Pueblo (Anasazi), Black Mesa Black-on-white\nKayenta area, northeastern Arizona, United States",
+    "date": "875\u20131130",
+    "department": "Arts of the Americas",
+    "image": "images/0330.jpg"
+  },
+  {
+    "title": "Dead Fish, Salton Sea, from the series \"Desert Cantos III: The Flood\"",
+    "artist": "Richard Misrach\nAmerican, born 1949",
+    "date": "1983, printed 2006",
+    "department": "Photography and Media",
+    "image": "images/0331.jpg"
+  },
+  {
+    "title": "The Letter, or The Spanish Conversation",
+    "artist": "Jean-Honor\u00e9 Fragonard\nFrench, 1732-1806",
+    "date": "c. 1778",
+    "department": "Prints and Drawings",
+    "image": "images/0332.jpg"
+  },
+  {
+    "title": "Composition",
+    "artist": "Maria Helena Vieira da Silva\nFrench, born Portugal, 1908\u20131992",
+    "date": "1936\u201337",
+    "department": "Modern Art",
+    "image": "images/0333.jpg"
+  },
+  {
+    "title": "Tiered Offering Mandala of the Goddess of Wealth (Vasudhara)",
+    "artist": "Nepal",
+    "date": "19th century",
+    "department": "Arts of Asia",
+    "image": "images/0334.jpg"
+  },
+  {
+    "title": "Khee II",
+    "artist": "Jack Whitten\nAmerican, 1939-2018",
+    "date": "1978",
+    "department": "Contemporary Art",
+    "image": "images/0335.jpg"
+  },
+  {
+    "title": "Head of a Luohan",
+    "artist": "China",
+    "date": "Northern Song, Liao, or Jin dynasty, c. 11th century",
+    "department": "Arts of Asia",
+    "image": "images/0336.jpg"
+  },
+  {
+    "title": "Mirror Frame with Tree of Life Motif",
+    "artist": "India",
+    "date": "Mughal dynasty (1526-1857), 17th/18th century",
+    "department": "Arts of Asia",
+    "image": "images/0337.jpg"
+  },
+  {
+    "title": "Fourth of July, Jay, New York",
+    "artist": "Robert Frank\nAmerican, born Switzerland, 1924\u20132019",
+    "date": "1954",
+    "department": "Photography and Media",
+    "image": "images/0338.jpg"
+  },
+  {
+    "title": "Miss E. Knows",
+    "artist": "Jim Nutt\nAmerican, born 1938",
+    "date": "1967",
+    "department": "Contemporary Art",
+    "image": "images/0339.jpg"
+  },
+  {
+    "title": "Woman's Robe",
+    "artist": "Bukhara, Uzbekistan",
+    "date": "1840/60",
+    "department": "Textiles",
+    "image": "images/0340.jpg"
+  },
+  {
+    "title": "Fall-Front Desk",
+    "artist": "Vienna, Austria",
+    "date": "c. 1810",
+    "department": "Applied Arts of Europe",
+    "image": "images/0341.jpg"
+  },
+  {
+    "title": "Rodin, Le Penseur",
+    "artist": "Edward Steichen\nAmerican, born Luxembourg, 1879\u20131973",
+    "date": "1902",
+    "department": "Photography and Media",
+    "image": "images/0342.jpg"
+  },
+  {
+    "title": "Washbowl",
+    "artist": "Edward Weston\nAmerican, 1886\u20131958",
+    "date": "1925",
+    "department": "Photography and Media",
+    "image": "images/0343.jpg"
+  },
+  {
+    "title": "The Old Savoyard",
+    "artist": "Jean Antoine Watteau\nFrench, 1684-1721",
+    "date": "c. 1715",
+    "department": "Prints and Drawings",
+    "image": "images/0344.jpg"
+  },
+  {
+    "title": "Cow Suckling a Calf",
+    "artist": "India\nMadhya or Uttar Pradesh",
+    "date": "About 9th century",
+    "department": "Arts of Asia",
+    "image": "images/0345.jpg"
+  },
+  {
+    "title": "The Pheasants from the \"Verdures of the Vatican\" Series",
+    "artist": "Designed by Jean D\u00e9mosth\u00e8ne Dugourc (French, 1749\u20131825)\nManufactured by Camille Pernon & Cie\nFrance, Lyon",
+    "date": "c. 1799",
+    "department": "Textiles",
+    "image": "images/0346.jpg"
+  },
+  {
+    "title": "General Andrew Jackson",
+    "artist": "William Rush\nAmerican, 1756\u20131833",
+    "date": "1819",
+    "department": "Arts of the Americas",
+    "image": "images/0347.jpg"
+  },
+  {
+    "title": "Plum Vase (Maebyeong) with Clouds, Cranes, and Children Motifs",
+    "artist": "Korea",
+    "date": "Goryeo dynasty (918\u20131392), late 12th century",
+    "department": "Arts of Asia",
+    "image": "images/0348.jpg"
+  },
+  {
+    "title": "Cope",
+    "artist": "England",
+    "date": "1490-1525, with later restoration",
+    "department": "Textiles",
+    "image": "images/0349.jpg"
+  },
+  {
+    "title": "Two Plant Specimens",
+    "artist": "William Henry Fox Talbot\nEnglish, 1800\u20131877",
+    "date": "1839",
+    "department": "Photography and Media",
+    "image": "images/0350.jpg"
+  },
+  {
+    "title": "Oonagh MacCumhail: The Case of the Entered Novitiate",
+    "artist": "Matthew Barney\nAmerican, born 1967",
+    "date": "2002",
+    "department": "Contemporary Art",
+    "image": "images/0351.jpg"
+  },
+  {
+    "title": "Mr. and Mrs. Herbert A. Jacobs House, Middleton, Wisconsin, Perspective",
+    "artist": "Frank Lloyd Wright\nAmerican, 1867\u20131959",
+    "date": "1944",
+    "department": "Architecture and Design",
+    "image": "images/0352.jpg"
+  },
+  {
+    "title": "Untitled",
+    "artist": "Robert Rauschenberg\nAmerican, 1925\u20132008",
+    "date": "1955",
+    "department": "Contemporary Art",
+    "image": "images/0353.jpg"
+  },
+  {
+    "title": "Sideboard",
+    "artist": "Daniel Pabst (American, 1826\u20131910)\nPhiladelphia",
+    "date": "1868\u201380",
+    "department": "Arts of the Americas",
+    "image": "images/0354.jpg"
+  },
+  {
+    "title": "Cornelius Allerton",
+    "artist": "Ammi Phillips (American, 1788\u20131865)",
+    "date": "1821\u201322",
+    "department": "Arts of the Americas",
+    "image": "images/0355.jpg"
+  },
+  {
+    "title": "Waters Above the Firmament",
+    "artist": "Lenore Tawney  (American, 1907\u20132007)\nUnited States, New York, New York City",
+    "date": "1976",
+    "department": "Textiles",
+    "image": "images/0356.jpg"
+  },
+  {
+    "title": "Furisode",
+    "artist": "Japan",
+    "date": "late Edo period (1789\u20131868), 1801/1868",
+    "department": "Textiles",
+    "image": "images/0357.jpg"
+  },
+  {
+    "title": "Untitled #88",
+    "artist": "Cindy Sherman\nAmerican, born 1954",
+    "date": "1981",
+    "department": null,
+    "image": "images/0358.jpg"
+  },
+  {
+    "title": "Monogram",
+    "artist": "Louise Lawler \nAmerican, born 1947",
+    "date": "1984",
+    "department": "Contemporary Art",
+    "image": "images/0359.jpg"
+  },
+  {
+    "title": "Rock Crest/Rock Glen, Mason City, Iowa, Perspective",
+    "artist": "Marion Mahony Griffin (American, 1871\u20131961)\nWalter Burley Griffin (American, 1876\u20131937)",
+    "date": "c. 1912",
+    "department": "Architecture and Design",
+    "image": "images/0360.jpg"
+  },
+  {
+    "title": "Involvement Series",
+    "artist": "Wanda Pimentel\nBrazilian, 1943-2019",
+    "date": "1968",
+    "department": "Contemporary Art",
+    "image": "images/0361.jpg"
+  },
+  {
+    "title": "Mohnk\u00f6pfe (Poppyheads) (Dress or Furnishing Fabric)",
+    "artist": "Designed by Koloman Moser (Austrian, 1868\u20131918)\nProduced by Johan Backhausen und S\u00f6hne (Austrian, founded 1849)\nAustria, Vienna",
+    "date": "1900",
+    "department": "Textiles",
+    "image": "images/0362.jpg"
+  },
+  {
+    "title": "Manxman Piano",
+    "artist": "Designed by Mackay Hugh Baillie Scott\nEnglish, 1865-1945\nMade by John Broadwood and Sons\nEngland, founded 1728\nLondon, England",
+    "date": "1897",
+    "department": "Applied Arts of Europe",
+    "image": "images/0363.jpg"
+  },
+  {
+    "title": "Untitled",
+    "artist": "El Lissitzky (Lazar Markovich Lissitzky)\nRussian, 1890-1941",
+    "date": "1923",
+    "department": "Photography and Media",
+    "image": "images/0364.jpg"
+  },
+  {
+    "title": "Tall-Case Clock",
+    "artist": "Case designed by Josef Hoffmann\nAustrian, born Moravia (present-day Czech Republic), 1870-1956\nMetalwork designed by Carl Otto Czeschka\nAustrian, 1878-1960\nMade by the Wiener Werkst\u00e4tte\nVienna, Austria, 1903-1932",
+    "date": "c. 1906",
+    "department": "Applied Arts of Europe",
+    "image": "images/0365.jpg"
+  },
+  {
+    "title": "Honey-Pop",
+    "artist": "Tokujin Yoshioka\nJapanese, born 1967",
+    "date": "2001",
+    "department": "Architecture and Design",
+    "image": "images/0366.jpg"
+  },
+  {
+    "title": "Tankard (Hanap) with Tulips, Hyacinths, Roses, and Carnations",
+    "artist": "Turkey\nIznik",
+    "date": "Ottoman dynasty (1299\u20131923), Late 16th century",
+    "department": "Arts of Asia",
+    "image": "images/0367.jpg"
+  },
+  {
+    "title": "Fragment (Dress Fabric)",
+    "artist": "China",
+    "date": "Tang dynasty (CE 618\u2013906), late 8th/early 9th century",
+    "department": "Textiles",
+    "image": "images/0368.jpg"
+  },
+  {
+    "title": "Delphine",
+    "artist": "Diana Thater\nAmerican, born 1962",
+    "date": "1999",
+    "department": "Contemporary Art",
+    "image": "images/0369.jpg"
+  },
+  {
+    "title": "Tall Clock",
+    "artist": "Designed by George Grant Elmslie (American, born Scotland, 1869\u20131952)\nPurcell, Feick and Elmslie (American, active 1910\u201313)\nMade by Niedecken-Walbridge Co. (American, active 1907\u201338)\nMilwaukee",
+    "date": "1912",
+    "department": "Arts of the Americas",
+    "image": "images/0370.jpg"
+  },
+  {
+    "title": "Finnish Painting",
+    "artist": "Pope.L\nAmerican, 1955-2023",
+    "date": "2015",
+    "department": "Contemporary Art",
+    "image": "images/0371.jpg"
+  },
+  {
+    "title": "River City, Chicago, Illinois, Aerial Perspective",
+    "artist": "Bertrand Goldberg\nAmerican, 1913\u20131997",
+    "date": "1979",
+    "department": "Architecture and Design",
+    "image": "images/0372.jpg"
+  },
+  {
+    "title": "Gaming Set, Probably Made for the Russian Court",
+    "artist": "Du Paquier Porcelain Manufactory (1719\u201344)\nVienna",
+    "date": "c. 1735",
+    "department": "Applied Arts of Europe",
+    "image": "images/0373.jpg"
+  },
+  {
+    "title": "Two-Handled Covered Cup",
+    "artist": "Cornelius Kierstede (American, 1674\u20131757)\nNew York",
+    "date": "1698\u20131720",
+    "department": "Arts of the Americas",
+    "image": "images/0374.jpg"
+  },
+  {
+    "title": "The Long Road to Mazatl\u00e1n",
+    "artist": "Isaac Julien (Director) and Javier De Frutos (Choreography and Movement)\nEnglish, born 1960; Venezuelan, born 1963",
+    "date": "1999",
+    "department": "Contemporary Art",
+    "image": "images/0375.jpg"
+  },
+  {
+    "title": "Panorama from the Sasso",
+    "artist": "Claude Lorrain\nFrench, 1600-1682",
+    "date": "1649/1655",
+    "department": "Prints and Drawings",
+    "image": "images/0376.jpg"
+  },
+  {
+    "title": "Pillars of the Country",
+    "artist": "Yao Shou\nChinese, 1423-1495",
+    "date": "Ming dynasty (1368\u20131644), 1494",
+    "department": "Arts of Asia",
+    "image": "images/0377.jpg"
+  },
+  {
+    "title": "Untitled",
+    "artist": "Brassa\u00ef (Gyula Hal\u00e1sz)\nFrench, born Hungary (now Romania), 1899\u20131984",
+    "date": "1932",
+    "department": "Photography and Media",
+    "image": "images/0378.jpg"
+  },
+  {
+    "title": "Bloom",
+    "artist": "Julia Fish\nAmerican, born 1950",
+    "date": "1989",
+    "department": null,
+    "image": "images/0379.jpg"
+  },
+  {
+    "title": "Panel (Furnishing Fabric)",
+    "artist": "Designed by Jean Baptiste Huet (French, 1745\u20131811) after Jean Baptiste Pillement (French, 1728-1808)\nJouy-en-Josas or Nantes, France",
+    "date": "c. 1786",
+    "department": "Textiles",
+    "image": "images/0380.jpg"
+  },
+  {
+    "title": "Celestial Chaos No. 1",
+    "artist": "Tai Xiangzhou\nChinese (born 1968)",
+    "date": "2014",
+    "department": "Arts of Asia",
+    "image": "images/0381.jpg"
+  },
+  {
+    "title": "Club de Centre Rural: Perspective Sketch",
+    "artist": "Le Corbusier\nFrench, born Switzerland, 1887-1965",
+    "date": "1943",
+    "department": "Architecture and Design",
+    "image": "images/0382.jpg"
+  },
+  {
+    "title": "Self-Portrait",
+    "artist": "Lovis Corinth\nGerman, 1858-1925",
+    "date": "1924",
+    "department": "Prints and Drawings",
+    "image": "images/0383.jpg"
+  },
+  {
+    "title": "Mrs. Herbert Duckworth",
+    "artist": "Julia Margaret Cameron\nEnglish, 1815\u20131879",
+    "date": "April 1867",
+    "department": "Photography and Media",
+    "image": "images/0384.jpg"
+  },
+  {
+    "title": "Portions of a Jousting Helmet",
+    "artist": "Italian; Milan",
+    "date": "1570/80",
+    "department": "Applied Arts of Europe",
+    "image": "images/0385.jpg"
+  },
+  {
+    "title": "Bottle Rack (Porte-Bouteilles)",
+    "artist": "Marcel Duchamp\nAmerican, born France, 1887\u20131968",
+    "date": "1914/1959",
+    "department": "Modern Art",
+    "image": "images/0386.jpg"
+  },
+  {
+    "title": "Oribe-Type Ewer",
+    "artist": "Japan",
+    "date": "early 17th century",
+    "department": "Arts of Asia",
+    "image": "images/0387.jpg"
+  },
+  {
+    "title": "The Road to Calvary",
+    "artist": "Master of the Housebook\nGerman, active c. 1470-1500",
+    "date": "1475/80",
+    "department": "Prints and Drawings",
+    "image": "images/0388.jpg"
+  },
+  {
+    "title": "Milarepa on Mount Kailash",
+    "artist": "Tibet",
+    "date": "c. 1500",
+    "department": "Arts of Asia",
+    "image": "images/0389.jpg"
+  },
+  {
+    "title": "Winter, from The Seasons",
+    "artist": "After a design by Charles Le Brun (French, 1619\u20131690)\nWoven at the workshop of \u00c9tienne Le Blond (French, 1652\u20131727) and Jean de La Croix (French, 1628\u20131712) at the Manufacture Royale des Gobelins\nFrance, Paris",
+    "date": "1700/20",
+    "department": "Textiles",
+    "image": "images/0390.jpg"
+  },
+  {
+    "title": "A Siren Beside a Ship",
+    "artist": "Mark Bradford\nAmerican, born 1961",
+    "date": "2014",
+    "department": "Contemporary Art",
+    "image": "images/0391.jpg"
+  },
+  {
+    "title": "Near Jackson, Mississippi",
+    "artist": "William Eggleston\nAmerican, born 1939",
+    "date": "c. 1970, printed 2002",
+    "department": "Photography and Media",
+    "image": "images/0392.jpg"
+  },
+  {
+    "title": "Samovar",
+    "artist": "Designed by Henry van de Velde\nBelgian, 1863-1957\nMade by the Workshop of Theodor M\u00fcller\nWeimar, Germany, founded late 19th century",
+    "date": "1897/1907",
+    "department": "Applied Arts of Europe",
+    "image": "images/0393.jpg"
+  },
+  {
+    "title": "Bed Rug",
+    "artist": "Hannah Johnson (American, 1770\u20131848)\nPossibly Bozrah, New London County, Connecticut, United States",
+    "date": "1796",
+    "department": "Textiles",
+    "image": "images/0394.jpg"
+  },
+  {
+    "title": "Head of a Male Deity (Deva)",
+    "artist": "Cambodia, probably Angkor Thom",
+    "date": "Angkor period, late 12th\u2013early 13th century",
+    "department": "Arts of Asia",
+    "image": "images/0395.jpg"
+  },
+  {
+    "title": "Pitcher",
+    "artist": "Design attributed to Edward C. Moore (American, 1827\u20131891)\nTiffany and Company (American, founded 1837)\nNew York",
+    "date": "1878",
+    "department": "Arts of the Americas",
+    "image": "images/0396.jpg"
+  },
+  {
+    "title": "Ceremonial Hanging (Palepai)",
+    "artist": "Paminggir people\nLampung area, South Sumatra, Indonesia",
+    "date": "19th century",
+    "department": "Textiles",
+    "image": "images/0397.jpg"
+  },
+  {
+    "title": "Machinist's Apprentice",
+    "artist": "Emma Stebbins (American, 1815\u20131882)",
+    "date": "c. 1859",
+    "department": "Arts of the Americas",
+    "image": "images/0398.jpg"
+  },
+  {
+    "title": "Machinist",
+    "artist": "Emma Stebbins (American, 1815\u20131882)",
+    "date": "c. 1859",
+    "department": "Arts of the Americas",
+    "image": "images/0399.jpg"
+  },
+  {
+    "title": "Corner Cabinet",
+    "artist": "Designed by Jacques-\u00c9mile Ruhlmann\nFrench, 1879-1933\nParis, France",
+    "date": "c. 1916",
+    "department": "Applied Arts of Europe",
+    "image": "images/0400.jpg"
+  },
+  {
+    "title": "Plate 49 from Plan of Chicago 1909: Chicago. View of the City from Jackson Park to Grant Park, Looking Towards the West. The proposed shore treatment as a park enclosing a waterway (or a series of lagoons) is shown, together with the enlarged yacht harbor, recreation piers, and a scheme for Grant Park.",
+    "artist": "Daniel Hudson Burnham, American, 1846-1912\nEdward Herbert Bennett, American, born England, 1874-1954\nJules Guerin, delineator, American, 1866-1946",
+    "date": "1907",
+    "department": "Architecture and Design",
+    "image": "images/0401.jpg"
+  },
+  {
+    "title": "Royal Horse Inspection",
+    "artist": "Iran, probably Isfahan\nAliquli Jabbadar",
+    "date": "Safavid dynasty (1501\u20131722), late 17th century",
+    "department": "Arts of Asia",
+    "image": "images/0402.jpg"
+  },
+  {
+    "title": "F\u00eate du Tr\u00f4ne",
+    "artist": "Jean-Eug\u00e8ne-Auguste Atget\nFrench, 1857\u20131927",
+    "date": "1925",
+    "department": "Photography and Media",
+    "image": "images/0403.jpg"
+  },
+  {
+    "title": "Urns (Set of 8)",
+    "artist": "Thomas Schutte\nGerman, born 1954",
+    "date": "1999",
+    "department": "Contemporary Art",
+    "image": "images/0404.jpg"
+  },
+  {
+    "title": "Bureau Table",
+    "artist": "Attributed to John Townsend (American, 1732\u20131809)\nNewport, Rhode Island",
+    "date": "c. 1770",
+    "department": "Arts of the Americas",
+    "image": "images/0405.jpg"
+  },
+  {
+    "title": "Landscapes",
+    "artist": "Huang Binhong\nChinese, 1864-1955",
+    "date": "1945-55",
+    "department": "Arts of Asia",
+    "image": "images/0406.jpg"
+  },
+  {
+    "title": "Object with Number 1",
+    "artist": "Joaqu\u00edn Torres-Garc\u00eda\nUruguayan, 1874\u20131949",
+    "date": "1932",
+    "department": "Modern Art",
+    "image": "images/0407.jpg"
+  },
+  {
+    "title": "Untitled",
+    "artist": "Donald Judd\nAmerican, 1928-1994",
+    "date": "1976",
+    "department": "Contemporary Art",
+    "image": "images/0408.jpg"
+  },
+  {
+    "title": "Cravat End",
+    "artist": "Flanders, Brussels (present day Belgium)",
+    "date": "1700-50",
+    "department": "Textiles",
+    "image": "images/0409.jpg"
+  },
+  {
+    "title": "Gingold Living Room End Table (1 of 2)",
+    "artist": "Rudolph Schindler\nAmerican, born Austria, 1887-1953",
+    "date": "c. 1943",
+    "department": "Architecture and Design",
+    "image": "images/0410.jpg"
+  },
+  {
+    "title": "Fragment",
+    "artist": "Probably Granada, Spain",
+    "date": "Nasrid dynasty (1230\u20131492), late 15th century",
+    "department": "Textiles",
+    "image": "images/0411.jpg"
+  },
+  {
+    "title": "AC10",
+    "artist": "Zhang Wei\nChinese, 1952-2025",
+    "date": "1984",
+    "department": "Contemporary Art",
+    "image": "images/0412.jpg"
+  },
+  {
+    "title": "Dymaxion Car, Section",
+    "artist": "Richard Buckminster Fuller\nAmerican, 1895-1983",
+    "date": "1933",
+    "department": "Architecture and Design",
+    "image": "images/0413.jpg"
+  },
+  {
+    "title": "Pair of Cups",
+    "artist": "China",
+    "date": "Qing dynasty (1644\u20131911), Yongzheng reign mark and period (1723\u20131735)",
+    "department": "Arts of Asia",
+    "image": "images/0414.jpg"
+  },
+  {
+    "title": "Wall Drawing #821: A black square divided horizontally and vertically into four equal parts, each with a different direction of alternating flat and glossy bands",
+    "artist": "Sol LeWitt\nAmerican, 1928-2007",
+    "date": "1997",
+    "department": null,
+    "image": "images/0415.jpg"
+  },
+  {
+    "title": "We Must Bear",
+    "artist": "Nilima Sheikh\nIndian, born 1945",
+    "date": "2014",
+    "department": "Contemporary Art",
+    "image": "images/0416.jpg"
+  },
+  {
+    "title": "Male-Female Figure and the Pomegranate",
+    "artist": "Ibrahim El-Salahi\nSudanese, born 1930",
+    "date": "1966-68",
+    "department": "Contemporary Art",
+    "image": "images/0417.jpg"
+  },
+  {
+    "title": "Oil or Vinegar Cruet",
+    "artist": "Meissen Porcelain Manufactory (1710\u2013present)\nModel by Johann Joachim K\u00e4ndler (born Saxony [now Germany], 1706\u20131775)\nMeissen, Electorate of Saxony (now Germany)",
+    "date": "c. 1737",
+    "department": "Applied Arts of Europe",
+    "image": "images/0418.jpg"
+  },
+  {
+    "title": "Untitled",
+    "artist": "Sait\u014d Yoshishige\nJapanese, 1904-2001",
+    "date": "1965",
+    "department": "Contemporary Art",
+    "image": "images/0419.jpg"
+  },
+  {
+    "title": "Gingold Living Room End Table (2 of 2)",
+    "artist": "Rudolph Schindler\nAmerican, born Austria, 1887-1953",
+    "date": "c. 1943",
+    "department": "Architecture and Design",
+    "image": "images/0420.jpg"
+  },
+  {
+    "title": "Untitled 72\u201312\u2013A",
+    "artist": "Chung Sang-Hwa\nKorean, born 1932",
+    "date": "1972",
+    "department": "Contemporary Art",
+    "image": "images/0421.jpg"
+  },
+  {
+    "title": "I'timad-ud-Daula's Tomb at Agra",
+    "artist": "India\nAgra",
+    "date": "c. 1820",
+    "department": "Arts of Asia",
+    "image": "images/0422.jpg"
+  },
+  {
+    "title": "Shaffron",
+    "artist": "Italian, Milan",
+    "date": "c. 1575",
+    "department": null,
+    "image": "images/0423.jpg"
+  },
+  {
+    "title": "King Anushirwan and the Owls, from the Khamsa of Nizami",
+    "artist": "Iran\nTabriz",
+    "date": "Safavid dynasty (1501\u20131722), c.1535",
+    "department": "Arts of Asia",
+    "image": "images/0424.jpg"
+  }
+]
