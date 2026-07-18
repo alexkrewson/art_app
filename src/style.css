@@ -52,6 +52,10 @@ body { display:flex; flex-direction:column; }
   object-fit:contain;
   opacity:0;
   /* transform handled entirely by JS — no CSS transition on it */
+  will-change: transform, opacity; /* keeps the Ken Burns pan/zoom on its own
+    GPU-composited layer instead of triggering a main-thread repaint every
+    frame, which is what reads as choppy on a full-screen image */
+  backface-visibility: hidden;
 }
 
 #footer {
