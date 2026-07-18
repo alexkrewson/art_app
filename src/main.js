@@ -25,7 +25,7 @@ async function main() {
 
   attachTouch(stageEl, slideshow);
 
-  const res = await fetch('/images.json');
+  const res = await fetch('images.json');
   const images = await res.json();
   slideshow.init(images);
 }

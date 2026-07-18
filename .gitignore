@@ -3,10 +3,10 @@ dist/
 .DS_Store
 *.log
 
-# Downloaded/cached art images are runtime data, not source — regenerate via
-# fetch.py / the app's own "Download content" feature. Keep images.json (the
-# manifest) but not the binaries.
-/images/
+# public/images/ (the Met Museum starter set) IS committed, as a stopgap so
+# the live GitHub Pages deploy has something to show before Phase 3/4 wire up
+# live multi-source fetching. images_captioned/ is an unused experimental
+# variant (add_captions.py) — stays ignored, not referenced by public/images.json.
 /images_captioned/
 
 # Capacitor/Android build outputs (added once android/ exists)
