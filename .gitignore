@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Downloaded/cached art images are runtime data, not source — regenerate via
+# fetch.py / the app's own "Download content" feature. Keep images.json (the
+# manifest) but not the binaries.
+/images/
+/images_captioned/
+
+# Capacitor/Android build outputs (added once android/ exists)
+android/app/build/
+android/.gradle/
+android/local.properties
+
+# Local secrets (API keys for NASA/Smithsonian/Europeana/Rijksmuseum, Google OAuth client)
+.env
+.env.local

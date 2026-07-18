@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Art Slideshow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; color: #fff; font-family: Georgia, serif; height: 100vh; overflow: hidden; }
+
+  #slideshow { position: relative; width: 100vw; height: 100vh; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+  }
+  .slide.active { opacity: 1; }
+
+  .slide img {
+    max-width: 90vw;
+    max-height: 85vh;
+    object-fit: contain;
+    display: block;
+  }
+
+  #caption {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px 24px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.75));
+    text-align: center;
+  }
+  #caption .title { font-size: 1.2rem; font-style: italic; }
+  #caption .artist { font-size: 0.95rem; color: #ccc; margin-top: 4px; }
+
+  #controls {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    gap: 8px;
+  }
+  #controls button {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    border-radius: 4px;
+  }
+  #controls button:hover { background: rgba(255,255,255,0.3); }
+
+  #counter {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.4);
+  }
+
+  #error {
+    display: none;
+    position: fixed;
+    inset: 0;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    color: #aaa;
+    font-size: 1rem;
+  }
+  #error.visible { display: flex; }
+</style>
+</head>
+<body>
+
+<div id="slideshow"></div>
+
+<div id="caption">
+  <div class="title" id="cap-title"></div>
+  <div class="artist" id="cap-artist"></div>
+</div>
+
+<div id="controls">
+  <button id="btn-prev">&#8592; Prev</button>
+  <button id="btn-pause">Pause</button>
+  <button id="btn-next">Next &#8594;</button>
+</div>
+
+<div id="counter"></div>
+
+<div id="error">
+  <div>Could not load images.json</div>
+  <div style="font-size:0.85rem">Run <code>python fetch.py</code> then <code>python -m http.server 8000</code></div>
+</div>
+
+<script>
+const INTERVAL = 8000; // ms per slide
+
+let images = [];
+let current = 0;
+let timer = null;
+let paused = false;
+
+const slideshow = document.getElementById("slideshow");
+const capTitle = document.getElementById("cap-title");
+const capArtist = document.getElementById("cap-artist");
+const counter = document.getElementById("counter");
+const btnPause = document.getElementById("btn-pause");
+
+function showSlide(index) {
+  const slides = slideshow.querySelectorAll(".slide");
+  slides.forEach(s => s.classList.remove("active"));
+
+  const slide = slides[index];
+  if (slide) slide.classList.add("active");
+
+  const img = images[index];
+  capTitle.textContent = img.title + (img.date ? `, ${img.date}` : "");
+  capArtist.textContent = img.artist + (img.department ? ` — ${img.department}` : "");
+  counter.textContent = `${index + 1} / ${images.length}`;
+}
+
+function next() {
+  current = (current + 1) % images.length;
+  showSlide(current);
+}
+
+function prev() {
+  current = (current - 1 + images.length) % images.length;
+  showSlide(current);
+}
+
+function startTimer() {
+  clearInterval(timer);
+  timer = setInterval(next, INTERVAL);
+}
+
+document.getElementById("btn-next").addEventListener("click", () => {
+  next();
+  if (!paused) startTimer();
+});
+
+document.getElementById("btn-prev").addEventListener("click", () => {
+  prev();
+  if (!paused) startTimer();
+});
+
+btnPause.addEventListener("click", () => {
+  paused = !paused;
+  btnPause.textContent = paused ? "Play" : "Pause";
+  if (paused) clearInterval(timer);
+  else startTimer();
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight" || e.key === " ") { next(); if (!paused) startTimer(); }
+  if (e.key === "ArrowLeft") { prev(); if (!paused) startTimer(); }
+  if (e.key === "p" || e.key === "P") btnPause.click();
+});
+
+fetch("images.json")
+  .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+  .then(data => {
+    images = data;
+    images.forEach((img, i) => {
+      const div = document.createElement("div");
+      div.className = "slide";
+      const el = document.createElement("img");
+      el.src = img.image;
+      el.alt = img.title;
+      el.loading = i === 0 ? "eager" : "lazy";
+      div.appendChild(el);
+      slideshow.appendChild(div);
+    });
+    showSlide(0);
+    startTimer();
+  })
+  .catch(() => {
+    document.getElementById("error").classList.add("visible");
+  });
+</script>
+</body>
+</html>
