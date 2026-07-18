@@ -1,0 +1,15 @@
+{
+  "name": "slowframe",
+  "version": "0.1.0",
+  "description": "SlowFrame — an ambient art and image slideshow app for tablets and display screens.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}
