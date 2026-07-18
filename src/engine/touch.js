@@ -2,7 +2,7 @@
 // on a Slideshow instance via its transform API (xf/clampXf/applyXf) plus
 // its playback methods (goNext/goPrev/togglePause).
 
-export function attachTouch(stageEl, slideshow) {
+export function attachTouch(stageEl, slideshow, settingsPanel) {
   let tStartX = 0, tStartY = 0, tStartMs = 0;
   let tPrevX = 0, tPrevY = 0;
   let tDidPinch = false, tDidPan = false;
@@ -93,7 +93,8 @@ export function attachTouch(stageEl, slideshow) {
     }
 
     if (!tDidPinch && !tDidPan && dist < 14 && dt < 380) {
-      slideshow.togglePause();
+      if (settingsPanel && settingsPanel.isOpen()) settingsPanel.close();
+      else slideshow.togglePause();
     }
   }, { passive: false });
 
@@ -116,5 +117,8 @@ export function attachTouch(stageEl, slideshow) {
 
   // Also support a plain click for desktop testing (touch events won't fire
   // with a mouse in most browsers).
-  stageEl.addEventListener('click', () => slideshow.togglePause());
+  stageEl.addEventListener('click', () => {
+    if (settingsPanel && settingsPanel.isOpen()) settingsPanel.close();
+    else slideshow.togglePause();
+  });
 }

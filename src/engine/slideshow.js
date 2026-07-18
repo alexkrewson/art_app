@@ -16,13 +16,15 @@ export class Slideshow {
    * @param {HTMLImageElement} opts.slideB
    * @param {HTMLElement} opts.pauseIcon
    * @param {(item: object) => void} opts.onMeta - called with the current image record on show
+   * @param {(paused: boolean) => void} [opts.onPauseChange]
    * @param {number} [opts.slideMs] - ms per slide (auto-advance)
    * @param {number} [opts.fadeMs] - crossfade duration
    */
-  constructor({ stageEl, slideA, slideB, pauseIcon, onMeta, slideMs = 12000, fadeMs = 1500 }) {
+  constructor({ stageEl, slideA, slideB, pauseIcon, onMeta, onPauseChange, slideMs = 12000, fadeMs = 1500 }) {
     this.stageEl = stageEl;
     this.pauseIcon = pauseIcon;
     this.onMeta = onMeta;
+    this.onPauseChange = onPauseChange || (() => {});
     this.slideMs = slideMs;
     this.fadeMs = fadeMs;
 
@@ -152,5 +154,6 @@ export class Slideshow {
       this.kb.start();
       this.scheduleSlides();
     }
+    this.onPauseChange(this.paused);
   }
 }

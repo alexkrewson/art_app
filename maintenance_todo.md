@@ -36,37 +36,48 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 - [x] Discovered `alexkrewson/art_app` already exists on GitHub (public, had one old
       "Initial art kiosk" commit) — merged that history in with `--allow-unrelated-histories`
       rather than force-pushing over it
-- [ ] Fix root-relative asset/data paths (`/src/main.js`, `fetch('/images.json')`) to
-      relative paths so the app works both at `/` (dev) and under the GitHub Pages
-      project subpath (`/art_app/`)
-- [ ] Un-ignore `/images/` and commit the actual image binaries (~98MB, 425 files,
-      largest <1MB — well under GitHub's 100MB/file limit) so the live page has
+- [x] Fix root-relative asset/data paths (`/src/main.js`, `fetch('/images.json')`) to
+      relative paths, plus `vite.config.js` `base:'./'`, so the app works both at
+      `/` (dev) and under the GitHub Pages project subpath (`/art_app/`) — verified
+      by simulating a subpath deploy locally with `python -m http.server`
+- [x] Un-ignored `/images/` (moved to `public/images/`) and committed the actual
+      image binaries (425 files, ~98MB, largest <1MB) so the live page has
       something to show. Revisit once Phase 3/4 give the app live API-fetched
       sources — committed binaries are a stopgap, not the long-term plan.
-- [ ] Add `.github/workflows/deploy.yml` — GitHub Actions build+deploy to Pages,
+- [x] Added `.github/workflows/deploy.yml` — GitHub Actions build+deploy to Pages,
       matching the shared convention ("GitHub Pages via GitHub Actions is the
       default for anything static", per `/home/alex/apps/shared/best-practices.md`)
-- [ ] Push merged history + all commits to `origin/main`
+- [x] Pushed merged history + all commits to `origin/main` (confirmed:
+      `3ded4f8..d714ecb main -> main`, then the design-system commit on top)
 - [ ] `[!]` Blocked on Alex: one-time manual step, since I have no GitHub API/token
       access (no `gh` CLI auth, SSH key only does git push, not repo settings) —
       go to https://github.com/alexkrewson/art_app/settings/pages and set
       **Build and deployment → Source → GitHub Actions**. Everything else is
-      automated; this single toggle is the only thing I can't do myself.
-- [ ] Apply `/home/alex/apps/shared/css-best-practices.md` design system: Ember
-      dark theme as default (CSS custom properties), explicit light-mode toggle
-      (not `prefers-color-scheme`), system font stack, 44px touch targets, two-tier
-      shadows, reduced-motion handling for UI chrome (not the Ken Burns/slideshow
-      motion itself — that's the app's actual content, not decorative UI motion;
-      the existing "Static" display mode is the accessibility accommodation for
-      users who want zero motion, and reduced-motion now also picks Static as the
-      *default* display mode on first load)
-- [ ] Add a consolidated Settings menu per the shared component recipe (gear
-      revealed on tap, accordion sections) — sections: **Sources**, **Display &
-      Transitions**, **Themes** (Ember default + light toggle, swatch picker),
-      **About** (sidebar-nav page: what SlowFrame is, source credits/licensing,
-      gesture guide, version), **Help**, **Advanced**. No **Account** section yet —
-      nothing needs auth until Google Photos (Phase 7)
-- [ ] **Checkpoint: pause for manual testing** once Pages is live
+      automated; this single toggle is the only thing I can't do myself. Once set,
+      the workflow that already ran (or the next push) will publish to
+      https://alexkrewson.github.io/art_app/.
+- [x] Applied `/home/alex/apps/shared/css-best-practices.md` design system: Ember
+      dark theme as default (CSS custom properties in `src/style.css`), explicit
+      light-mode toggle via `[data-theme]` (not `prefers-color-scheme`, persisted
+      to `localStorage`), system font stack, 44px `.icon-btn` touch targets,
+      shared modal/settings-panel recipe. Did NOT yet wire reduced-motion → default
+      display mode, since Static mode doesn't exist as a real toggle until Phase 2
+      — faking it now would be misleading UI; revisit when Phase 2 lands.
+- [x] Added a consolidated Settings panel (`src/settings/panel.js` + `themes.js`)
+      per the shared component recipe (accordion sections, all closed by default),
+      revealed via a gear icon that appears once paused (fits the app's existing
+      tap-to-reveal interaction model better than a permanent header icon — there's
+      no persistent chrome over the artwork during normal playback). Sections:
+      **Sources** (placeholder), **Display & Transitions** (placeholder), **Themes**
+      (functional: Ember/Light + swatch picker), **About** (functional: what
+      SlowFrame is, Met CC0 credit, gesture guide, version/repo link), **Help**
+      (functional), **Advanced** (placeholder). No **Account** section — nothing
+      needs auth until Google Photos (Phase 7).
+- [x] Verified with `vite build` + `node --check` on every changed module + dev
+      server route checks (200s on index/main.js/panel.js/themes.js/images.json).
+      Still no actual in-browser confirmation (Claude in Chrome not connected).
+- [ ] **Checkpoint: pause for manual testing** — please check both the local dev
+      server and, once you flip the Pages toggle, the live site
 
 ## Phase 2 — Display modes & transitions
 - [ ] Display mode toggle: Ken Burns / Static / Fade Only

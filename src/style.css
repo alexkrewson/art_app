@@ -1,7 +1,45 @@
+/* Design tokens — Ember (dark, folder-wide default) + explicit light override.
+   Source: /home/alex/apps/shared/css-best-practices.md */
+:root {
+  --bg-canvas:  #1e1508;
+  --bg-surface: #2b1f10;
+  --bg-raised:  #3a2b18;
+  --border:     #4a3820;
+  --border-strong: #6b5230;
+
+  --text-primary:   #f5ece0;
+  --text-secondary: #b8a890;
+  --text-tertiary:  #8a7d68;
+  --text-on-accent: #14100a;
+
+  --accent-amber: #b87040;
+  --accent-amber-border: #7a4820;
+  --accent-teal: #3d8c7a;
+  --accent-teal-border: #255c50;
+  --accent: var(--accent-teal);
+  --accent-glow: rgba(61, 140, 122, 0.18);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+:root[data-theme="light"] {
+  --bg-canvas:  #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-raised:  #ffffff;
+  --border:     #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text-primary:   #0f172a;
+  --text-secondary: #64748b;
+  --text-tertiary:  #94a3b8;
+  --text-on-accent: #0f172a;
+}
+
 * { margin:0; padding:0; box-sizing:border-box; -webkit-user-select:none; user-select:none; }
-html, body { width:100%; height:100%; overflow:hidden; background:#000; touch-action:none; }
+html, body { width:100%; height:100%; overflow:hidden; background:#000; touch-action:none; font-family: var(--font-sans); }
 body { display:flex; flex-direction:column; }
 
+/* The stage is the artwork itself — stays near-black regardless of theme,
+   same as a gallery wall or a physical picture frame's mat. */
 #stage {
   flex:1; min-height:0;
   position:relative; overflow:hidden;
@@ -18,18 +56,18 @@ body { display:flex; flex-direction:column; }
 
 #footer {
   flex-shrink:0; height:88px;
-  background:#111; border-top:1px solid #2a2a2a;
+  background: var(--bg-surface); border-top:1px solid var(--border);
   display:flex; flex-direction:column;
   justify-content:center; gap:6px;
   padding:0 28px;
 }
 #title {
   font:italic clamp(1rem,2.2vw,1.4rem) Georgia,serif;
-  color:#ececec; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  color: var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 #meta {
-  font:clamp(0.8rem,1.6vw,1rem) Arial,sans-serif;
-  color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font:clamp(0.8rem,1.6vw,1rem) var(--font-sans);
+  color: var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 
 #pause-icon {
@@ -38,3 +76,109 @@ body { display:flex; flex-direction:column; }
   pointer-events:none;
   opacity:0; transition:opacity 0.3s;
 }
+
+/* Ghost/icon button recipe — 44px touch target even though the glyph is small */
+.icon-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:44px; min-height:44px;
+  background: rgba(0,0,0,0.35);
+  border:1px solid var(--border);
+  border-radius:6px;
+  color: var(--text-secondary);
+  font-size:1.1rem;
+  cursor:pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.icon-btn:hover { color: var(--text-primary); border-color: var(--border-strong); }
+
+#settings-gear {
+  position:absolute; bottom:14px; left:16px;
+}
+#settings-gear[hidden] { display:none; }
+
+/* Settings panel — full-screen backdrop with a centered card, matching the
+   shared modal recipe (backdrop click / gear / Escape all dismiss it). */
+.settings-panel {
+  position:fixed; inset:0;
+  background: rgba(0,0,0,0.6);
+  display:flex; align-items:center; justify-content:center;
+  z-index:1000;
+  padding:1rem;
+}
+.settings-panel[hidden] { display:none; }
+
+.settings-panel-inner {
+  background: var(--bg-raised);
+  color: var(--text-primary);
+  border-radius:10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  max-width:480px; width:100%;
+  max-height:80vh; overflow-y:auto;
+  padding:1.25rem 1.5rem;
+}
+
+.settings-panel-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:0.75rem;
+}
+.settings-title {
+  font:italic 1.25rem Georgia, serif;
+  color: var(--text-primary);
+}
+
+.settings-section { border-top:1px solid var(--border); }
+.settings-section:first-child { border-top:none; }
+
+.settings-section-toggle {
+  display:flex; align-items:center; justify-content:space-between;
+  width:100%;
+  padding:0.6rem 0.25rem;
+  background:none; border:none; cursor:pointer;
+  font-size:0.7rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.06em;
+  color: var(--text-tertiary);
+}
+.settings-section-toggle[aria-expanded="true"] { color: var(--accent); }
+.settings-section-chevron {
+  font-size:0.6rem;
+  transition: transform 0.15s ease;
+}
+.settings-section-toggle[aria-expanded="true"] .settings-section-chevron { transform: rotate(90deg); }
+
+.settings-section-content {
+  padding:0 0.25rem 0.9rem;
+  font-size:0.85rem;
+  color: var(--text-secondary);
+  line-height:1.5;
+}
+.settings-section-content p + p { margin-top:0.6rem; }
+.settings-section-content a { color: var(--accent); }
+.settings-section-content code {
+  font-size:0.8em;
+  background: var(--bg-surface);
+  border:1px solid var(--border);
+  border-radius:3px;
+  padding:0.05em 0.35em;
+}
+
+.theme-list { display:flex; flex-direction:column; gap:0.4rem; }
+.theme-option {
+  display:flex; align-items:center; gap:0.6rem;
+  min-height:44px;
+  padding:0.4rem 0.6rem;
+  background: var(--bg-surface);
+  border:1px solid var(--border);
+  border-radius:6px;
+  color: var(--text-primary);
+  font-size:0.85rem;
+  cursor:pointer;
+  text-align:left;
+}
+.theme-option[aria-checked="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+.theme-swatch-pair { display:inline-flex; }
+.theme-swatch {
+  width:13px; height:13px; border-radius:50%;
+  border:1px solid rgba(0,0,0,0.3);
+  margin-left:-4px;
+}
+.theme-swatch:first-child { margin-left:0; }
