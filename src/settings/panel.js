@@ -6,6 +6,52 @@
 // there's no persistent chrome over the artwork during normal playback.
 
 import { THEMES, loadTheme, applyTheme } from './themes.js';
+import { loadSettings, saveSettings } from './store.js';
+import { TRANSITIONS } from '../engine/transitions/index.js';
+
+const DISPLAY_MODES = [
+  { id: 'kenburns', label: 'Ken Burns', hint: 'Slow pan & zoom' },
+  { id: 'static', label: 'Static', hint: 'No motion, crossfade' },
+  { id: 'fade', label: 'Fade Only', hint: 'No motion, plain fade' },
+];
+
+function renderDisplaySection(settings) {
+  const transitionOptions = Object.entries(TRANSITIONS).map(([id, t]) => `
+    <option value="${id}" ${t.planned ? 'disabled' : ''} ${settings.transitionId === id ? 'selected' : ''}>
+      ${t.label}${t.planned ? ' (coming soon)' : ''}
+    </option>`).join('');
+
+  return `
+    <div class="field-group" role="radiogroup" aria-label="Display mode">
+      <span class="field-label">Display mode</span>
+      ${DISPLAY_MODES.map(m => `
+        <label class="radio-row">
+          <input type="radio" name="displayMode" value="${m.id}" ${settings.displayMode === m.id ? 'checked' : ''}>
+          <span>${m.label} <span class="field-hint">— ${m.hint}</span></span>
+        </label>
+      `).join('')}
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="transitionSelect">Transition</label>
+      <select id="transitionSelect" class="field" name="transitionId">
+        <option value="random" ${settings.transitionId === 'random' ? 'selected' : ''}>Random (cycles enabled)</option>
+        ${transitionOptions}
+      </select>
+    </div>
+    <div class="field-group" data-show-if-transition="dipToColor" ${settings.transitionId === 'dipToColor' ? '' : 'hidden'}>
+      <label class="field-label" for="dipColorInput">Dip-to-color color</label>
+      <input type="color" id="dipColorInput" name="dipColor" value="${settings.dipColor}">
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="slideSecInput">Slide duration (seconds)</label>
+      <input type="number" id="slideSecInput" class="field" name="slideSec" min="3" max="120" step="1" value="${Math.round(settings.slideMs / 1000)}">
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="transitionMsInput">Transition duration (ms)</label>
+      <input type="number" id="transitionMsInput" class="field" name="transitionMs" min="200" max="6000" step="100" value="${settings.transitionMs}">
+    </div>
+  `;
+}
 
 const SECTIONS = [
   {
@@ -21,16 +67,12 @@ const SECTIONS = [
   {
     id: 'display',
     label: 'Display & Transitions',
-    render: () => `
-      <p>Currently: <strong>Ken Burns</strong> pan/zoom, crossfade transition.
-      Static and Fade-only display modes, plus additional transition styles
-      (slide, dip-to-color, ink wash, and more), are planned — see
-      <code>maintenance_todo.md</code> Phase 2.</p>`,
+    render: ctx => renderDisplaySection(ctx.settings),
   },
   {
     id: 'themes',
     label: 'Themes',
-    render: (ctx) => `
+    render: ctx => `
       <div class="theme-list" role="radiogroup" aria-label="Theme">
         ${Object.entries(THEMES).map(([key, t]) => `
           <button type="button" class="theme-option" data-theme-key="${key}"
@@ -63,9 +105,9 @@ const SECTIONS = [
     id: 'help',
     label: 'Help',
     render: () => `
-      <p>Stuck? The slideshow auto-advances every 12 seconds. Tap anywhere to
-      pause it and reveal this menu. Tap the gear icon again, or tap outside
-      this panel, to close it.</p>`,
+      <p>Stuck? The slideshow auto-advances every 12 seconds by default. Tap
+      anywhere to pause it and reveal this menu. Tap the gear icon again, or
+      tap outside this panel, to close it.</p>`,
   },
   {
     id: 'advanced',
@@ -76,8 +118,9 @@ const SECTIONS = [
   },
 ];
 
-export function createSettingsPanel() {
+export function createSettingsPanel(slideshow) {
   let currentTheme = applyTheme(loadTheme());
+  let settings = loadSettings();
 
   const root = document.createElement('div');
   root.className = 'settings-panel';
@@ -102,11 +145,19 @@ export function createSettingsPanel() {
           <span>${s.label}</span>
           <span class="settings-section-chevron">&#9656;</span>
         </button>
-        <div class="settings-section-content" hidden>${s.render({ currentTheme })}</div>
+        <div class="settings-section-content" hidden>${s.render({ currentTheme, settings })}</div>
       </section>
     `).join('');
   }
   renderSections();
+
+  function refreshDisplaySection() {
+    const content = accordion.querySelector('[data-section="display"] .settings-section-content');
+    const wasExpanded = accordion.querySelector('[data-section="display"] .settings-section-toggle')
+      .getAttribute('aria-expanded') === 'true';
+    content.innerHTML = renderDisplaySection(settings);
+    content.hidden = !wasExpanded;
+  }
 
   accordion.addEventListener('click', e => {
     const toggle = e.target.closest('.settings-section-toggle');
@@ -125,6 +176,43 @@ export function createSettingsPanel() {
         b.setAttribute('aria-checked', String(b.dataset.themeKey === currentTheme));
       });
     }
+  });
+
+  accordion.addEventListener('change', e => {
+    const el = e.target;
+
+    if (el.name === 'displayMode') {
+      settings.displayMode = el.value;
+      slideshow.setDisplayMode(el.value);
+      // Static/Fade Only are defined by the spec as "no motion, crossfade" /
+      // "no motion, plain fade" — both map to our crossfade transition, so
+      // switching into either sets a sensible transition default. Ken Burns
+      // doesn't dictate a transition, so it's left as whatever was selected.
+      if (el.value !== 'kenburns') {
+        settings.transitionId = 'crossfade';
+        slideshow.setTransition('crossfade');
+        refreshDisplaySection();
+      }
+    } else if (el.name === 'transitionId') {
+      settings.transitionId = el.value;
+      slideshow.setTransition(el.value);
+      refreshDisplaySection();
+    } else if (el.name === 'dipColor') {
+      settings.dipColor = el.value;
+      slideshow.setTransition(settings.transitionId, { dipColor: el.value });
+    } else if (el.name === 'slideSec') {
+      const sec = Math.max(3, Math.min(120, Number(el.value) || 12));
+      settings.slideMs = sec * 1000;
+      slideshow.slideMs = settings.slideMs;
+      slideshow.scheduleSlides();
+    } else if (el.name === 'transitionMs') {
+      const ms = Math.max(200, Math.min(6000, Number(el.value) || 1500));
+      settings.transitionMs = ms;
+      slideshow.fadeMs = ms;
+    } else {
+      return;
+    }
+    saveSettings(settings);
   });
 
   // Stop clicks inside the panel from bubbling to the stage (which would

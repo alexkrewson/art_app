@@ -7,22 +7,29 @@ import { Slideshow } from './engine/slideshow.js';
 import { attachTouch } from './engine/touch.js';
 import { createMetadataRibbon } from './ui/metadataRibbon.js';
 import { createSettingsPanel } from './settings/panel.js';
+import { loadSettings } from './settings/store.js';
 import './style.css';
 
 async function main() {
   const stageEl = document.getElementById('stage');
   const slideA = document.getElementById('slide-a');
   const slideB = document.getElementById('slide-b');
+  const overlayEl = document.getElementById('transition-overlay');
   const pauseIcon = document.getElementById('pause-icon');
   const settingsGear = document.getElementById('settings-gear');
   const titleEl = document.getElementById('title');
   const metaEl = document.getElementById('meta');
 
   const ribbon = createMetadataRibbon(titleEl, metaEl);
-  const settingsPanel = createSettingsPanel();
+  const settings = loadSettings();
 
   const slideshow = new Slideshow({
-    stageEl, slideA, slideB, pauseIcon,
+    stageEl, slideA, slideB, overlayEl, pauseIcon,
+    displayMode: settings.displayMode,
+    transitionId: settings.transitionId,
+    transitionOptions: { dipColor: settings.dipColor },
+    slideMs: settings.slideMs,
+    fadeMs: settings.transitionMs,
     onMeta: img => ribbon.update(img),
     onPauseChange: paused => {
       settingsGear.hidden = !paused;
@@ -30,6 +37,7 @@ async function main() {
     },
   });
 
+  const settingsPanel = createSettingsPanel(slideshow);
   attachTouch(stageEl, slideshow, settingsPanel);
 
   settingsGear.addEventListener('click', e => {

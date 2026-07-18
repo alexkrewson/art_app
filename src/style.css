@@ -58,6 +58,15 @@ body { display:flex; flex-direction:column; }
   backface-visibility: hidden;
 }
 
+/* Used by fade-to-color and light-leak transitions; opacity/background are
+   set per-transition in JS, this just establishes the full-stage layer. */
+#transition-overlay {
+  position:absolute; inset:0;
+  opacity:0;
+  pointer-events:none;
+  will-change: opacity;
+}
+
 #footer {
   flex-shrink:0; height:88px;
   background: var(--bg-surface); border-top:1px solid var(--border);
@@ -186,3 +195,49 @@ body { display:flex; flex-direction:column; }
   margin-left:-4px;
 }
 .theme-swatch:first-child { margin-left:0; }
+
+/* Form controls used in the Display & Transitions section */
+.field-group { margin-bottom:0.9rem; }
+.field-group:last-child { margin-bottom:0; }
+.field-label {
+  display:block;
+  font-size:0.7rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.06em;
+  color: var(--text-tertiary);
+  margin-bottom:0.4rem;
+}
+.field-hint { text-transform:none; letter-spacing:normal; font-weight:400; color: var(--text-tertiary); }
+
+.radio-row {
+  display:flex; align-items:center; gap:0.5rem;
+  min-height:44px;
+  font-size:0.85rem;
+  color: var(--text-primary);
+  cursor:pointer;
+}
+.radio-row input[type="radio"] { accent-color: var(--accent); width:16px; height:16px; }
+
+.field {
+  width:100%;
+  padding:0.5rem 0.75rem;
+  min-height:44px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  font-size:0.85rem;
+  font-family:inherit;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.field:focus {
+  outline:none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+input[type="color"].field, #dipColorInput {
+  width:100%; height:44px;
+  padding:0.25rem;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background: var(--bg-surface);
+  cursor:pointer;
+}

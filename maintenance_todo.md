@@ -85,16 +85,42 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
       a bug in the app.
 
 ## Phase 2 — Display modes & transitions
-- [ ] Display mode toggle: Ken Burns / Static / Fade Only
-- [ ] Transition engine with pluggable transition registry + capability-based fallback
-      to crossfade on low-powered devices
-- [ ] Standard transitions: Crossfade (default), Fade to black, Fade to white, Dip to
-      color (user-chosen color)
-- [ ] Motion transitions: Slide (4 directions), Zoom through, Drift (parallax)
-- [ ] Transition duration setting; "Random" mode to cycle enabled transitions
-- [ ] Atmospheric transitions (CSS/canvas/WebGL, lower priority, must degrade gracefully):
-      Burn, Dissolve, Ink wash, Light leak, Shatter, Ripple, Curtain
-- [ ] **Checkpoint: pause for manual testing**
+- [x] Display mode toggle: Ken Burns / Static / Fade Only (`Slideshow.setDisplayMode` —
+      Static/Fade Only both mean "no motion"; they're distinguished per the spec's own
+      wording only by their default transition, both of which map to crossfade since
+      that IS "a soft/clean fade" — selecting either resets the transition to crossfade
+      as a convenience default, Ken Burns leaves the transition setting alone)
+- [x] Transition engine: `src/engine/transitions/` registry (`index.js`), each transition
+      is a `({activeEl, waitingEl, overlayEl, stageEl, durationMs, options}) => Promise`.
+      Capability tiers are tagged (`css` vs `webgl`) but there's no runtime low-power
+      detection/fallback yet — see the atmospheric-transitions note below, this only
+      matters once those are real
+- [x] Standard transitions, all implemented: Crossfade (default), Fade to black, Fade to
+      white, Dip to color (user color picker in settings)
+- [x] Motion transitions, all implemented: Slide (4 directions, random per-cycle unless
+      pinned), Zoom through, Drift (parallax)
+- [x] Transition duration + slide duration settings (number inputs, Display & Transitions
+      section); "Random" transition mode cycles through all *implemented* transitions —
+      NOT yet a per-transition enable/disable checklist like the spec describes
+      ("cycle through all enabled ones") — Random currently means "all of them or none",
+      not a customizable subset. Flagging as a known gap, not silently narrowing scope.
+- [x] Atmospheric transitions: implemented 3 of 7 as CSS-only approximations (no
+      canvas/WebGL needed) — **Light leak** (radial gradient bloom, screen-blended),
+      **Ink wash** (circular clip-path reveal from a random point), **Curtain**
+      (clip-path wipe from center). **Burn, Dissolve, Shatter, Ripple** are registered
+      (show up in the picker) but `[!]` not actually built — a good version of each
+      genuinely needs canvas/WebGL (burn/dissolve/shatter especially), which is a
+      meaningfully bigger effort than the CSS ones. They currently fall back to
+      crossfade silently. Being upfront about this rather than shipping a fake version
+      that doesn't match the spec's description — revisit as a follow-up if Alex wants
+      the full set.
+- [x] Verified with `vite build`, `node --check` on every new/changed module, and dev
+      server route checks. Still no in-browser visual confirmation of the transitions
+      themselves (no browser access this session) — this is the main thing to check at
+      the checkpoint below.
+- [ ] **Checkpoint: pause for manual testing** — please cycle through each display mode
+      and transition (Settings → Display & Transitions) and confirm they look right,
+      especially the ones I couldn't visually verify myself
 
 ## Phase 3 — Image source architecture
 - [ ] `ImageSource` interface (id, label, needsApiKey, listFilters(), fetchBatch(filters))

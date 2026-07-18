@@ -4,6 +4,7 @@
 // that operate through the small transform API exposed here.
 
 import { KenBurns } from './kenburns.js';
+import { resolveTransition, pickRandomTransitionId } from './transitions/index.js';
 
 const MIN_SCALE = 1.0;
 const MAX_SCALE = 6.0;
@@ -14,17 +15,29 @@ export class Slideshow {
    * @param {HTMLElement} opts.stageEl
    * @param {HTMLImageElement} opts.slideA
    * @param {HTMLImageElement} opts.slideB
+   * @param {HTMLElement} opts.overlayEl - full-stage layer used by color/light transitions
    * @param {HTMLElement} opts.pauseIcon
    * @param {(item: object) => void} opts.onMeta - called with the current image record on show
    * @param {(paused: boolean) => void} [opts.onPauseChange]
+   * @param {'kenburns'|'static'|'fade'} [opts.displayMode]
+   * @param {string} [opts.transitionId] - a transitions/index.js key, or 'random'
+   * @param {object} [opts.transitionOptions] - e.g. { dipColor, direction }
    * @param {number} [opts.slideMs] - ms per slide (auto-advance)
-   * @param {number} [opts.fadeMs] - crossfade duration
+   * @param {number} [opts.fadeMs] - transition duration
    */
-  constructor({ stageEl, slideA, slideB, pauseIcon, onMeta, onPauseChange, slideMs = 12000, fadeMs = 1500 }) {
+  constructor({
+    stageEl, slideA, slideB, overlayEl, pauseIcon, onMeta, onPauseChange,
+    displayMode = 'kenburns', transitionId = 'crossfade', transitionOptions = {},
+    slideMs = 12000, fadeMs = 1500,
+  }) {
     this.stageEl = stageEl;
+    this.overlayEl = overlayEl;
     this.pauseIcon = pauseIcon;
     this.onMeta = onMeta;
     this.onPauseChange = onPauseChange || (() => {});
+    this.displayMode = displayMode;
+    this.transitionId = transitionId;
+    this.transitionOptions = transitionOptions;
     this.slideMs = slideMs;
     this.fadeMs = fadeMs;
 
@@ -86,8 +99,18 @@ export class Slideshow {
 
     this.waiting.style.transition = 'none';
     this.waiting.style.opacity = '0';
-    this.waiting.style.transform = 'translate(0px,0px) scale(1)';
+    this.waiting.style.clipPath = '';
+    this.waiting.style.transform = 'translate3d(0,0,0) scale3d(1,1,1)';
     this.waiting.src = img.image;
+
+    const finishSwap = () => {
+      [this.active, this.waiting] = [this.waiting, this.active];
+      this.xf = { scale: 1, tx: 0, ty: 0 };
+      this.applyXf(this.active);
+      this.waiting.style.clipPath = '';
+      this.inFade = false;
+      if (!this.paused && this.displayMode === 'kenburns') this.kb.start();
+    };
 
     const display = () => {
       this.kb.stop();
@@ -99,31 +122,41 @@ export class Slideshow {
         requestAnimationFrame(() => {
           this.active.style.opacity = '0';
           this.waiting.style.opacity = '1';
-          this.xf = { scale: 1, tx: 0, ty: 0 };
-          this.applyXf(this.waiting);
-          [this.active, this.waiting] = [this.waiting, this.active];
-          if (!this.paused) this.kb.start();
+          finishSwap();
         });
       } else {
         this.inFade = true;
-        requestAnimationFrame(() => {
-          this.active.style.transition = `opacity ${this.fadeMs}ms ease-in-out`;
-          this.waiting.style.transition = `opacity ${this.fadeMs}ms ease-in-out`;
-          this.active.style.opacity = '0';
-          this.waiting.style.opacity = '1';
-          setTimeout(() => {
-            [this.active, this.waiting] = [this.waiting, this.active];
-            this.xf = { scale: 1, tx: 0, ty: 0 };
-            this.applyXf(this.active);
-            this.inFade = false;
-            if (!this.paused) this.kb.start();
-          }, this.fadeMs);
-        });
+        const transitionId = this.transitionId === 'random' ? pickRandomTransitionId() : this.transitionId;
+        const { run } = resolveTransition(transitionId);
+        run({
+          activeEl: this.active,
+          waitingEl: this.waiting,
+          overlayEl: this.overlayEl,
+          stageEl: this.stageEl,
+          durationMs: this.fadeMs,
+          options: this.transitionOptions,
+        }).then(finishSwap);
       }
     };
 
     if (this.waiting.complete && this.waiting.naturalWidth > 0) display();
     else { this.waiting.onload = display; this.waiting.onerror = display; }
+  }
+
+  setDisplayMode(mode) {
+    this.displayMode = mode;
+    if (mode !== 'kenburns') {
+      this.kb.stop();
+      this.xf = { scale: 1, tx: 0, ty: 0 };
+      this.applyXf(this.active);
+    } else if (!this.paused) {
+      this.kb.start();
+    }
+  }
+
+  setTransition(id, options) {
+    this.transitionId = id;
+    if (options) this.transitionOptions = { ...this.transitionOptions, ...options };
   }
 
   scheduleSlides() {
@@ -156,7 +189,7 @@ export class Slideshow {
       this.pauseIcon.style.opacity = '1';
     } else {
       this.pauseIcon.style.opacity = '0';
-      this.kb.start();
+      if (this.displayMode === 'kenburns') this.kb.start();
       this.scheduleSlides();
     }
     this.onPauseChange(this.paused);
