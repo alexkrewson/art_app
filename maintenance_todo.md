@@ -31,6 +31,43 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 - [x] **Checkpoint: pause for manual testing** — `npm run dev` is running on
       http://localhost:8080 right now, ready for Alex to check in a browser
 
+## Phase 1.5 — GitHub Pages live deploy + shared design system (added 2026-07-18,
+## per Alex's request mid-build — inserted ahead of Phase 2)
+- [x] Discovered `alexkrewson/art_app` already exists on GitHub (public, had one old
+      "Initial art kiosk" commit) — merged that history in with `--allow-unrelated-histories`
+      rather than force-pushing over it
+- [ ] Fix root-relative asset/data paths (`/src/main.js`, `fetch('/images.json')`) to
+      relative paths so the app works both at `/` (dev) and under the GitHub Pages
+      project subpath (`/art_app/`)
+- [ ] Un-ignore `/images/` and commit the actual image binaries (~98MB, 425 files,
+      largest <1MB — well under GitHub's 100MB/file limit) so the live page has
+      something to show. Revisit once Phase 3/4 give the app live API-fetched
+      sources — committed binaries are a stopgap, not the long-term plan.
+- [ ] Add `.github/workflows/deploy.yml` — GitHub Actions build+deploy to Pages,
+      matching the shared convention ("GitHub Pages via GitHub Actions is the
+      default for anything static", per `/home/alex/apps/shared/best-practices.md`)
+- [ ] Push merged history + all commits to `origin/main`
+- [ ] `[!]` Blocked on Alex: one-time manual step, since I have no GitHub API/token
+      access (no `gh` CLI auth, SSH key only does git push, not repo settings) —
+      go to https://github.com/alexkrewson/art_app/settings/pages and set
+      **Build and deployment → Source → GitHub Actions**. Everything else is
+      automated; this single toggle is the only thing I can't do myself.
+- [ ] Apply `/home/alex/apps/shared/css-best-practices.md` design system: Ember
+      dark theme as default (CSS custom properties), explicit light-mode toggle
+      (not `prefers-color-scheme`), system font stack, 44px touch targets, two-tier
+      shadows, reduced-motion handling for UI chrome (not the Ken Burns/slideshow
+      motion itself — that's the app's actual content, not decorative UI motion;
+      the existing "Static" display mode is the accessibility accommodation for
+      users who want zero motion, and reduced-motion now also picks Static as the
+      *default* display mode on first load)
+- [ ] Add a consolidated Settings menu per the shared component recipe (gear
+      revealed on tap, accordion sections) — sections: **Sources**, **Display &
+      Transitions**, **Themes** (Ember default + light toggle, swatch picker),
+      **About** (sidebar-nav page: what SlowFrame is, source credits/licensing,
+      gesture guide, version), **Help**, **Advanced**. No **Account** section yet —
+      nothing needs auth until Google Photos (Phase 7)
+- [ ] **Checkpoint: pause for manual testing** once Pages is live
+
 ## Phase 2 — Display modes & transitions
 - [ ] Display mode toggle: Ken Burns / Static / Fade Only
 - [ ] Transition engine with pluggable transition registry + capability-based fallback
@@ -110,3 +147,10 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
   app's own offline-download model. `images.json` (the manifest) stays tracked.
 - 2026-07-18: Alex asked to pause for manual testing after each major phase rather than
   running straight through to the end — checkpoints added above accordingly.
+- 2026-07-18: `art_app` already existed on GitHub with one prior commit; merged
+  histories instead of overwriting. Also: Alex asked to make this a live GitHub
+  Pages page and to apply `/home/alex/apps/shared/` conventions (design system,
+  hosting-via-Actions default, settings-menu recipe) going forward — see Phase 1.5.
+  Did not edit `/home/alex/apps/shared/best-practices.md`'s project table (it still
+  lists `art` as "Python build scripts, static HTML" / no hosting) since that's a
+  separate repo Alex may want to update himself — flagged in my reply instead.
