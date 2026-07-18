@@ -53,7 +53,12 @@ export class Slideshow {
   }
 
   applyXf(el) {
-    el.style.transform = `translate(${this.xf.tx}px,${this.xf.ty}px) scale(${this.xf.scale})`;
+    // translate3d/scale3d (not translate/scale) reliably force GPU-layer
+    // compositing across browsers — plain 2D transform functions leave some
+    // browsers (notably Firefox) to decide layerization heuristically, which
+    // can fall back to main-thread repaint every frame and show up as
+    // constant low framerate specifically on the animated element.
+    el.style.transform = `translate3d(${this.xf.tx}px,${this.xf.ty}px,0) scale3d(${this.xf.scale},${this.xf.scale},1)`;
   }
 
   clampXf() {
