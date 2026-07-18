@@ -14,7 +14,6 @@ const KB_TARGETS = [
 ];
 
 const lerp = (a, b, t) => a + (b - a) * t;
-const ease = t => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t);
 
 export class KenBurns {
   /**
@@ -93,7 +92,10 @@ export class KenBurns {
       return;
     }
 
-    const e = ease(t);
+    // Linear, not ease-in-out: an ease curve hits zero velocity at both ends
+    // of every ~13s segment, which reads as a periodic "decelerate to a full
+    // stop, then re-accelerate" pulse rather than continuous ambient drift.
+    const e = t;
     this.setXf({
       scale: lerp(this.kbFrom.scale, this.kbTo.scale, e),
       tx: lerp(this.kbFrom.tx, this.kbTo.tx, e),
