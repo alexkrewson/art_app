@@ -17,15 +17,19 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 - [ ] Base `index.html` + CSS reset, stage/footer layout ported from `kiosk.html`
 
 ## Phase 1 — Core slideshow engine (parity with kiosk.html)
-- [ ] `src/engine/slideshow.js` — playback state machine (index, active/waiting slides,
+- [x] `src/engine/slideshow.js` — playback state machine (index, active/waiting slides,
       auto-advance timer, pause/resume)
-- [ ] `src/engine/kenburns.js` — RAF-based pan/zoom loop (ported from kiosk.html)
-- [ ] `src/engine/touch.js` — pinch-zoom, pan, swipe next/prev, tap to pause (ported)
-- [ ] `src/ui/metadataRibbon.js` — title/artist/date footer ribbon
-- [ ] Wire everything together in `src/main.js` using the existing `images.json` as a
-      static data source, confirm visual parity with `kiosk.html`
-- [ ] **Checkpoint: pause for manual testing** (per Alex's request — stop here before
-      going further)
+- [x] `src/engine/kenburns.js` — RAF-based pan/zoom loop (ported from kiosk.html)
+- [x] `src/engine/touch.js` — pinch-zoom, pan, swipe next/prev, tap to pause (ported);
+      also added a plain `click` handler for mouse/desktop-browser testing
+- [x] `src/ui/metadataRibbon.js` — title/artist/date footer ribbon
+- [x] Wire everything together in `src/main.js` using the existing `images.json` as a
+      static data source
+- [x] Verified via `vite build` (no errors) and dev server HTTP checks (index.html,
+      main.js, images.json, and a sample image all return 200) — no visual/browser
+      confirmation yet, Claude in Chrome isn't connected this session
+- [x] **Checkpoint: pause for manual testing** — `npm run dev` is running on
+      http://localhost:8080 right now, ready for Alex to check in a browser
 
 ## Phase 2 — Display modes & transitions
 - [ ] Display mode toggle: Ken Burns / Static / Fade Only
