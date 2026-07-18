@@ -76,8 +76,13 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 - [x] Verified with `vite build` + `node --check` on every changed module + dev
       server route checks (200s on index/main.js/panel.js/themes.js/images.json).
       Still no actual in-browser confirmation (Claude in Chrome not connected).
-- [ ] **Checkpoint: pause for manual testing** — please check both the local dev
-      server and, once you flip the Pages toggle, the live site
+- [x] **Checkpoint: pause for manual testing** — live site confirmed working.
+      Ken Burns motion was choppy at first; fixed a real algorithmic bug (linear
+      instead of ease-in-out per segment, so motion doesn't fully stop every
+      ~13s — commit f0bbae8) and forced GPU compositing (translate3d/scale3d
+      instead of translate/scale — commit 267c2e4). Remaining choppiness turned
+      out to be Firefox-specific (smooth in Chrome) — not pursuing further, not
+      a bug in the app.
 
 ## Phase 2 — Display modes & transitions
 - [ ] Display mode toggle: Ken Burns / Static / Fade Only
