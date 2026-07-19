@@ -12,9 +12,9 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 - [x] `.gitignore` (exclude downloaded image binaries, node_modules, build output, secrets)
 - [x] `maintenance_todo.md` (this file)
 - [x] Commit existing `kiosk.html`/scripts as a baseline snapshot before rewriting
-- [ ] `package.json` + Vite scaffold (vanilla JS, no heavy framework — keeps this close
+- [x] `package.json` + Vite scaffold (vanilla JS, no heavy framework — keeps this close
       to the original single-file app's simplicity and easy to reason about)
-- [ ] Base `index.html` + CSS reset, stage/footer layout ported from `kiosk.html`
+- [x] Base `index.html` + CSS reset, stage/footer layout ported from `kiosk.html`
 
 ## Phase 1 — Core slideshow engine (parity with kiosk.html)
 - [x] `src/engine/slideshow.js` — playback state machine (index, active/waiting slides,
@@ -176,8 +176,6 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 - [ ] Performance guardrails: detect low-powered devices, degrade fancy transitions
 - [ ] Accessibility pass (contrast, reduced-motion preference)
 - [ ] README with setup/run/deploy instructions
-- [ ] `[!]` Push to `github.com/alexkrewson/art_app` — needs Alex to confirm the remote
-      exists / provide push access before I push
 
 ---
 ## Notes / decisions log
