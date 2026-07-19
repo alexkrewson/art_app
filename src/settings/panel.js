@@ -8,6 +8,8 @@
 import { THEMES, loadTheme, applyTheme } from './themes.js';
 import { loadSettings, saveSettings } from './store.js';
 import { TRANSITIONS } from '../engine/transitions/index.js';
+import { SOURCES } from '../sources/registry.js';
+import { buildPlaylist, orderPlaylist } from '../sources/manager.js';
 
 const DISPLAY_MODES = [
   { id: 'kenburns', label: 'Ken Burns', hint: 'Slow pan & zoom' },
@@ -53,16 +55,78 @@ function renderDisplaySection(settings) {
   `;
 }
 
+function renderSourcesSection(settings, metDepartments) {
+  const local = settings.sources.local;
+  const met = settings.sources.met;
+  const lf = settings.sources.localFiles;
+
+  const deptOptions = metDepartments
+    ? metDepartments.map(d => `<option value="${d.value}" ${String(met.filters.departmentId || '') === d.value ? 'selected' : ''}>${d.label}</option>`).join('')
+    : '<option>Loading…</option>';
+
+  const folderName = SOURCES.localFiles.getPickedFolderName();
+
+  return `
+    <label class="radio-row">
+      <input type="checkbox" name="src-local" ${local.enabled ? 'checked' : ''}>
+      <span>${SOURCES.local.label} <span class="field-hint">— ${SOURCES.local.description}</span></span>
+    </label>
+
+    <label class="radio-row">
+      <input type="checkbox" name="src-met" ${met.enabled ? 'checked' : ''}>
+      <span>${SOURCES.met.label} <span class="field-hint">— live</span></span>
+    </label>
+    <div class="source-subfields" ${met.enabled ? '' : 'hidden'}>
+      <div class="field-group">
+        <label class="field-label" for="metDept">Department</label>
+        <select id="metDept" class="field" name="metDepartmentId">
+          <option value="">Any department</option>
+          ${deptOptions}
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="metKeyword">Keyword</label>
+        <input type="text" id="metKeyword" class="field" name="metKeyword" value="${met.filters.keyword || ''}" placeholder="e.g. sunflowers">
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="metMedium">Medium</label>
+        <input type="text" id="metMedium" class="field" name="metMedium" value="${met.filters.medium || ''}" placeholder="e.g. woodblock print">
+      </div>
+      <div class="field-group">
+        <span class="field-label">Date range (year)</span>
+        <div style="display:flex; gap:0.5rem;">
+          <input type="number" class="field" name="metDateBegin" value="${met.filters.dateBegin || ''}" placeholder="From">
+          <input type="number" class="field" name="metDateEnd" value="${met.filters.dateEnd || ''}" placeholder="To">
+        </div>
+      </div>
+      <label class="radio-row">
+        <input type="checkbox" name="metPublicDomainOnly" ${met.filters.publicDomainOnly !== false ? 'checked' : ''}>
+        <span>Public domain only</span>
+      </label>
+    </div>
+
+    <label class="radio-row">
+      <input type="checkbox" name="src-localFiles" ${lf.enabled ? 'checked' : ''} ${SOURCES.localFiles.supported ? '' : 'disabled'}>
+      <span>${SOURCES.localFiles.label} <span class="field-hint">— ${SOURCES.localFiles.supported ? SOURCES.localFiles.description : 'not supported in this browser (needs Chrome/Edge)'}</span></span>
+    </label>
+    <div class="source-subfields" ${lf.enabled ? '' : 'hidden'}>
+      <button type="button" class="btn-secondary" id="pickFolderBtn" ${SOURCES.localFiles.supported ? '' : 'disabled'}>Choose folder&hellip;</button>
+      <span class="field-hint">${folderName ? `Using: ${folderName}` : 'No folder selected yet'}</span>
+    </div>
+
+    <div class="field-group" role="radiogroup" aria-label="Playback order">
+      <span class="field-label">Playback order</span>
+      <label class="radio-row"><input type="radio" name="order" value="sequential" ${settings.order === 'sequential' ? 'checked' : ''}><span>Sequential</span></label>
+      <label class="radio-row"><input type="radio" name="order" value="shuffle" ${settings.order === 'shuffle' ? 'checked' : ''}><span>Shuffle</span></label>
+    </div>
+  `;
+}
+
 const SECTIONS = [
   {
     id: 'sources',
     label: 'Sources',
-    render: () => `
-      <p>Currently built in: <strong>The Metropolitan Museum of Art</strong>
-      (public domain works). Toggleable multi-source support — NASA, Smithsonian,
-      Art Institute of Chicago, Rijksmuseum, Europeana, Wikimedia Commons, local
-      files, Google Photos — is planned; see <code>maintenance_todo.md</code>
-      Phase 3–4.</p>`,
+    render: ctx => renderSourcesSection(ctx.settings, ctx.metDepartments),
   },
   {
     id: 'display',
@@ -121,6 +185,7 @@ const SECTIONS = [
 export function createSettingsPanel(slideshow) {
   let currentTheme = applyTheme(loadTheme());
   let settings = loadSettings();
+  let metDepartments = null;
 
   const root = document.createElement('div');
   root.className = 'settings-panel';
@@ -145,18 +210,34 @@ export function createSettingsPanel(slideshow) {
           <span>${s.label}</span>
           <span class="settings-section-chevron">&#9656;</span>
         </button>
-        <div class="settings-section-content" hidden>${s.render({ currentTheme, settings })}</div>
+        <div class="settings-section-content" hidden>${s.render({ currentTheme, settings, metDepartments })}</div>
       </section>
     `).join('');
   }
   renderSections();
 
-  function refreshDisplaySection() {
-    const content = accordion.querySelector('[data-section="display"] .settings-section-content');
-    const wasExpanded = accordion.querySelector('[data-section="display"] .settings-section-toggle')
+  // Met's department list rarely changes — fetch it once up front so it's
+  // ready by the time someone opens Sources, rather than fetching lazily on
+  // first expand (which would need its own loading state in that path too).
+  SOURCES.met.listFilters().then(filters => {
+    metDepartments = filters.find(f => f.key === 'departmentId').options.slice(1); // drop the synthetic "Any" entry, added again by renderSourcesSection
+    refreshSourcesSection();
+  }).catch(err => console.warn('[SlowFrame] could not load Met departments:', err));
+
+  function refreshSection(id, renderFn) {
+    const content = accordion.querySelector(`[data-section="${id}"] .settings-section-content`);
+    const wasExpanded = accordion.querySelector(`[data-section="${id}"] .settings-section-toggle`)
       .getAttribute('aria-expanded') === 'true';
-    content.innerHTML = renderDisplaySection(settings);
+    content.innerHTML = renderFn();
     content.hidden = !wasExpanded;
+  }
+
+  const refreshDisplaySection = () => refreshSection('display', () => renderDisplaySection(settings));
+  const refreshSourcesSection = () => refreshSection('sources', () => renderSourcesSection(settings, metDepartments));
+
+  async function rebuildPlaylist() {
+    const playlist = await buildPlaylist(settings.sources);
+    slideshow.setPlaylist(orderPlaylist(playlist, settings.order));
   }
 
   accordion.addEventListener('click', e => {
@@ -175,6 +256,21 @@ export function createSettingsPanel(slideshow) {
       accordion.querySelectorAll('.theme-option').forEach(b => {
         b.setAttribute('aria-checked', String(b.dataset.themeKey === currentTheme));
       });
+      return;
+    }
+
+    const pickBtn = e.target.closest('#pickFolderBtn');
+    if (pickBtn) {
+      // showDirectoryPicker() requires a user gesture — must be called
+      // directly from this click handler, not after an intervening await.
+      SOURCES.localFiles.pickFolder()
+        .then(({ count }) => {
+          settings.sources.localFiles.enabled = true;
+          saveSettings(settings);
+          refreshSourcesSection();
+          if (count > 0) rebuildPlaylist();
+        })
+        .catch(err => console.warn('[SlowFrame] folder picker cancelled or failed:', err));
     }
   });
 
@@ -209,6 +305,40 @@ export function createSettingsPanel(slideshow) {
       const ms = Math.max(200, Math.min(6000, Number(el.value) || 1500));
       settings.transitionMs = ms;
       slideshow.fadeMs = ms;
+    } else if (el.name === 'src-local') {
+      settings.sources.local.enabled = el.checked;
+      rebuildPlaylist();
+    } else if (el.name === 'src-met') {
+      settings.sources.met.enabled = el.checked;
+      refreshSourcesSection();
+      rebuildPlaylist();
+    } else if (el.name === 'src-localFiles') {
+      settings.sources.localFiles.enabled = el.checked;
+      refreshSourcesSection();
+      rebuildPlaylist();
+    } else if (el.name === 'metDepartmentId') {
+      settings.sources.met.filters.departmentId = el.value || undefined;
+      rebuildPlaylist();
+    } else if (el.name === 'metKeyword') {
+      settings.sources.met.filters.keyword = el.value || undefined;
+      rebuildPlaylist();
+    } else if (el.name === 'metMedium') {
+      settings.sources.met.filters.medium = el.value || undefined;
+      rebuildPlaylist();
+    } else if (el.name === 'metDateBegin') {
+      settings.sources.met.filters.dateBegin = el.value || undefined;
+      rebuildPlaylist();
+    } else if (el.name === 'metDateEnd') {
+      settings.sources.met.filters.dateEnd = el.value || undefined;
+      rebuildPlaylist();
+    } else if (el.name === 'metPublicDomainOnly') {
+      settings.sources.met.filters.publicDomainOnly = el.checked;
+      rebuildPlaylist();
+    } else if (el.name === 'order') {
+      settings.order = el.value;
+      // Reorder in place — no need to re-fetch from every source just to
+      // change sequential vs. shuffle.
+      slideshow.setPlaylist(orderPlaylist(slideshow.images, settings.order));
     } else {
       return;
     }

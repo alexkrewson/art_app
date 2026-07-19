@@ -123,16 +123,46 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
       especially the ones I couldn't visually verify myself
 
 ## Phase 3 — Image source architecture
-- [ ] `ImageSource` interface (id, label, needsApiKey, listFilters(), fetchBatch(filters))
-- [ ] Source manager: enable/disable per source, merge + shuffle/sequential playlist
-      across enabled sources
-- [ ] Per-source filter UI (department/medium/date range/culture/keyword/public-domain-only),
-      populated dynamically from each API where possible
-- [ ] Port Met Museum source into the new architecture (already implemented in
-      `build.py`/`fetch.py`/`images.json` — reuse scoring/backward-compat logic)
-- [ ] Local file folder source (File System Access API on web; Android storage picker
-      later in the Capacitor phase); filename fallback when no metadata
-- [ ] **Checkpoint: pause for manual testing**
+- [x] `ImageSource` interface documented in `src/sources/base.js` (id, label, needsApiKey,
+      description, listFilters(), fetchBatch({filters,count})); `ImageRecord` shape
+      matches what Slideshow already expects (title/artist/date/department/image/source)
+- [x] Source manager (`src/sources/manager.js`): merges enabled sources' `fetchBatch()`
+      results; a single source failing (network error, bad filters) is caught and
+      logged rather than crashing the slideshow — this runs unattended, one flaky API
+      shouldn't take the display down; falls back to the local starter set if every
+      enabled source returns nothing. `orderPlaylist()` handles shuffle/sequential.
+- [x] Met Museum source (`src/sources/met.js`) is now a **live** API source, not the
+      static snapshot — verified directly against the real API (CORS confirmed open:
+      `Access-Control-Allow-Origin: *`; confirmed `/search` 502s without a `q` param,
+      so empty keyword sends `q=*`). Filters: department (dynamically populated from
+      `/departments`, live), keyword, medium, date range, public-domain-only (checked
+      client-side per object since it's not a dedicated search param). Fetches search
+      → samples random objectIDs → fetches object details at concurrency 5 → filters
+      to public-domain + has-image. Ran a real end-to-end Node test (not just syntax
+      check) — see decisions log.
+- [x] `localManifest.js` wraps the existing bundled `public/images.json` +
+      `public/images/` as its own source (id `local`, enabled by default) — this IS
+      the backward-compatible local file structure the spec asks for, and the
+      zero-network fallback if every live source is disabled/offline.
+- [x] Local folder source (`src/sources/localFiles.js`): File System Access API
+      (`showDirectoryPicker`), Chrome/Edge only — feature-detected (`.supported`),
+      settings UI disables the picker with an explanatory note on unsupported browsers
+      (Firefox/Safari) rather than showing a button that would throw. No metadata,
+      filename fallback per spec.
+- [x] Sources settings section is now fully functional: enable/disable checkboxes for
+      all 3 sources, Met filter fields (department select, keyword, medium, date
+      range, public-domain-only), "Choose folder…" button, sequential/shuffle radio.
+      Changing anything rebuilds the playlist live via `slideshow.setPlaylist()` — no
+      reload needed.
+- [x] Verified: `node --check` on every file, `vite build`, dev-server route checks,
+      AND a real Node script exercising `metSource.fetchBatch()` against the live API
+      (returned 6/6 valid records with real image URLs) and `buildPlaylist()`/
+      `orderPlaylist()` end-to-end. Have NOT visually confirmed the Sources settings
+      UI itself in a browser (no browser access this session) — that's the main thing
+      to check at the checkpoint below.
+- [ ] **Checkpoint: pause for manual testing** — please try enabling Met Museum with a
+      few different filter combos, and if you're on Chrome/Edge, try "Choose folder…"
+      with a local folder of images
 
 ## Phase 4 — More public API sources (all keyless ones first)
 - [ ] Art Institute of Chicago (keyless, CORS-friendly — already prototyped in `fetch.py`)
@@ -194,3 +224,13 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
   Did not edit `/home/alex/apps/shared/best-practices.md`'s project table (it still
   lists `art` as "Python build scripts, static HTML" / no hosting) since that's a
   separate repo Alex may want to update himself — flagged in my reply instead.
+- 2026-07-18: Phase 3 makes the Met Museum source genuinely live (browser calls
+  collectionapi.metmuseum.org directly at runtime) rather than only reading the
+  committed snapshot from Phase 1.5. Kept `local` (the committed snapshot) enabled
+  by default alongside it — it's still the zero-network fallback for offline/kiosk
+  use, and `manager.js` falls back to it automatically if every enabled live source
+  comes back empty. Deliberately didn't add request throttling beyond a concurrency
+  cap of 5 for object-detail fetches — a slideshow pulling ~24 images occasionally is
+  not the same load pattern as `build.py`'s bulk 20k-image download (which throttles
+  to ~2 req/sec for that reason), so a stricter limit here would just be slower with
+  no real benefit.

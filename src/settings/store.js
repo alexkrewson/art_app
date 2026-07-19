@@ -9,6 +9,12 @@ export const DEFAULTS = {
   dipColor: '#8a5a3b',
   slideMs: 12000,
   transitionMs: 1500,
+  order: 'sequential', // 'sequential' | 'shuffle'
+  sources: {
+    local: { enabled: true, filters: {} },
+    met: { enabled: false, filters: {} },
+    localFiles: { enabled: false, filters: {} },
+  },
 };
 
 export function loadSettings() {

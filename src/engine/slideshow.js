@@ -94,6 +94,13 @@ export class Slideshow {
     this.scheduleSlides();
   }
 
+  // Replaces the playlist in place (e.g. the Sources settings changed) and
+  // jumps to its first image, without recreating the engine.
+  setPlaylist(images) {
+    if (!images.length) return;
+    this.init(images);
+  }
+
   loadAndShow(img, instant) {
     if (this.inFade && !instant) return;
 
