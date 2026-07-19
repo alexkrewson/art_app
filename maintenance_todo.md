@@ -7,6 +7,46 @@ survives a crash or restart. See original spec pasted into the conversation on
 
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (needs input from Alex)
 
+---
+## Where things stand (updated 2026-07-18, after commit `c3b6848`)
+
+**Live site:** https://alexkrewson.github.io/art_app/ (auto-deploys on every push to
+`main` via GitHub Actions — no manual deploy step needed anymore)
+**Repo:** https://github.com/alexkrewson/art_app
+
+**Done — Phases 0 through 3:** project scaffold (Vite, vanilla JS), the full
+kiosk.html engine ported (Ken Burns, touch gestures, metadata ribbon), GitHub Pages
+live deploy, the shared Ember/light theme + settings menu (Themes, About, Help),
+display modes (Ken Burns/Static/Fade Only), a 10-transition pluggable transition
+engine, and a multi-source image architecture with a **live** Met Museum API source
+(department/keyword/medium/date filters), the original local starter set, and a
+local-folder source (Chrome/Edge only).
+
+**Right now:** paused at the Phase 3 manual-testing checkpoint — waiting on Alex to
+click through Settings → Sources (Met filters, folder picker) before continuing.
+
+**Known gaps, already flagged rather than hidden:**
+- 4 of 7 "atmospheric" transitions (Burn/Dissolve/Shatter/Ripple) fall back to
+  Crossfade — a good version of each needs canvas/WebGL, not yet built
+- "Random" transition mode cycles *all* implemented transitions, not a
+  user-chosen enabled subset (spec describes the latter)
+
+**Next up, in order — see Phase 4+ below for detail:**
+1. Phase 4: Smithsonian / NASA / Europeana / Rijksmuseum sources — `[!]` **all four
+   need an API key from Alex** before they can be built (AIC and Wikimedia Commons
+   are keyless and can go first)
+2. Phase 5: curated + custom presets
+3. Phase 6: offline image caching, "download content" action
+4. Phase 7: Google Photos — `[!]` needs a Google Cloud OAuth client ID from Alex
+5. Phase 8: Capacitor Android wrapper — `[!]` needs Alex's own Android SDK/device to
+   build and test, can't be verified from this environment
+6. Phase 9: polish (perf guardrails, accessibility pass, README)
+
+**How to resume a session on this:** read this summary, then skim the decisions log
+at the bottom for anything non-obvious, then check `git log --oneline -10` against
+the phase checkboxes above to confirm nothing's drifted out of sync.
+---
+
 ## Phase 0 — Project setup
 - [x] `git init`, rename default branch to `main`
 - [x] `.gitignore` (exclude downloaded image binaries, node_modules, build output, secrets)
