@@ -8,11 +8,27 @@ survives a crash or restart. See original spec pasted into the conversation on
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (needs input from Alex)
 
 ---
-## Where things stand (updated 2026-07-18, after commit `c3b6848`)
+## Where things stand (updated 2026-07-26, working tree ahead of the last commit
+## `47f6f06` — see note below)
 
 **Live site:** https://alexkrewson.github.io/art_app/ (auto-deploys on every push to
 `main` via GitHub Actions — no manual deploy step needed anymore)
 **Repo:** https://github.com/alexkrewson/art_app
+
+**Testing:** see `/home/alex/apps/shared/testing-guidelines.md` for the shared
+rulebook (Smoke / Thorough / Costly tiers) — this project doesn't duplicate it.
+Conditional sections that apply here: "Third-party API integrations without AI
+cost" (all the museum/archive sources — exercise live by hand occasionally, never
+in a tight automated loop) and "Offline / local-only mode" (Phase 6 caching is
+exactly this — mocked IndexedDB/Cache API is the Thorough tier's foundation for it).
+`npm test` runs the automated Thorough-tier suite (Vitest): 68 tests across sources
+(mocked `fetch`, one file per API adapter), the playlist manager (mocked
+registry/cache, covers merge/fallback/offline/failure paths), the settings store,
+and the offline cache (mocked Cache API + real `fake-indexeddb`). **Not yet
+covered:** the DOM/canvas-heavy engine (Ken Burns, touch gestures, transitions) and
+the settings-panel UI itself — those still rely on manual Smoke/Thorough passes via
+Playwright MCP against the live site, per the shared doc's guidance that UI
+click-through is the manual fallback where no automated suite exists yet.
 
 **Done — Phases 0 through 3:** project scaffold (Vite, vanilla JS), the full
 kiosk.html engine ported (Ken Burns, touch gestures, metadata ribbon), GitHub Pages
@@ -22,29 +38,46 @@ engine, and a multi-source image architecture with a **live** Met Museum API sou
 (department/keyword/medium/date filters), the original local starter set, and a
 local-folder source (Chrome/Edge only).
 
-**Right now:** paused at the Phase 3 manual-testing checkpoint — waiting on Alex to
-click through Settings → Sources (Met filters, folder picker) before continuing.
+**Done but uncommitted — Phase 4, part of Phase 5, Phase 6, Phase 8 scaffold:** a
+prior session built all six remaining Phase 4 sources (AIC, Wikimedia Commons, NASA,
+Smithsonian, Europeana, Rijksmuseum — see per-phase detail below), the one-off
+"Sci-Fi & Fantasy" preset (`src/sources/presets.js` — not the full Phase 5 builder),
+Phase 6's offline image cache (`src/cache/imageCache.js` + `public/sw.js` service
+worker, gated by a new "Cache images for offline use" setting), and a Phase 8
+Capacitor Android project scaffold (`android/`, `capacitor.config.json`,
+`npm run cap:sync`/`cap:open:android`) — all still sitting as uncommitted working-tree
+changes, without having gone through their manual-testing checkpoints. This session
+added the automated test coverage above and verified `vite build` + the full
+`npm test` suite pass, but has **not** done a live/browser pass on any of it yet.
 
 **Known gaps, already flagged rather than hidden:**
 - 4 of 7 "atmospheric" transitions (Burn/Dissolve/Shatter/Ripple) fall back to
   Crossfade — a good version of each needs canvas/WebGL, not yet built
 - "Random" transition mode cycles *all* implemented transitions, not a
   user-chosen enabled subset (spec describes the latter)
+- Smithsonian/Europeana/Rijksmuseum sources are built against documented API shapes
+  but **not yet verified against the live APIs** (no keys available while building)
+  — re-check field paths once real keys are in hand
+- Rijksmuseum's CORS support from a browser origin is unconfirmed; may need a small
+  proxy in front of it
+- The uncommitted Phase 4/6/8 work above hasn't had its manual checkpoint yet
 
-**Next up, in order — see Phase 4+ below for detail:**
-1. Phase 4: Smithsonian / NASA / Europeana / Rijksmuseum sources — `[!]` **all four
-   need an API key from Alex** before they can be built (AIC and Wikimedia Commons
-   are keyless and can go first)
-2. Phase 5: curated + custom presets
-3. Phase 6: offline image caching, "download content" action
-4. Phase 7: Google Photos — `[!]` needs a Google Cloud OAuth client ID from Alex
-5. Phase 8: Capacitor Android wrapper — `[!]` needs Alex's own Android SDK/device to
-   build and test, can't be verified from this environment
-6. Phase 9: polish (perf guardrails, accessibility pass, README)
+**Next up, in order:**
+1. Commit the uncommitted Phase 4/6/8 work (logical chunks: sources, caching,
+   Android scaffold) and run the Phase 4/6 manual-testing checkpoints that never
+   happened
+2. Phase 5: the real curated-preset set + custom preset builder (save/load) —
+   currently only the one "Sci-Fi & Fantasy" preset exists
+3. Phase 7: Google Photos — `[!]` needs a Google Cloud OAuth client ID from Alex
+4. Finish Phase 8: Alex needs to actually build/run the Android scaffold on his own
+   machine (Android SDK/device) — can't be verified from this environment
+5. Phase 9: polish (perf guardrails, accessibility pass, README)
 
 **How to resume a session on this:** read this summary, then skim the decisions log
-at the bottom for anything non-obvious, then check `git log --oneline -10` against
-the phase checkboxes above to confirm nothing's drifted out of sync.
+at the bottom for anything non-obvious, then check `git status` and `git log
+--oneline -10` against the phase checkboxes above to confirm nothing's drifted out
+of sync — this doc has fallen behind the working tree before (see the 2026-07-26
+note above), so don't trust the checkboxes blindly.
 ---
 
 ## Phase 0 — Project setup
@@ -205,30 +238,64 @@ the phase checkboxes above to confirm nothing's drifted out of sync.
       with a local folder of images
 
 ## Phase 4 — More public API sources (all keyless ones first)
-- [ ] Art Institute of Chicago (keyless, CORS-friendly — already prototyped in `fetch.py`)
-- [ ] Wikimedia Commons (keyless)
-- [ ] Smithsonian Open Access — `[!]` needs an API key from Alex (api.data.gov)
-- [ ] NASA Image and Video Library — `[!]` needs an API key from Alex (api.nasa.gov),
-      though NASA's `DEMO_KEY` works for light testing
-- [ ] Europeana — `[!]` needs an API key from Alex (pro.europeana.eu/get-api)
-- [ ] Rijksmuseum — `[!]` needs an API key from Alex (data.rijksmuseum.nl), and CORS
-      support needs verification — may require a tiny proxy
-- [ ] **Checkpoint: pause for manual testing**
+- [x] Art Institute of Chicago (keyless, CORS-friendly — verified against the live
+      API; client-side date/public-domain/has-image filtering, same pattern as Met)
+- [x] Wikimedia Commons (keyless; free-text search doubles as the "Sci-Fi & Fantasy"
+      preset's mechanism — no dedicated genre API exists, see `presets.js`)
+- [x] Smithsonian Open Access — built against the documented API shape, `[!]` **not
+      yet verified live** (no key available while building; re-check field paths,
+      especially the media-type/rights paths, once a real key is in hand)
+- [x] NASA Image and Video Library — verified live; the `images-api.nasa.gov` search
+      endpoint turned out to be keyless/CORS-open (unlike api.nasa.gov), so no API
+      key field was needed after all
+- [x] Europeana — built against the documented API shape, `[!]` **not yet verified
+      live** (no key available while building; re-check `edmIsShownBy`/`edmPreview`
+      and the rights-filter syntax once a real key is in hand)
+- [x] Rijksmuseum — built against the documented API shape, `[!]` **not yet verified
+      live**, and CORS support from a browser origin is still unconfirmed — may need
+      a tiny proxy
+- [x] Automated coverage: `src/sources/*.test.js` mocks `fetch` for all eight
+      sources (record shape, filtering/gating logic, param building) — see
+      `npm test`. This is the Thorough-tier automated substitute for exercising each
+      adapter's *logic*; it doesn't replace occasionally exercising the real APIs by
+      hand per the third-party-API section of the shared testing guidelines.
+- [ ] **Checkpoint: pause for manual testing** — still outstanding; this work is
+      uncommitted and hasn't had a live/browser pass. Please try enabling each new
+      source (AIC/Wikimedia work with no key; NASA now needs none either; Smithsonian/
+      Europeana/Rijksmuseum need a key pasted into their Settings field to do anything)
 
 ## Phase 5 — Presets
-- [ ] Preset config format (bundles source + filter combinations)
+- [ ] Preset config format (bundles source + filter combinations) — no general
+      format yet, see below
 - [ ] Ship curated presets: Ancient East Asian, Impressionism, Space & Nature,
-      Classical Western, Modern & Contemporary
+      Classical Western, Modern & Contemporary — not started
+- [x] One specific preset built ahead of the rest of this phase: "Sci-Fi & Fantasy"
+      (`src/sources/presets.js`) — a minimal one-off `{id, label, apply(settings)}`
+      shape, not the general format/builder above. Covered by
+      `src/sources/presets.test.js`.
 - [ ] Custom preset builder + save/load (localStorage)
 
 ## Phase 6 — Settings & offline/download support
-- [ ] Full settings overlay (tap to reveal): sources, display mode, slide/transition
-      duration, metadata toggle, shuffle vs sequential, download content
-- [ ] Local image cache (IndexedDB or Cache API) for offline playback
+- [x] Offline image cache (`src/cache/imageCache.js`): Cache API for image bytes +
+      IndexedDB for metadata, a 300-image global soft cap, and a new "Cache images
+      for offline use" setting (`cacheEnabled`, default on) wired through
+      `manager.js`'s `buildPlaylist()`. Requires `public/sw.js` (a hand-written
+      service worker, registered from `main.js`) to actually serve cached images
+      offline — most museum CDNs don't send CORS headers, so cached bytes are opaque
+      `no-cors` responses that only a service worker (not page JS) can hand back to
+      the browser's image loader. Also makes the app shell itself
+      (index.html/JS/CSS) reloadable with zero connectivity.
 - [ ] "Download content" action — fetch a batch from enabled sources to local storage
-- [ ] Cached-vs-network indicator per image
-- [ ] Preserve backward compatibility with the existing `~/art_app/images/` +
-      `images.json` layout for the Termux/kiosk transition period
+      on demand (distinct from the automatic background caching above) — not started
+- [ ] Cached-vs-network indicator per image — not started
+- [x] Backward compatibility with `~/art_app/images/` + `images.json` preserved —
+      `localManifest.js` still wraps them as the zero-network fallback source
+- [x] Automated coverage: `src/cache/imageCache.test.js` (mocked Cache API + real
+      `fake-indexeddb`) covers cache/retrieve/dedupe/soft-cap/clear and a fetch
+      failure — see `npm test`.
+- [ ] **Checkpoint: pause for manual testing** — still outstanding, in particular
+      confirming the service worker actually serves images offline in a real browser
+      (this can't be verified without one)
 
 ## Phase 7 — Google Photos integration
 - [ ] `[!]` Needs a Google Cloud OAuth client ID from Alex (Google Photos Picker API)
@@ -236,8 +303,13 @@ the phase checkboxes above to confirm nothing's drifted out of sync.
 - [ ] Album picker, selected albums feed into the playlist rotation
 
 ## Phase 8 — Android app (Capacitor)
-- [ ] Capacitor project scaffold wrapping the web app
-- [ ] Android storage permissions + local folder picker
+- [x] Capacitor project scaffold wrapping the web app: `capacitor.config.json`
+      (`webDir: 'dist'`), full `android/` Gradle project, `npm run cap:sync` /
+      `cap:open:android` scripts, `.gitignore` updated for Android build artifacts
+      and keystores. Not yet committed.
+- [ ] Android storage permissions + local folder picker — not started (the existing
+      `localFiles.js` source is File System Access API, browser-only; Android needs
+      its own native-ish equivalent)
 - [ ] `[!]` Needs Android SDK / a device or emulator on Alex's machine to build & test —
       cannot fully verify from this environment
 - [ ] Fully Kiosk Browser parity check (or Capacitor equivalent kiosk mode)
@@ -274,3 +346,26 @@ the phase checkboxes above to confirm nothing's drifted out of sync.
   not the same load pattern as `build.py`'s bulk 20k-image download (which throttles
   to ~2 req/sec for that reason), so a stricter limit here would just be slower with
   no real benefit.
+- 2026-07-26: A prior session built Phase 4 (all sources), the Sci-Fi & Fantasy
+  preset, Phase 6 (caching), and the Phase 8 Capacitor scaffold in one sitting
+  without committing anything or updating this doc, breaking the "commit + update
+  checklist per completed step" discipline this file describes at the top. Caught
+  and reconciled this session — see the "Where things stand" note above. Lesson:
+  the discipline is the whole point of this doc; don't let a long session's changes
+  pile up uncommitted/undocumented even when nothing's obviously broken.
+- 2026-07-26: Added automated Thorough-tier test coverage (Vitest,
+  `/home/alex/apps/shared/testing-guidelines.md`) for everything with mockable
+  logic: all 8 image sources (mocked `fetch`, one file each), the playlist manager
+  (mocked registry + cache module, covers the merge/fallback/offline/single-source-
+  failure paths), the settings store, and the offline cache (mocked Cache API +
+  real `fake-indexeddb` for IndexedDB). 68 tests, `npm test` to run them. This is
+  new infrastructure for this project — previously the only verification was
+  `node --check` plus one-off Node scripts against live APIs. Deliberately did NOT
+  attempt automated coverage of the engine (Ken Burns, transitions, touch gestures)
+  or the settings-panel UI itself — those are DOM/canvas/animation heavy enough
+  that mocking would mostly test the mocks, not the code; per the shared testing
+  doc, manual Playwright-MCP passes remain the right tool there. Also deliberately
+  did NOT call any live third-party API from the automated suite, per the shared
+  doc's guidance on rate-limited third-party integrations — hand-verified logic
+  against mocked responses instead, same as met.js/aic.js were manually verified
+  against the real APIs when first built.
