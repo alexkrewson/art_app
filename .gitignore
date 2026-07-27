@@ -2,6 +2,7 @@ node_modules/
 dist/
 .DS_Store
 *.log
+.playwright-mcp/
 
 # public/images/ (the Met Museum starter set) IS committed, as a stopgap so
 # the live GitHub Pages deploy has something to show before Phase 3/4 wire up
@@ -9,10 +10,17 @@ dist/
 # variant (add_captions.py) — stays ignored, not referenced by public/images.json.
 /images_captioned/
 
-# Capacitor/Android build outputs (added once android/ exists)
+# Capacitor/Android build outputs and machine-specific project files
 android/app/build/
+android/build/
+android/capacitor-cordova-android-plugins/build/
 android/.gradle/
 android/local.properties
+android/.idea/
+android/*.iml
+android/app/*.iml
+*.keystore
+*.jks
 
 # Local secrets (API keys for NASA/Smithsonian/Europeana/Rijksmuseum, Google OAuth client)
 .env
