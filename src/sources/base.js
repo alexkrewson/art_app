@@ -12,7 +12,10 @@
 // }
 //
 // FilterSpec = { key, label, type: 'text'|'number'|'select'|'checkbox',
-//                options?: {value,label}[], default? }
+//                options?: {value,label}[], default?, placeholder?,
+//                sensitive? }
+// `sensitive: true` (used for API-key fields) renders as a password input
+// in the Sources settings panel instead of plain text.
 //
 // ImageRecord = { title, artist, date, department, image (a URL), source (source id) }
 

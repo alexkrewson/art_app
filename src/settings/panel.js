@@ -9,7 +9,9 @@ import { THEMES, loadTheme, applyTheme } from './themes.js';
 import { loadSettings, saveSettings } from './store.js';
 import { TRANSITIONS } from '../engine/transitions/index.js';
 import { SOURCES } from '../sources/registry.js';
+import { PRESETS } from '../sources/presets.js';
 import { buildPlaylist, orderPlaylist } from '../sources/manager.js';
+import { getCacheStats, clearCache } from '../cache/imageCache.js';
 
 const DISPLAY_MODES = [
   { id: 'kenburns', label: 'Ken Burns', hint: 'Slow pan & zoom' },
@@ -55,65 +57,101 @@ function renderDisplaySection(settings) {
   `;
 }
 
-function renderSourcesSection(settings, metDepartments) {
-  const local = settings.sources.local;
-  const met = settings.sources.met;
-  const lf = settings.sources.localFiles;
+function renderAdvancedSection(settings, cacheStats) {
+  return `
+    <label class="radio-row">
+      <input type="checkbox" name="cacheEnabled" ${settings.cacheEnabled ? 'checked' : ''}>
+      <span>Cache images for offline use <span class="field-hint">— once an
+      image has been downloaded it keeps playing with no internet
+      connection; only images you haven't seen yet need a live fetch.</span></span>
+    </label>
+    <div class="field-group">
+      <span class="field-hint">${cacheStats ? `${cacheStats.count} of ${cacheStats.cap} images cached` : 'Loading cache stats…'}</span>
+      <button type="button" class="btn-secondary" id="clearCacheBtn">Clear cache</button>
+    </div>
+    <p>Density, sound, and debug options are planned — see
+    <code>maintenance_todo.md</code>.</p>
+  `;
+}
 
-  const deptOptions = metDepartments
-    ? metDepartments.map(d => `<option value="${d.value}" ${String(met.filters.departmentId || '') === d.value ? 'selected' : ''}>${d.label}</option>`).join('')
-    : '<option>Loading…</option>';
+// Renders one FilterSpec (src/sources/base.js) as a generic field. Every
+// source's Sources-panel UI is built entirely from these — no per-source
+// markup needed, so adding a new ImageSource never requires touching this
+// file. `sensitive` (API keys) renders as a password input; everything
+// else follows FilterSpec.type directly.
+function renderFilterField(sourceId, spec, settings) {
+  const cfg = settings.sources[sourceId];
+  const value = cfg?.filters?.[spec.key] ?? spec.default ?? (spec.type === 'checkbox' ? false : '');
+  const name = `filter::${sourceId}::${spec.key}`;
 
-  const folderName = SOURCES.localFiles.getPickedFolderName();
+  if (spec.type === 'checkbox') {
+    return `
+      <label class="radio-row">
+        <input type="checkbox" name="${name}" ${value ? 'checked' : ''}>
+        <span>${spec.label}</span>
+      </label>`;
+  }
+  if (spec.type === 'select') {
+    const options = (spec.options || [])
+      .map(o => `<option value="${o.value}" ${String(value) === o.value ? 'selected' : ''}>${o.label}</option>`)
+      .join('');
+    return `
+      <div class="field-group">
+        <label class="field-label" for="${name}">${spec.label}</label>
+        <select id="${name}" class="field" name="${name}">${options}</select>
+      </div>`;
+  }
+  const inputType = spec.sensitive ? 'password' : spec.type; // 'text' | 'number'
+  return `
+    <div class="field-group">
+      <label class="field-label" for="${name}">${spec.label}</label>
+      <input type="${inputType}" id="${name}" class="field" name="${name}" value="${value}" ${spec.placeholder ? `placeholder="${spec.placeholder}"` : ''}>
+    </div>`;
+}
+
+// The one remaining special case: a folder picker is a browser-permission
+// action, not a settings field, so it can't come from listFilters().
+function renderLocalFilesExtra(source) {
+  if (source.id !== 'localFiles') return '';
+  const folderName = source.getPickedFolderName?.();
+  return `
+    <button type="button" class="btn-secondary" id="pickFolderBtn" ${source.supported ? '' : 'disabled'}>Choose folder&hellip;</button>
+    <span class="field-hint">${folderName ? `Using: ${folderName}` : 'No folder selected yet'}</span>`;
+}
+
+function renderSourceBlock(source, settings, sourceFilters) {
+  const cfg = settings.sources[source.id] || { enabled: false, filters: {} };
+  const filters = sourceFilters[source.id] || [];
+  const unsupported = source.supported === false;
+  const gatedByKey = source.needsApiKey && !cfg.filters?.apiKey;
+  const checkboxDisabled = unsupported || gatedByKey;
+
+  let hint = source.description || '';
+  if (unsupported) hint = 'Not supported in this browser (needs Chrome/Edge).';
+  else if (gatedByKey) hint = `${hint} — enter an API key below to enable.`;
 
   return `
     <label class="radio-row">
-      <input type="checkbox" name="src-local" ${local.enabled ? 'checked' : ''}>
-      <span>${SOURCES.local.label} <span class="field-hint">— ${SOURCES.local.description}</span></span>
+      <input type="checkbox" name="src-${source.id}" ${cfg.enabled ? 'checked' : ''} ${checkboxDisabled ? 'disabled' : ''}>
+      <span>${source.label} <span class="field-hint">— ${hint}</span></span>
     </label>
-
-    <label class="radio-row">
-      <input type="checkbox" name="src-met" ${met.enabled ? 'checked' : ''}>
-      <span>${SOURCES.met.label} <span class="field-hint">— live</span></span>
-    </label>
-    <div class="source-subfields" ${met.enabled ? '' : 'hidden'}>
-      <div class="field-group">
-        <label class="field-label" for="metDept">Department</label>
-        <select id="metDept" class="field" name="metDepartmentId">
-          <option value="">Any department</option>
-          ${deptOptions}
-        </select>
-      </div>
-      <div class="field-group">
-        <label class="field-label" for="metKeyword">Keyword</label>
-        <input type="text" id="metKeyword" class="field" name="metKeyword" value="${met.filters.keyword || ''}" placeholder="e.g. sunflowers">
-      </div>
-      <div class="field-group">
-        <label class="field-label" for="metMedium">Medium</label>
-        <input type="text" id="metMedium" class="field" name="metMedium" value="${met.filters.medium || ''}" placeholder="e.g. woodblock print">
-      </div>
-      <div class="field-group">
-        <span class="field-label">Date range (year)</span>
-        <div style="display:flex; gap:0.5rem;">
-          <input type="number" class="field" name="metDateBegin" value="${met.filters.dateBegin || ''}" placeholder="From">
-          <input type="number" class="field" name="metDateEnd" value="${met.filters.dateEnd || ''}" placeholder="To">
-        </div>
-      </div>
-      <label class="radio-row">
-        <input type="checkbox" name="metPublicDomainOnly" ${met.filters.publicDomainOnly !== false ? 'checked' : ''}>
-        <span>Public domain only</span>
-      </label>
+    <div class="source-subfields" ${cfg.enabled ? '' : 'hidden'}>
+      ${filters.map(f => renderFilterField(source.id, f, settings)).join('')}
+      ${renderLocalFilesExtra(source)}
     </div>
+  `;
+}
 
-    <label class="radio-row">
-      <input type="checkbox" name="src-localFiles" ${lf.enabled ? 'checked' : ''} ${SOURCES.localFiles.supported ? '' : 'disabled'}>
-      <span>${SOURCES.localFiles.label} <span class="field-hint">— ${SOURCES.localFiles.supported ? SOURCES.localFiles.description : 'not supported in this browser (needs Chrome/Edge)'}</span></span>
-    </label>
-    <div class="source-subfields" ${lf.enabled ? '' : 'hidden'}>
-      <button type="button" class="btn-secondary" id="pickFolderBtn" ${SOURCES.localFiles.supported ? '' : 'disabled'}>Choose folder&hellip;</button>
-      <span class="field-hint">${folderName ? `Using: ${folderName}` : 'No folder selected yet'}</span>
+function renderSourcesSection(settings, sourceFilters) {
+  return `
+    <div class="field-group">
+      <label class="field-label" for="sourcePreset">Preset</label>
+      <select id="sourcePreset" class="field" name="sourcePreset">
+        <option value="">Choose a preset&hellip;</option>
+        ${PRESETS.map(p => `<option value="${p.id}">${p.label}</option>`).join('')}
+      </select>
     </div>
-
+    ${Object.values(SOURCES).map(source => renderSourceBlock(source, settings, sourceFilters)).join('')}
     <div class="field-group" role="radiogroup" aria-label="Playback order">
       <span class="field-label">Playback order</span>
       <label class="radio-row"><input type="radio" name="order" value="sequential" ${settings.order === 'sequential' ? 'checked' : ''}><span>Sequential</span></label>
@@ -126,7 +164,7 @@ const SECTIONS = [
   {
     id: 'sources',
     label: 'Sources',
-    render: ctx => renderSourcesSection(ctx.settings, ctx.metDepartments),
+    render: ctx => renderSourcesSection(ctx.settings, ctx.sourceFilters),
   },
   {
     id: 'display',
@@ -176,16 +214,15 @@ const SECTIONS = [
   {
     id: 'advanced',
     label: 'Advanced',
-    render: () => `
-      <p>Density, sound, and debug options are planned — see
-      <code>maintenance_todo.md</code>.</p>`,
+    render: ctx => renderAdvancedSection(ctx.settings, ctx.cacheStats),
   },
 ];
 
 export function createSettingsPanel(slideshow) {
   let currentTheme = applyTheme(loadTheme());
   let settings = loadSettings();
-  let metDepartments = null;
+  let sourceFilters = {}; // sourceId -> FilterSpec[], populated asynchronously below
+  let cacheStats = null;
 
   const root = document.createElement('div');
   root.className = 'settings-panel';
@@ -210,19 +247,30 @@ export function createSettingsPanel(slideshow) {
           <span>${s.label}</span>
           <span class="settings-section-chevron">&#9656;</span>
         </button>
-        <div class="settings-section-content" hidden>${s.render({ currentTheme, settings, metDepartments })}</div>
+        <div class="settings-section-content" hidden>${s.render({ currentTheme, settings, sourceFilters, cacheStats })}</div>
       </section>
     `).join('');
   }
   renderSections();
 
-  // Met's department list rarely changes — fetch it once up front so it's
-  // ready by the time someone opens Sources, rather than fetching lazily on
-  // first expand (which would need its own loading state in that path too).
-  SOURCES.met.listFilters().then(filters => {
-    metDepartments = filters.find(f => f.key === 'departmentId').options.slice(1); // drop the synthetic "Any" entry, added again by renderSourcesSection
-    refreshSourcesSection();
-  }).catch(err => console.warn('[SlowFrame] could not load Met departments:', err));
+  // Every source's filter list (e.g. Met's department dropdown, which needs
+  // a live fetch) is loaded once up front so it's ready by the time someone
+  // opens Sources, rather than lazily on first expand — refreshes the
+  // section as each source resolves rather than waiting for the slowest one.
+  Object.values(SOURCES).forEach(source => {
+    Promise.resolve(source.listFilters())
+      .then(filters => { sourceFilters[source.id] = filters; })
+      .catch(err => {
+        console.warn(`[SlowFrame] could not load filters for source "${source.id}":`, err);
+        sourceFilters[source.id] = [];
+      })
+      .then(() => refreshSourcesSection());
+  });
+
+  getCacheStats().then(stats => {
+    cacheStats = stats;
+    refreshAdvancedSection();
+  }).catch(err => console.warn('[SlowFrame] could not load cache stats:', err));
 
   function refreshSection(id, renderFn) {
     const content = accordion.querySelector(`[data-section="${id}"] .settings-section-content`);
@@ -233,10 +281,11 @@ export function createSettingsPanel(slideshow) {
   }
 
   const refreshDisplaySection = () => refreshSection('display', () => renderDisplaySection(settings));
-  const refreshSourcesSection = () => refreshSection('sources', () => renderSourcesSection(settings, metDepartments));
+  const refreshSourcesSection = () => refreshSection('sources', () => renderSourcesSection(settings, sourceFilters));
+  const refreshAdvancedSection = () => refreshSection('advanced', () => renderAdvancedSection(settings, cacheStats));
 
   async function rebuildPlaylist() {
-    const playlist = await buildPlaylist(settings.sources);
+    const playlist = await buildPlaylist(settings.sources, { cacheEnabled: settings.cacheEnabled });
     slideshow.setPlaylist(orderPlaylist(playlist, settings.order));
   }
 
@@ -256,6 +305,18 @@ export function createSettingsPanel(slideshow) {
       accordion.querySelectorAll('.theme-option').forEach(b => {
         b.setAttribute('aria-checked', String(b.dataset.themeKey === currentTheme));
       });
+      return;
+    }
+
+    const clearCacheBtn = e.target.closest('#clearCacheBtn');
+    if (clearCacheBtn) {
+      clearCache()
+        .then(() => getCacheStats())
+        .then(stats => {
+          cacheStats = stats;
+          refreshAdvancedSection();
+        })
+        .catch(err => console.warn('[SlowFrame] failed to clear cache:', err));
       return;
     }
 
@@ -305,35 +366,28 @@ export function createSettingsPanel(slideshow) {
       const ms = Math.max(200, Math.min(6000, Number(el.value) || 1500));
       settings.transitionMs = ms;
       slideshow.fadeMs = ms;
-    } else if (el.name === 'src-local') {
-      settings.sources.local.enabled = el.checked;
-      rebuildPlaylist();
-    } else if (el.name === 'src-met') {
-      settings.sources.met.enabled = el.checked;
+    } else if (el.name === 'sourcePreset') {
+      const preset = PRESETS.find(p => p.id === el.value);
+      if (preset) {
+        preset.apply(settings);
+        refreshSourcesSection();
+        rebuildPlaylist();
+      }
+    } else if (el.name.startsWith('src-')) {
+      const id = el.name.slice(4);
+      settings.sources[id].enabled = el.checked;
       refreshSourcesSection();
       rebuildPlaylist();
-    } else if (el.name === 'src-localFiles') {
-      settings.sources.localFiles.enabled = el.checked;
-      refreshSourcesSection();
+    } else if (el.name.startsWith('filter::')) {
+      const [, id, key] = el.name.split('::');
+      const value = el.type === 'checkbox' ? el.checked : (el.value || undefined);
+      settings.sources[id].filters[key] = value;
+      // API-key fields gate the enable checkbox itself (disabled/enabled,
+      // hint text) — everything else just needs the playlist rebuilt.
+      if (key === 'apiKey') refreshSourcesSection();
       rebuildPlaylist();
-    } else if (el.name === 'metDepartmentId') {
-      settings.sources.met.filters.departmentId = el.value || undefined;
-      rebuildPlaylist();
-    } else if (el.name === 'metKeyword') {
-      settings.sources.met.filters.keyword = el.value || undefined;
-      rebuildPlaylist();
-    } else if (el.name === 'metMedium') {
-      settings.sources.met.filters.medium = el.value || undefined;
-      rebuildPlaylist();
-    } else if (el.name === 'metDateBegin') {
-      settings.sources.met.filters.dateBegin = el.value || undefined;
-      rebuildPlaylist();
-    } else if (el.name === 'metDateEnd') {
-      settings.sources.met.filters.dateEnd = el.value || undefined;
-      rebuildPlaylist();
-    } else if (el.name === 'metPublicDomainOnly') {
-      settings.sources.met.filters.publicDomainOnly = el.checked;
-      rebuildPlaylist();
+    } else if (el.name === 'cacheEnabled') {
+      settings.cacheEnabled = el.checked;
     } else if (el.name === 'order') {
       settings.order = el.value;
       // Reorder in place — no need to re-fetch from every source just to
