@@ -43,8 +43,20 @@ async function main() {
     settingsPanel.toggle();
   });
 
-  const playlist = await buildPlaylist(settings.sources);
+  const playlist = await buildPlaylist(settings.sources, { cacheEnabled: settings.cacheEnabled });
   slideshow.init(orderPlaylist(playlist, settings.order));
+}
+
+// Lets the app shell itself (not the artwork, which imageCache.js handles)
+// reload with zero connectivity — e.g. reopening a tab in airplane mode.
+// Feature-detected so it degrades harmlessly wherever service workers
+// aren't supported.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`)
+      .catch(err => console.warn('[SlowFrame] service worker registration failed:', err));
+  });
 }
 
 main();

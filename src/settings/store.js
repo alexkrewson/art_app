@@ -10,9 +10,16 @@ export const DEFAULTS = {
   slideMs: 12000,
   transitionMs: 1500,
   order: 'sequential', // 'sequential' | 'shuffle'
+  cacheEnabled: true, // cache live-source images (Cache API + IndexedDB) so the app keeps working offline
   sources: {
     local: { enabled: true, filters: {} },
     met: { enabled: false, filters: {} },
+    aic: { enabled: false, filters: {} },
+    wikimedia: { enabled: false, filters: {} },
+    nasa: { enabled: false, filters: {} },
+    smithsonian: { enabled: false, filters: {} },
+    europeana: { enabled: false, filters: {} },
+    rijksmuseum: { enabled: false, filters: {} },
     localFiles: { enabled: false, filters: {} },
   },
 };
