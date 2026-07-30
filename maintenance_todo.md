@@ -319,6 +319,24 @@ note above), so don't trust the checkboxes blindly.
 - [x] Automated coverage: `src/cache/imageCache.test.js` (mocked Cache API + real
       `fake-indexeddb`) covers cache/retrieve/dedupe/soft-cap/clear and a fetch
       failure — see `npm test`.
+- [x] **2026-07-29: found and fixed a real standing bug** — `sw.js`'s shell
+      cache was cache-first for `index.html` under a hardcoded, never-bumped
+      cache name. Since `sw.js`'s own bytes don't change on a normal app
+      deploy, the browser never even detects a new service worker version
+      to install, so a returning visitor's cached shell never refreshes —
+      every deploy after someone's first visit was invisible to them,
+      forever, until they manually cleared it. This is exactly what bit
+      Alex: a real, verified-successful deploy still showed the old UI.
+      Fixed by making the shell HTML network-first (falls back to cache
+      only offline); hashed JS/CSS/image assets stay cache-first since
+      those filenames are immutable per-deploy. Verified against a real
+      built preview server: simulated a redeploy by editing built
+      `index.html` without touching `sw.js`, confirmed a reload picked up
+      the new content, then killed the server entirely and confirmed the
+      offline fallback still served that fresh copy (not a stale one).
+      Anyone with the old service worker already installed (i.e. Alex,
+      right now) needs one hard refresh / tab close-reopen to pick up this
+      specific fix; after that, normal reloads should reflect deploys again.
 - [ ] **Checkpoint: pause for manual testing** — still outstanding, in particular
       confirming the service worker actually serves images offline in a real browser
       (this can't be verified without one)
