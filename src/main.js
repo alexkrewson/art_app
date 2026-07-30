@@ -50,8 +50,11 @@ async function main() {
 // Lets the app shell itself (not the artwork, which imageCache.js handles)
 // reload with zero connectivity — e.g. reopening a tab in airplane mode.
 // Feature-detected so it degrades harmlessly wherever service workers
-// aren't supported.
-if ('serviceWorker' in navigator) {
+// aren't supported. PROD-gated: a cache-first service worker registered
+// against `vite dev`'s unbundled, constantly-changing modules serves stale
+// code across reloads — confirmed directly, it masked an unrelated settings
+// bug during manual testing until the SW was unregistered by hand.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`)
