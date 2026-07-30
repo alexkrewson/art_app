@@ -52,3 +52,23 @@ try {
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
+
+// Auto-upload the built APK to Google Drive via rclone (see ../upload-apk.sh).
+// No-ops quietly if rclone or the "gdrive" remote isn't set up yet.
+afterEvaluate {
+    ['assembleDebug', 'assembleRelease'].each { taskName ->
+        def t = tasks.findByName(taskName)
+        if (t != null) {
+            t.doLast {
+                t.outputs.files.each { f ->
+                    if (f.name.endsWith('.apk')) {
+                        exec {
+                            commandLine 'bash', "${rootProject.projectDir}/upload-apk.sh", f.absolutePath
+                            ignoreExitValue = true
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
