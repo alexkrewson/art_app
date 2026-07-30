@@ -239,7 +239,8 @@ note above), so don't trust the checkboxes blindly.
 
 ## Phase 4 — More public API sources (all keyless ones first)
 - [x] Art Institute of Chicago (keyless, CORS-friendly — verified against the live
-      API; client-side date/public-domain/has-image filtering, same pattern as Met)
+      API; client-side date/public-domain/has-image filtering, same pattern as Met).
+      **2026-07-29: two live-browser bugs found and fixed** — see decisions log.
 - [x] Wikimedia Commons (keyless; free-text search doubles as the "Sci-Fi & Fantasy"
       preset's mechanism — no dedicated genre API exists, see `presets.js`)
 - [x] Smithsonian Open Access — built against the documented API shape, `[!]` **not
@@ -259,10 +260,14 @@ note above), so don't trust the checkboxes blindly.
       `npm test`. This is the Thorough-tier automated substitute for exercising each
       adapter's *logic*; it doesn't replace occasionally exercising the real APIs by
       hand per the third-party-API section of the shared testing guidelines.
-- [ ] **Checkpoint: pause for manual testing** — still outstanding; this work is
-      uncommitted and hasn't had a live/browser pass. Please try enabling each new
-      source (AIC/Wikimedia work with no key; NASA now needs none either; Smithsonian/
-      Europeana/Rijksmuseum need a key pasted into their Settings field to do anything)
+- [x] **Checkpoint: pause for manual testing — done 2026-07-29** via Playwright MCP
+      against the dev server: enabled local + Met + AIC + Wikimedia + NASA
+      simultaneously through the actual Settings UI (not just localStorage) and
+      confirmed `buildPlaylist()` genuinely merges all five into one playlist
+      (521 records: 425 local + 24 each live source) with zero console
+      errors/warnings on a clean reload. This **is** the "multi-library" feature —
+      it works. See decisions log for the two AIC bugs this pass found and fixed,
+      and a note on Met/Smithsonian flakiness observed during testing.
 
 ## Phase 5 — Presets
 - [ ] Preset config format (bundles source + filter combinations) — no general
@@ -310,8 +315,15 @@ note above), so don't trust the checkboxes blindly.
 - [ ] Android storage permissions + local folder picker — not started (the existing
       `localFiles.js` source is File System Access API, browser-only; Android needs
       its own native-ish equivalent)
-- [ ] `[!]` Needs Android SDK / a device or emulator on Alex's machine to build & test —
-      cannot fully verify from this environment
+- [x] **2026-07-29: verified an Android SDK + `adb` already exist on this machine**
+      (`~/Android/Sdk`, `android/local.properties` already pointed at it) — ran
+      `npm run cap:sync` then `./gradlew assembleDebug` for real and it produced an
+      installable `android/app/build/outputs/apk/debug/app-debug.apk` (~101MB, mostly
+      the bundled local starter images). `BUILD SUCCESSFUL`. Not yet installed on a
+      device/emulator to confirm it actually runs — that's the remaining gap, not the
+      Gradle build itself.
+- [ ] `[!]` Still needs a device or emulator to confirm the installed app actually
+      launches/runs correctly — the build succeeding is necessary but not sufficient
 - [ ] Fully Kiosk Browser parity check (or Capacitor equivalent kiosk mode)
 
 ## Phase 9 — Polish
@@ -353,6 +365,50 @@ note above), so don't trust the checkboxes blindly.
   and reconciled this session — see the "Where things stand" note above. Lesson:
   the discipline is the whole point of this doc; don't let a long session's changes
   pile up uncommitted/undocumented even when nothing's obviously broken.
+- 2026-07-29: Alex asked (1) is this ready for an APK, (2) is multi-library ready.
+  Investigated both live rather than trusting the doc:
+  - **APK**: `vite build` → `cap sync android` → `./gradlew assembleDebug` all
+    actually run on this machine (real Android SDK present) and produced a working
+    debug APK. Also noticed `android/app/build.gradle` had picked up an uncommitted
+    `afterEvaluate` hook (+ new `android/upload-apk.sh`) that auto-uploads every
+    `assembleDebug`/`assembleRelease` output to Alex's real Google Drive via `rclone`
+    — confirmed `rclone`+the `gdrive` remote are actually configured on this
+    machine, so this isn't a no-op stub, it does real uploads. Ran the script once
+    to check it was a safe no-op, discovered mid-transfer it wasn't, and killed it
+    (confirmed no partial file was left in `AndroidBuilds/art/` on Drive). Flagging
+    for Alex rather than assuming this auto-upload-on-every-build behavior is
+    wanted. Also: `rclone` warned its shared Google-Drive `client_id` is being
+    retired sometime in 2026 — the upload script will need Alex's own client_id
+    before then if he wants to keep it.
+  - **Multi-library**: confirmed via Playwright MCP against the real dev server
+    (see Phase 3/4 checkpoint above) that enabling multiple sources at once
+    genuinely merges into one playlist. While doing that live pass, found the
+    Art Institute of Chicago source was fully broken end-to-end despite passing
+    its "verified against the live API" check on 2026-07-18 — that earlier check
+    only exercised the JSON search API, never actually loaded an image in a
+    browser. Two distinct bugs, both confirmed root-caused with `curl` before
+    fixing:
+    1. AIC's Cloudflare/Cantaloupe IIIF server 403s any image request carrying a
+       non-artic.edu `Referer` header (hotlink protection) — every browser sends
+       one by default, so every AIC image 403'd for every user, not just this
+       environment. Fixed with `referrerpolicy="no-referrer"` on the two `<img>`
+       elements in `index.html` (the only place `src/engine/slideshow.js` ever
+       assigns a remote URL to an `<img>`).
+    2. `src/sources/aic.js` hardcoded a fixed IIIF width (`full/843,/...`), which
+       Cantaloupe rejects with `ScaleRestrictedException` ("scales in excess of
+       100%") for any artwork whose native width is under 843px — a large
+       fraction of AIC's collection is portrait-oriented and narrower than that.
+       Fixed by switching to the IIIF bounded-fit qualifier (`full/!843,843/...`),
+       confirmed via `info.json` + a live fetch that it never upscales and never
+       403s. Updated `aic.test.js`'s expected URL to match. All 69 tests pass.
+    Also observed, but did **not** treat as a code bug: the Met Museum API
+    intermittently 403'd with an Incapsula bot-challenge page during this session
+    (both from `curl` and from the browser) — this looks like anti-bot rate
+    limiting on this sandbox's IP, not a CORS/API regression, since a plain `curl`
+    with no special headers got the same generic challenge page. Re-check on
+    Alex's own network/browser before concluding Met is actually broken. Smithsonian
+    still 403s in the live pass too, but that's expected — the only key configured
+    was a leftover fake `test-key-123` from earlier testing, not a real key.
 - 2026-07-26: Added automated Thorough-tier test coverage (Vitest,
   `/home/alex/apps/shared/testing-guidelines.md`) for everything with mockable
   logic: all 8 image sources (mocked `fetch`, one file each), the playlist manager
