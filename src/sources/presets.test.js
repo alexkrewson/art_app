@@ -13,7 +13,7 @@ describe('PRESETS', () => {
     preset.apply(settings);
 
     expect(settings.sources.wikimedia.enabled).toBe(true);
-    expect(settings.sources.wikimedia.filters.query).toBe('Category:Science fiction art|Category:Fantasy art');
+    expect(settings.sources.wikimedia.filters.categories).toEqual(['Science fiction art', 'Fantasy art']);
     expect(settings.sources.nasa.enabled).toBe(true);
   });
 

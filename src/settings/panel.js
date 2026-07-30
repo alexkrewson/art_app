@@ -91,6 +91,24 @@ function renderFilterField(sourceId, spec, settings) {
         <span>${spec.label}</span>
       </label>`;
   }
+  if (spec.type === 'checkboxGroup') {
+    // Same idea as a single checkbox, but one per option, all sharing the
+    // same filter key — the stored value is an array of checked option
+    // values rather than a boolean. Each input's name carries its own
+    // option value (an extra `::`-segment) so the change handler knows
+    // which entry to toggle without re-rendering the whole group.
+    const checked = Array.isArray(value) ? value : [];
+    const options = (spec.options || []).map(o => `
+      <label class="radio-row">
+        <input type="checkbox" name="${name}::${o.value}" ${checked.includes(o.value) ? 'checked' : ''}>
+        <span>${o.label}</span>
+      </label>`).join('');
+    return `
+      <div class="field-group">
+        <span class="field-label">${spec.label}</span>
+        ${options}
+      </div>`;
+  }
   if (spec.type === 'select') {
     const options = (spec.options || [])
       .map(o => `<option value="${o.value}" ${String(value) === o.value ? 'selected' : ''}>${o.label}</option>`)
@@ -384,9 +402,19 @@ export function createSettingsPanel(slideshow) {
       refreshSourcesSection();
       rebuildPlaylist();
     } else if (el.name.startsWith('filter::')) {
-      const [, id, key] = el.name.split('::');
-      const value = el.type === 'checkbox' ? el.checked : (el.value || undefined);
-      settings.sources[id].filters[key] = value;
+      const parts = el.name.split('::');
+      const [, id, key, optionValue] = parts;
+      if (parts.length === 4) {
+        // checkboxGroup: one input per option, toggling membership in an
+        // array rather than a single boolean/text value.
+        const current = Array.isArray(settings.sources[id].filters[key]) ? settings.sources[id].filters[key] : [];
+        settings.sources[id].filters[key] = el.checked
+          ? [...current, optionValue]
+          : current.filter(v => v !== optionValue);
+      } else {
+        const value = el.type === 'checkbox' ? el.checked : (el.value || undefined);
+        settings.sources[id].filters[key] = value;
+      }
       // API-key fields gate the enable checkbox itself (disabled/enabled,
       // hint text) — everything else just needs the playlist rebuilt.
       if (key === 'apiKey') refreshSourcesSection();

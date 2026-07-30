@@ -83,6 +83,21 @@ describe('wikimediaSource', () => {
     expect(urls.some(u => u.includes('gcmtitle=Category') && u.includes('Fantasy'))).toBe(true);
   });
 
+  it('browses checked category checkboxes, taking priority over the free-text field', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => pages([]) }));
+    vi.stubGlobal('fetch', fetchMock);
+    await wikimediaSource.fetchBatch({
+      filters: { categories: ['Science fiction art', 'Fantasy art'], query: 'sunflowers' },
+      count: 24,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const urls = fetchMock.mock.calls.map(c => c[0]);
+    expect(urls.every(u => u.includes('generator=categorymembers'))).toBe(true);
+    expect(urls.some(u => u.includes('Science'))).toBe(true);
+    expect(urls.some(u => u.includes('Fantasy'))).toBe(true);
+    expect(urls.some(u => u.includes('sunflowers'))).toBe(false);
+  });
+
   it('uses the search generator for a plain-text query', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => pages([]) }));
     vi.stubGlobal('fetch', fetchMock);

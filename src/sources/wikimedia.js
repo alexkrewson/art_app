@@ -1,9 +1,9 @@
 // Live queries against the Wikimedia Commons API (keyless, CORS-open via
-// `origin=*` — verified directly against commons.wikimedia.org). A single
-// free-text search field doubles as the general keyword source AND the
-// mechanism behind the "Sci-Fi & Fantasy" preset (src/sources/presets.js),
-// which just points this field at a curated category search — there's no
-// dedicated public API for that genre, so this is it.
+// `origin=*` — verified directly against commons.wikimedia.org). Two curated
+// genre categories are exposed as checkboxes (the friendly path — no syntax
+// to learn), plus a free-text field for anything else, including manually
+// typed Category: browsing. There's no dedicated public API for the sci-fi/
+// fantasy genre, so browsing real Commons categories is the closest thing.
 import { shuffle } from './base.js';
 
 const API = 'https://commons.wikimedia.org/w/api.php';
@@ -59,6 +59,13 @@ export const wikimediaSource = {
   listFilters() {
     return [
       {
+        key: 'categories', label: 'Curated categories', type: 'checkboxGroup',
+        options: [
+          { value: 'Science fiction art', label: 'Sci-Fi art' },
+          { value: 'Fantasy art', label: 'Fantasy art' },
+        ],
+      },
+      {
         key: 'query', label: 'Search or category', type: 'text',
         placeholder: 'e.g. impressionism, or Category:Science_fiction_art',
         default: 'illustration',
@@ -67,21 +74,9 @@ export const wikimediaSource = {
   },
 
   async fetchBatch({ filters = {}, count = 24 } = {}) {
+    const checkedCategories = Array.isArray(filters.categories) ? filters.categories.filter(Boolean) : [];
     const query = (filters.query || '').trim() || 'illustration';
     const limit = String(Math.min(count * 3, 50));
-
-    // "Category:X" isn't valid full-text search syntax — Commons needs the
-    // categorymembers generator to browse a category directly, versus the
-    // search generator for a plain relevance search. Verified directly
-    // against the live API while building this: gsrsearch on a bare
-    // "Category:..." string returned zero results.
-    // A `|`-separated list of Category: entries (e.g. the Sci-Fi & Fantasy
-    // preset's "Category:Science fiction art|Category:Fantasy art") browses
-    // each and merges the results — free-text search alone was surfacing
-    // off-topic matches (author photos, library-shelf photos) alongside the
-    // actual art, since Commons' relevance search has no genre concept.
-    const segments = query.split('|').map(s => s.trim()).filter(Boolean);
-    const isCategoryQuery = segments.length > 0 && segments.every(s => s.toLowerCase().startsWith('category:'));
 
     async function fetchPages(params) {
       const res = await fetch(`${API}?${params.toString()}`);
@@ -90,9 +85,31 @@ export const wikimediaSource = {
       return Object.values(data.query?.pages || {});
     }
 
+    // "Category:X" isn't valid full-text search syntax — Commons needs the
+    // categorymembers generator to browse a category directly, versus the
+    // search generator for a plain relevance search. Verified directly
+    // against the live API while building this: gsrsearch on a bare
+    // "Category:..." string returned zero results.
+    // Checked category checkboxes win over the free-text field — they're
+    // the friendly path for the two curated genres. The free-text field
+    // still supports a manually typed "Category:X" or `|`-joined list for
+    // anything else, as a fallback when no checkbox is ticked. Free-text
+    // relevance search alone was surfacing off-topic matches (author
+    // photos, a library-shelf photo) alongside the actual art, since
+    // Commons' relevance search has no genre concept — categories fix that.
+    let categoryTitles = null;
+    if (checkedCategories.length > 0) {
+      categoryTitles = checkedCategories.map(c => `Category:${c}`);
+    } else {
+      const segments = query.split('|').map(s => s.trim()).filter(Boolean);
+      if (segments.length > 0 && segments.every(s => s.toLowerCase().startsWith('category:'))) {
+        categoryTitles = segments;
+      }
+    }
+
     let pages;
-    if (isCategoryQuery) {
-      const batches = await Promise.all(segments.map(gcmtitle => fetchPages(new URLSearchParams({
+    if (categoryTitles) {
+      const batches = await Promise.all(categoryTitles.map(gcmtitle => fetchPages(new URLSearchParams({
         action: 'query', format: 'json', origin: '*',
         generator: 'categorymembers', gcmtitle, gcmtype: 'file', gcmlimit: limit,
         prop: 'imageinfo', iiprop: 'url|extmetadata|mime',
