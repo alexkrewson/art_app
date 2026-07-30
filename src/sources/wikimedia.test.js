@@ -10,8 +10,8 @@ describe('wikimediaSource', () => {
 
   it('filters to image mime types with a usable url', async () => {
     const data = pages([
-      { title: 'File:A.jpg', imageinfo: [{ url: 'https://x/a.jpg', mime: 'image/jpeg', extmetadata: {} }] },
-      { title: 'File:B.pdf', imageinfo: [{ url: 'https://x/b.pdf', mime: 'application/pdf', extmetadata: {} }] },
+      { title: 'File:A.jpg', imageinfo: [{ url: 'https://x/a.jpg', mime: 'image/jpeg', extmetadata: { LicenseShortName: { value: 'Public domain' } } }] },
+      { title: 'File:B.pdf', imageinfo: [{ url: 'https://x/b.pdf', mime: 'application/pdf', extmetadata: { LicenseShortName: { value: 'Public domain' } } }] },
       { title: 'File:C.jpg', imageinfo: [] },
     ]);
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
@@ -26,13 +26,39 @@ describe('wikimediaSource', () => {
       title: 'File:Untitled Sculpture.jpg',
       imageinfo: [{
         url: 'https://x/s.jpg', mime: 'image/jpeg',
-        extmetadata: { Artist: { value: '<a href="#">Rodin</a>' } },
+        extmetadata: { Artist: { value: '<a href="#">Rodin</a>' }, LicenseShortName: { value: 'Public domain' } },
       }],
     }]);
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
     const [record] = await wikimediaSource.fetchBatch({ filters: {}, count: 24 });
     expect(record.title).toBe('Untitled Sculpture');
     expect(record.artist).toBe('Rodin');
+  });
+
+  it('excludes results with no license or a non-permissive license', async () => {
+    const data = pages([
+      { title: 'File:NoLicense.jpg', imageinfo: [{ url: 'https://x/a.jpg', mime: 'image/jpeg', extmetadata: {} }] },
+      { title: 'File:Restricted.jpg', imageinfo: [{ url: 'https://x/b.jpg', mime: 'image/jpeg', extmetadata: { LicenseShortName: { value: 'Copyrighted' } } }] },
+      { title: 'File:Fine.jpg', imageinfo: [{ url: 'https://x/c.jpg', mime: 'image/jpeg', extmetadata: { LicenseShortName: { value: 'CC0' } } }] },
+    ]);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
+    const results = await wikimediaSource.fetchBatch({ filters: {}, count: 24 });
+    expect(results).toHaveLength(1);
+    expect(results[0].image).toBe('https://x/c.jpg');
+  });
+
+  it('sets attribution for CC BY/CC BY-SA but not for Public domain/CC0', async () => {
+    const data = pages([
+      { title: 'File:PD.jpg', imageinfo: [{ url: 'https://x/pd.jpg', mime: 'image/jpeg', extmetadata: { LicenseShortName: { value: 'Public domain' } } }] },
+      { title: 'File:Free.jpg', imageinfo: [{ url: 'https://x/cc0.jpg', mime: 'image/jpeg', extmetadata: { LicenseShortName: { value: 'CC0' } } }] },
+      { title: 'File:Credited.jpg', imageinfo: [{ url: 'https://x/ccby.jpg', mime: 'image/jpeg', extmetadata: { LicenseShortName: { value: 'CC BY-SA 4.0' } } }] },
+    ]);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
+    const results = await wikimediaSource.fetchBatch({ filters: {}, count: 24 });
+    const byUrl = Object.fromEntries(results.map(r => [r.image, r.attribution]));
+    expect(byUrl['https://x/pd.jpg']).toBe('');
+    expect(byUrl['https://x/cc0.jpg']).toBe('');
+    expect(byUrl['https://x/ccby.jpg']).toBe('CC BY-SA 4.0');
   });
 
   it('uses the categorymembers generator for a Category: query', async () => {
@@ -42,6 +68,19 @@ describe('wikimediaSource', () => {
     const url = fetchMock.mock.calls[0][0];
     expect(url).toContain('generator=categorymembers');
     expect(url).toContain('gcmtitle=Category');
+  });
+
+  it('browses and merges multiple |-separated categories', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => pages([]) }));
+    vi.stubGlobal('fetch', fetchMock);
+    await wikimediaSource.fetchBatch({
+      filters: { query: 'Category:Science fiction art|Category:Fantasy art' },
+      count: 24,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const urls = fetchMock.mock.calls.map(c => c[0]);
+    expect(urls.some(u => u.includes('gcmtitle=Category') && u.includes('Science'))).toBe(true);
+    expect(urls.some(u => u.includes('gcmtitle=Category') && u.includes('Fantasy'))).toBe(true);
   });
 
   it('uses the search generator for a plain-text query', async () => {

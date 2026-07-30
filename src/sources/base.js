@@ -17,7 +17,10 @@
 // `sensitive: true` (used for API-key fields) renders as a password input
 // in the Sources settings panel instead of plain text.
 //
-// ImageRecord = { title, artist, date, department, image (a URL), source (source id) }
+// ImageRecord = { title, artist, date, department, image (a URL), source (source id),
+//                 attribution? (license credit string, only set when the
+//                 source's license requires display — e.g. Wikimedia
+//                 Commons' CC BY/CC BY-SA images; omitted/blank elsewhere) }
 
 export function shuffle(list) {
   const arr = list.slice();

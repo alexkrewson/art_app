@@ -7,7 +7,10 @@ export function createMetadataRibbon(titleEl, metaEl) {
     update(img) {
       titleEl.textContent = img.title || '';
       const artist = (img.artist || '').split('\n')[0];
-      metaEl.textContent = [artist, img.date].filter(Boolean).join('  —  ');
+      // `attribution` (source/license credit) is only set by sources whose
+      // license requires it, e.g. Wikimedia Commons' CC BY/CC BY-SA images —
+      // Public domain/CC0 records leave it blank, same as every other source.
+      metaEl.textContent = [artist, img.date, img.attribution].filter(Boolean).join('  —  ');
     },
     setVisible(visible) {
       titleEl.parentElement.style.display = visible ? '' : 'none';
