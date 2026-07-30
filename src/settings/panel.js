@@ -9,7 +9,6 @@ import { THEMES, loadTheme, applyTheme } from './themes.js';
 import { loadSettings, saveSettings } from './store.js';
 import { TRANSITIONS } from '../engine/transitions/index.js';
 import { SOURCES } from '../sources/registry.js';
-import { PRESETS } from '../sources/presets.js';
 import { buildPlaylist, orderPlaylist } from '../sources/manager.js';
 import { getCacheStats, clearCache } from '../cache/imageCache.js';
 
@@ -48,13 +47,23 @@ function renderDisplaySection(settings) {
     </div>
     <div class="field-group">
       <label class="field-label" for="slideSecInput">Slide duration (seconds)</label>
-      <input type="number" id="slideSecInput" class="field" name="slideSec" min="3" max="120" step="1" value="${Math.round(settings.slideMs / 1000)}">
+      <input type="number" id="slideSecInput" class="field" name="slideSec" min="0.1" max="120" step="0.1" value="${formatSeconds(settings.slideMs)}">
+      <div class="field-hint">Below ~0.4s, transitions and Ken Burns motion switch off automatically — there aren't enough frames left for them to read as motion instead of a flicker.</div>
     </div>
     <div class="field-group">
       <label class="field-label" for="transitionMsInput">Transition duration (ms)</label>
       <input type="number" id="transitionMsInput" class="field" name="transitionMs" min="200" max="6000" step="100" value="${settings.transitionMs}">
     </div>
   `;
+}
+
+// `settings.slideMs / 1000` as a number input value — plain division can
+// yield e.g. "0.1" fine but also long floats for some inputs; toFixed(1)
+// keeps sub-second values readable while Number.isInteger avoids showing
+// "12.0" for the common whole-second case.
+function formatSeconds(ms) {
+  const sec = ms / 1000;
+  return Number.isInteger(sec) ? String(sec) : sec.toFixed(1);
 }
 
 function renderAdvancedSection(settings, cacheStats) {
@@ -167,13 +176,6 @@ function renderSourceBlock(source, settings, sourceFilters) {
 
 function renderSourcesSection(settings, sourceFilters) {
   return `
-    <div class="field-group">
-      <label class="field-label" for="sourcePreset">Preset</label>
-      <select id="sourcePreset" class="field" name="sourcePreset">
-        <option value="">Choose a preset&hellip;</option>
-        ${PRESETS.map(p => `<option value="${p.id}">${p.label}</option>`).join('')}
-      </select>
-    </div>
     ${Object.values(SOURCES).map(source => renderSourceBlock(source, settings, sourceFilters)).join('')}
     <div class="field-group" role="radiogroup" aria-label="Playback order">
       <span class="field-label">Playback order</span>
@@ -381,21 +383,28 @@ export function createSettingsPanel(slideshow) {
       settings.dipColor = el.value;
       slideshow.setTransition(settings.transitionId, { dipColor: el.value });
     } else if (el.name === 'slideSec') {
-      const sec = Math.max(3, Math.min(120, Number(el.value) || 12));
-      settings.slideMs = sec * 1000;
+      const sec = Math.max(0.1, Math.min(120, Number(el.value) || 12));
+      settings.slideMs = Math.round(sec * 1000);
       slideshow.slideMs = settings.slideMs;
+      // Cap transition duration at half the slide interval — otherwise a
+      // slow crossfade can outlast a very short slide, so auto-advance
+      // silently stalls (waiting on `inFade`) until the current transition
+      // finally finishes. Below MIN_ANIMATED_SLIDE_MS (slideshow.js) this is
+      // moot since transitions switch off entirely, but the cap also
+      // matters just above that threshold, where transitions are still on
+      // but a leftover long transitionMs from a slower-slide session could
+      // still exceed the new, shorter interval.
+      const maxSafeFadeMs = Math.max(50, Math.round(settings.slideMs / 2));
+      if (settings.transitionMs > maxSafeFadeMs) {
+        settings.transitionMs = maxSafeFadeMs;
+        slideshow.fadeMs = maxSafeFadeMs;
+        refreshDisplaySection();
+      }
       slideshow.scheduleSlides();
     } else if (el.name === 'transitionMs') {
       const ms = Math.max(200, Math.min(6000, Number(el.value) || 1500));
       settings.transitionMs = ms;
       slideshow.fadeMs = ms;
-    } else if (el.name === 'sourcePreset') {
-      const preset = PRESETS.find(p => p.id === el.value);
-      if (preset) {
-        preset.apply(settings);
-        refreshSourcesSection();
-        rebuildPlaylist();
-      }
     } else if (el.name.startsWith('src-')) {
       const id = el.name.slice(4);
       settings.sources[id].enabled = el.checked;

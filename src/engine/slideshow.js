@@ -9,6 +9,15 @@ import { resolveTransition, pickRandomTransitionId } from './transitions/index.j
 const MIN_SCALE = 1.0;
 const MAX_SCALE = 6.0;
 
+// Below this slide interval, an animated transition or Ken Burns pan doesn't
+// have enough frames left to actually read as motion — at 60fps, 400ms is
+// ~24 frames; well under that (e.g. 100ms is ~6 frames) a crossfade reads as
+// a flicker and a "slow pan" isn't perceptible at all, since the slow pan
+// *is* the point of Ken Burns. Rather than run a broken-looking animation,
+// slides at or below this interval hard-cut instantly and skip Ken Burns
+// entirely for that slide.
+const MIN_ANIMATED_SLIDE_MS = 400;
+
 export class Slideshow {
   /**
    * @param {object} opts
@@ -102,7 +111,13 @@ export class Slideshow {
   }
 
   loadAndShow(img, instant) {
-    if (this.inFade && !instant) return;
+    // A slide interval at or below MIN_ANIMATED_SLIDE_MS can't show a
+    // transition or Ken Burns pan as anything but a flicker, so treat it as
+    // an instant cut regardless of the caller's own intent — this also
+    // means auto-advance below the threshold never sets `inFade`, so it
+    // can't stall waiting on an animation that was never going to run.
+    const forceInstant = instant || this.slideMs <= MIN_ANIMATED_SLIDE_MS;
+    if (this.inFade && !forceInstant) return;
 
     this.waiting.style.transition = 'none';
     this.waiting.style.opacity = '0';
@@ -116,14 +131,14 @@ export class Slideshow {
       this.applyXf(this.active);
       this.waiting.style.clipPath = '';
       this.inFade = false;
-      if (!this.paused && this.displayMode === 'kenburns') this.kb.start();
+      if (!this.paused && this.displayMode === 'kenburns' && this.slideMs > MIN_ANIMATED_SLIDE_MS) this.kb.start();
     };
 
     const display = () => {
       this.kb.stop();
       this.onMeta(img);
 
-      if (instant) {
+      if (forceInstant) {
         this.active.style.transition = 'none';
         this.waiting.style.transition = 'none';
         requestAnimationFrame(() => {

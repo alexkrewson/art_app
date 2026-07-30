@@ -5,7 +5,7 @@
 // filter here at all, nothing to gate. Doubles as a stand-in for
 // "sci-fi/fantasy" imagery: real space photography has strong aesthetic
 // overlap and there's no dedicated public API for that genre (see
-// wikimedia.js and presets.js for the other half of that).
+// wikimedia.js's curated-category checkboxes for the other half of that).
 import { shuffle } from './base.js';
 
 const API = 'https://images-api.nasa.gov/search';
