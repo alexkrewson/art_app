@@ -277,7 +277,15 @@ note above), so don't trust the checkboxes blindly.
 - [x] One specific preset built ahead of the rest of this phase: "Sci-Fi & Fantasy"
       (`src/sources/presets.js`) — a minimal one-off `{id, label, apply(settings)}`
       shape, not the general format/builder above. Covered by
-      `src/sources/presets.test.js`.
+      `src/sources/presets.test.js`. **2026-07-29: reworked after a live-testing
+      pass found two real problems** — see decisions log. Now browses two
+      curated Commons categories (`Category:Science fiction art`,
+      `Category:Fantasy art`) instead of a noisy free-text search, and
+      `wikimedia.js` filters out anything outside a Public
+      domain/CC0/CC-BY(-SA) license allowlist and shows attribution in the
+      metadata ribbon when a license requires it. Same fix applies to
+      Wikimedia used standalone (not just via this preset), since the license
+      mix issue isn't preset-specific.
 - [ ] Custom preset builder + save/load (localStorage)
 
 ## Phase 6 — Settings & offline/download support
@@ -409,6 +417,39 @@ note above), so don't trust the checkboxes blindly.
     Alex's own network/browser before concluding Met is actually broken. Smithsonian
     still 403s in the live pass too, but that's expected — the only key configured
     was a leftover fake `test-key-123` from earlier testing, not a real key.
+- 2026-07-29 (continued): Alex asked about redistribution/licensing for
+  Smithsonian/Europeana/Rijksmuseum (a public Play Store release), then asked
+  about the "fun" sources (Sci-Fi & Fantasy). Researched actual terms rather
+  than assume:
+  - Smithsonian + Rijksmuseum images are unconditionally CC0/public domain —
+    fine to bundle for every user. The real constraint is each API *key*:
+    api.data.gov defaults to 1,000 req/hour, so a personal key baked into a
+    distributed APK would be shared (and extractable) across every install;
+    Rijksmuseum's terms also require emailing website@rijksmuseum.nl at
+    launch and showing in-app attribution that the app uses their API.
+    Recommended pre-fetching a bundled batch (like the local starter set)
+    under a personal key rather than live-fetching per end user — not yet
+    built, since there's no key to test against yet.
+  - Europeana is more restrictive on both axes: individual objects carry
+    per-item rights (CC0 through fully rights-reserved, plus a "NoC-NC"
+    non-commercial-only tier for some public-private-partnership scans), and
+    Europeana's own API keys are split into "Personal" (explicitly
+    non-production) vs "Project" (production-scale, requires an application
+    reviewed by their team) — a Personal key is not authorized for a
+    distributed app at all, regardless of the object's own rights.
+  - Following up on "what about scifi/fantasy": live-tested the existing
+    preset's free-text Commons query and found it already had the same class
+    of problem in miniature — Commons hosts a real mix of licenses (not just
+    PD, unlike the museum sources), and a plain-text search for "science
+    fiction OR fantasy art" surfaced author headshots and a library-shelf
+    photo alongside genuine pulp-art hits, since Commons relevance search has
+    no genre concept. Fixed both: `wikimedia.js` now filters to Public
+    domain/CC0/CC-BY(-SA) and shows attribution in the ribbon when required;
+    the preset now browses `Category:Science fiction art` +
+    `Category:Fantasy art` (confirmed live: 176 and 197 files respectively)
+    instead of searching, via a new `|`-separated multi-category mode. All 72
+    tests pass (69 → 72, three new cases for the license filter/attribution/
+    multi-category behavior).
 - 2026-07-26: Added automated Thorough-tier test coverage (Vitest,
   `/home/alex/apps/shared/testing-guidelines.md`) for everything with mockable
   logic: all 8 image sources (mocked `fetch`, one file each), the playlist manager
