@@ -130,12 +130,17 @@ function renderSourceBlock(source, settings, sourceFilters) {
   if (unsupported) hint = 'Not supported in this browser (needs Chrome/Edge).';
   else if (gatedByKey) hint = `${hint} — enter an API key below to enable.`;
 
+  // Subfields (including the API-key input itself) must stay reachable
+  // while gatedByKey, not just once enabled — otherwise there's no way to
+  // ever enter the key that would unlock the checkbox in the first place.
+  const showSubfields = cfg.enabled || gatedByKey;
+
   return `
     <label class="radio-row">
       <input type="checkbox" name="src-${source.id}" ${cfg.enabled ? 'checked' : ''} ${checkboxDisabled ? 'disabled' : ''}>
       <span>${source.label} <span class="field-hint">— ${hint}</span></span>
     </label>
-    <div class="source-subfields" ${cfg.enabled ? '' : 'hidden'}>
+    <div class="source-subfields" ${showSubfields ? '' : 'hidden'}>
       ${filters.map(f => renderFilterField(source.id, f, settings)).join('')}
       ${renderLocalFilesExtra(source)}
     </div>

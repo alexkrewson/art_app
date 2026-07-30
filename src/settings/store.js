@@ -27,7 +27,15 @@ export const DEFAULTS = {
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? { ...DEFAULTS, ...JSON.parse(raw) } : { ...DEFAULTS };
+    if (!raw) return { ...DEFAULTS };
+    const stored = JSON.parse(raw);
+    // `sources` needs its own merge, not just the top-level spread below: a
+    // plain `{...DEFAULTS, ...stored}` lets a stored `sources` object
+    // wholesale replace DEFAULTS.sources, silently dropping any source added
+    // to DEFAULTS after the settings were last saved — confirmed live, an
+    // existing localStorage predating Phase 4 hid all six new sources from
+    // the Settings panel until this was fixed.
+    return { ...DEFAULTS, ...stored, sources: { ...DEFAULTS.sources, ...stored.sources } };
   } catch {
     return { ...DEFAULTS };
   }

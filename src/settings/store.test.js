@@ -20,6 +20,21 @@ describe('settings store', () => {
     expect(settings.transitionMs).toBe(DEFAULTS.transitionMs); // untouched default preserved
   });
 
+  it('preserves stored per-source settings while still gaining sources added to DEFAULTS since', () => {
+    // Simulates a user whose localStorage predates a source added later
+    // (e.g. Phase 4): only `local` and `met` exist in their stored settings.
+    localStorage.setItem(KEY, JSON.stringify({
+      sources: {
+        local: { enabled: true, filters: {} },
+        met: { enabled: true, filters: { keyword: 'sunflowers' } },
+      },
+    }));
+    const settings = loadSettings();
+    expect(settings.sources.met).toEqual({ enabled: true, filters: { keyword: 'sunflowers' } }); // their choice is kept
+    expect(settings.sources.aic).toEqual(DEFAULTS.sources.aic); // a source added later is still present
+    expect(Object.keys(settings.sources)).toEqual(Object.keys(DEFAULTS.sources)); // nothing missing
+  });
+
   it('falls back to defaults when the stored value is corrupted JSON', () => {
     localStorage.setItem(KEY, '{not valid json');
     expect(loadSettings()).toEqual(DEFAULTS);
