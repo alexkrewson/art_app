@@ -95,6 +95,17 @@ note above), so don't trust the checkboxes blindly.
 - [x] `src/engine/kenburns.js` — RAF-based pan/zoom loop (ported from kiosk.html)
 - [x] `src/engine/touch.js` — pinch-zoom, pan, swipe next/prev, tap to pause (ported);
       also added a plain `click` handler for mouse/desktop-browser testing
+- [x] **2026-07-30: keyboard shortcuts** (`src/main.js`) — Space pauses/resumes,
+      Left/Right arrows step prev/next (mirrors the swipe gestures), S jumps
+      straight to Settings (pausing first if needed). Ignored while a settings
+      field has focus, so typing behaves normally there. Also: the gear icon
+      now appears at the cursor's last known position instead of a fixed
+      corner, and the Settings panel itself opens centered on that position
+      instead of always screen-centered (both clamped on-screen) — Alex asked
+      for this after finding the fixed gear required too much mouse travel.
+      Verified live: typed "star wars" into a settings field and confirmed
+      none of the shortcuts fired; simulated mousemove + pause and confirmed
+      both the icon and panel repositioned to center on the simulated point.
 - [x] `src/ui/metadataRibbon.js` — title/artist/date footer ribbon
 - [x] Wire everything together in `src/main.js` using the existing `images.json` as a
       static data source
@@ -221,6 +232,14 @@ note above), so don't trust the checkboxes blindly.
       logged rather than crashing the slideshow — this runs unattended, one flaky API
       shouldn't take the display down; falls back to the local starter set if every
       enabled source returns nothing. `orderPlaylist()` handles shuffle/sequential.
+      **2026-07-30:** bumped the per-source fetch count from each source's own
+      default of 24 to 60 (`FETCH_COUNT` in manager.js) — Alex wanted more
+      variety per session. Verified live: AIC/NASA/Wikimedia (via its category
+      checkboxes) all reach the full 60; Met came back at 48/60 in one live
+      test due to some individual object-detail fetches hitting transient
+      anti-bot blocking on this sandbox's IP (same issue noted earlier this
+      session, not a regression) — the existing per-candidate resilience just
+      yields somewhat fewer than the target rather than failing outright.
 - [x] Met Museum source (`src/sources/met.js`) is now a **live** API source, not the
       static snapshot — verified directly against the real API (CORS confirmed open:
       `Access-Control-Allow-Origin: *`; confirmed `/search` 502s without a `q` param,
