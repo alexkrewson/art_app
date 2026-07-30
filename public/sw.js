@@ -11,7 +11,7 @@
 //    can never read back out. A service worker can still hand that same
 //    opaque Response to the browser's own image loader, though — which is
 //    exactly what the cross-origin branch below does.
-const SHELL_CACHE = 'slowframe-shell-v1';
+const SHELL_CACHE = 'slowframe-shell-v2';
 const IMAGE_CACHE = 'slowframe-images'; // must match CACHE_NAME in src/cache/imageCache.js
 
 // Relative to this file's scope (the site root), so this works both at `/`
@@ -74,9 +74,36 @@ self.addEventListener('fetch', event => {
   // Workbox's default behavior for this exact situation).
   const matchOptions = { ignoreVary: true };
 
+  // index.html (and the navigation request that loads it) is the one thing
+  // here that ISN'T immutable — a redeploy changes its content (new hashed
+  // asset filenames) without changing its URL. Cache-first on it means a
+  // browser that already installed this service worker once would keep
+  // serving that first-ever snapshot forever: sw.js's own bytes don't
+  // change on a normal app deploy, so the browser never even detects a new
+  // service worker version to install, and the shell cache never
+  // refreshes. Confirmed live: a real deployed update was invisible on a
+  // returning visit until this was fixed. Network-first (falling back to
+  // cache only when offline) for the shell HTML; the hashed JS/CSS/image
+  // assets it references stay cache-first below, since a new deploy always
+  // gives those a new filename rather than reusing one.
+  const isShellDocument = event.request.mode === 'navigate' || url.pathname.endsWith('/index.html');
+  if (url.origin === self.location.origin && isShellDocument) {
+    event.respondWith(
+      fetch(event.request).then(res => {
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(SHELL_CACHE).then(cache => cache.put(event.request, copy));
+        }
+        return res;
+      }).catch(() => caches.match(event.request, matchOptions))
+    );
+    return;
+  }
+
   if (url.origin === self.location.origin) {
     // Cache-first for same-origin build output (hashed Vite assets, the
-    // built index.html, the bundled starter-set manifest/images).
+    // bundled starter-set manifest/images) — safe because these filenames
+    // are content-hashed and immutable; a new deploy never reuses one.
     event.respondWith(
       caches.match(event.request, matchOptions).then(cached => {
         if (cached) return cached;
