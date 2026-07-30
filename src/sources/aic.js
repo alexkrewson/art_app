@@ -19,7 +19,13 @@ function toRecord(obj) {
     artist: obj.artist_display || '',
     date: obj.date_display || '',
     department: obj.department_title || '',
-    image: `${IIIF}/${obj.image_id}/full/843,/0/default.jpg`,
+    // `!843,843` (bounded fit, upscale disallowed) rather than a bare `843,`
+    // (fixed width) — Cantaloupe (AIC's IIIF server) 403s a fixed width that
+    // exceeds an image's native size ("Requests for scales in excess of 100%
+    // are not allowed"), which a bare width does for any artwork narrower
+    // than 843px. Confirmed live: the bounded-fit form returns 200 for an
+    // image whose native width is 398px, where the bare-width form 403'd.
+    image: `${IIIF}/${obj.image_id}/full/!843,843/0/default.jpg`,
     source: 'aic',
   };
 }

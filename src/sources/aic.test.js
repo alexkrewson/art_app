@@ -22,7 +22,7 @@ describe('aicSource', () => {
     const titles = results.map(r => r.title).sort();
     expect(titles).toEqual(['A', 'Too early', 'Too late']);
     expect(results.every(r => r.source === 'aic')).toBe(true);
-    expect(results.find(r => r.title === 'A').image).toBe('https://www.artic.edu/iiif/2/img-a/full/843,/0/default.jpg');
+    expect(results.find(r => r.title === 'A').image).toBe('https://www.artic.edu/iiif/2/img-a/full/!843,843/0/default.jpg');
   });
 
   it('applies a date range filter client-side', async () => {
