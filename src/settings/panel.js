@@ -445,8 +445,30 @@ export function createSettingsPanel(slideshow) {
   // toggle pause/resume) or the backdrop click-to-close handler below.
   root.addEventListener('click', e => e.stopPropagation());
 
+  const inner = root.querySelector('.settings-panel-inner');
+
+  // Opens the panel positioned near wherever the cursor currently is,
+  // instead of always centered — Alex asked for this after finding the
+  // fixed gear icon (see main.js) required too much mouse travel to reach.
+  // `cursorPos` is optional so the panel still works (centered, via the
+  // existing flex layout) if ever opened without a known mouse position.
+  function open(cursorPos) {
+    root.hidden = false;
+    if (!cursorPos) {
+      inner.style.position = '';
+      inner.style.left = '';
+      inner.style.top = '';
+      return;
+    }
+    inner.style.position = 'absolute';
+    const rect = inner.getBoundingClientRect();
+    const margin = 12;
+    const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+    const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+    inner.style.left = `${Math.max(margin, Math.min(maxLeft, cursorPos.x - rect.width / 2))}px`;
+    inner.style.top = `${Math.max(margin, Math.min(maxTop, cursorPos.y - rect.height / 2))}px`;
+  }
   function close() { root.hidden = true; }
-  function open() { root.hidden = false; }
 
   root.querySelector('.settings-close').addEventListener('click', close);
   document.addEventListener('keydown', e => {
@@ -456,7 +478,7 @@ export function createSettingsPanel(slideshow) {
   return {
     open,
     close,
-    toggle() { root.hidden ? open() : close(); },
+    toggle(cursorPos) { root.hidden ? open(cursorPos) : close(); },
     isOpen() { return !root.hidden; },
   };
 }

@@ -21,6 +21,19 @@ async function main() {
   const ribbon = createMetadataRibbon(titleEl, metaEl);
   const settings = loadSettings();
 
+  // Tracked so the gear icon (below) and the settings panel (panel.js) can
+  // both appear near wherever the mouse actually is instead of a fixed
+  // corner/center — Alex asked for this after finding the fixed gear icon
+  // required too much mouse travel to reach. Falls back to the stage
+  // center if the mouse hasn't moved yet (e.g. keyboard-only/touch use).
+  let lastMouse = null;
+  document.addEventListener('mousemove', e => { lastMouse = { x: e.clientX, y: e.clientY }; });
+  function cursorPos() {
+    if (lastMouse) return lastMouse;
+    const r = stageEl.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
   const slideshow = new Slideshow({
     stageEl, slideA, slideB, overlayEl, pauseIcon,
     displayMode: settings.displayMode,
@@ -31,16 +44,60 @@ async function main() {
     onMeta: img => ribbon.update(img),
     onPauseChange: paused => {
       settingsGear.hidden = !paused;
-      if (!paused) settingsPanel.close();
+      if (paused) positionGearAtCursor();
+      else settingsPanel.close();
     },
   });
+
+  // Places the gear icon at the cursor's last known position (clamped to
+  // stay fully inside the stage), overriding its CSS default bottom-left
+  // corner. Relative to the stage, since #settings-gear is `position:
+  // absolute` inside `#stage` (`position: relative`), not the viewport.
+  function positionGearAtCursor() {
+    const { x, y } = cursorPos();
+    const stageRect = stageEl.getBoundingClientRect();
+    const size = 44; // .icon-btn's fixed touch-target size
+    const margin = 8;
+    const maxLeft = Math.max(margin, stageRect.width - size - margin);
+    const maxTop = Math.max(margin, stageRect.height - size - margin);
+    settingsGear.style.left = `${Math.max(margin, Math.min(maxLeft, x - stageRect.left - size / 2))}px`;
+    settingsGear.style.top = `${Math.max(margin, Math.min(maxTop, y - stageRect.top - size / 2))}px`;
+    settingsGear.style.bottom = 'auto';
+  }
 
   const settingsPanel = createSettingsPanel(slideshow);
   attachTouch(stageEl, slideshow, settingsPanel);
 
   settingsGear.addEventListener('click', e => {
     e.stopPropagation();
-    settingsPanel.toggle();
+    settingsPanel.toggle(cursorPos());
+  });
+
+  // Space: pause/resume. Left/Right: previous/next (mirrors the swipe
+  // gestures in touch.js). S: jump straight to Settings, pausing first if
+  // needed — added so reaching Settings never requires any mouse travel at
+  // all. Ignored while typing into a settings field (e.g. a source's
+  // keyword search) so these keys behave like normal text entry there.
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+    if (e.key === ' ') {
+      e.preventDefault();
+      slideshow.togglePause();
+    } else if (e.key === 'ArrowRight') {
+      slideshow.goNext();
+    } else if (e.key === 'ArrowLeft') {
+      slideshow.goPrev();
+    } else if (e.key.toLowerCase() === 's') {
+      if (settingsPanel.isOpen()) {
+        settingsPanel.close();
+      } else {
+        if (!slideshow.paused) slideshow.togglePause();
+        settingsPanel.open(cursorPos());
+      }
+    }
   });
 
   const playlist = await buildPlaylist(settings.sources, { cacheEnabled: settings.cacheEnabled });
