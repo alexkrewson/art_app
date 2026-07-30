@@ -10,6 +10,17 @@ function isCacheable(id) {
   return id !== 'local' && id !== 'localFiles';
 }
 
+// Every live source defaults its own `count` param to 24 if the caller
+// doesn't specify one; buildPlaylist below always specifies one, so this is
+// the actual number that matters in practice. Alex asked for a bigger image
+// pool ("it's working well, I just want more") — 60 is a meaningful ~2.5x
+// increase while staying well inside "occasional slideshow rebuild" load,
+// not "bulk download" load (Met's own fetchBatch over-samples candidate
+// objectIDs at 3x count before filtering, so this is up to ~180 object-
+// detail fetches at its existing concurrency-5 cap, still a one-off per
+// playlist build, not a sustained rate).
+const FETCH_COUNT = 60;
+
 // Wraps a network source's fetchBatch with the offline image cache: when
 // there's no connectivity, serve whatever's already cached for this source
 // instead of attempting (and failing) a live call; when online, fetch live
@@ -20,14 +31,14 @@ function isCacheable(id) {
 async function cachingFetchBatch(id, filters, cacheEnabled) {
   const source = SOURCES[id];
   if (!isCacheable(id) || !cacheEnabled) {
-    return source.fetchBatch({ filters });
+    return source.fetchBatch({ filters, count: FETCH_COUNT });
   }
 
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return getCachedRecords(id);
   }
 
-  const records = await source.fetchBatch({ filters });
+  const records = await source.fetchBatch({ filters, count: FETCH_COUNT });
   records.forEach(r => cacheRecord(r)); // not awaited — caching happens in the background
   return records;
 }
