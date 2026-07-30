@@ -177,6 +177,23 @@ note above), so don't trust the checkboxes blindly.
       NOT yet a per-transition enable/disable checklist like the spec describes
       ("cycle through all enabled ones") — Random currently means "all of them or none",
       not a customizable subset. Flagging as a known gap, not silently narrowing scope.
+      **2026-07-29: found and fixed a real auto-advance stall.** Alex set slide
+      duration to 1s and the slideshow never advanced again (Ken Burns kept
+      panning on one image forever). Root cause: transition duration (up to
+      6000ms) was never bounded relative to slide duration — a transition
+      that outlasts the slide interval it's meant to run within causes the
+      *next* auto-advance tick to get silently dropped by `loadAndShow`'s
+      `inFade` guard, so advancing appears to stall until the pending
+      transition happens to finish. Fixed by capping transitionMs at half the
+      slide interval whenever slide duration changes, and — per Alex's own
+      framing that a transition/pan with too few frames left just reads as a
+      flicker, not motion — added a `MIN_ANIMATED_SLIDE_MS` (400ms, ~24
+      frames at 60fps) floor in `slideshow.js`: at or below it, Ken Burns and
+      transitions are skipped entirely for an instant cut instead. Also
+      lowered the slide-duration field's floor from 3s to 0.1s (Alex wanted
+      to be able to try an intentionally-extreme fast mode). Verified live at
+      0.1s: advances continuously with no stall and no Ken Burns motion;
+      confirmed default-range durations still pan/transition unchanged.
 - [x] Atmospheric transitions: implemented 3 of 7 as CSS-only approximations (no
       canvas/WebGL needed) — **Light leak** (radial gradient bloom, screen-blended),
       **Ink wash** (circular clip-path reveal from a random point), **Curtain**
@@ -274,31 +291,18 @@ note above), so don't trust the checkboxes blindly.
       format yet, see below
 - [ ] Ship curated presets: Ancient East Asian, Impressionism, Space & Nature,
       Classical Western, Modern & Contemporary — not started
-- [x] One specific preset built ahead of the rest of this phase: "Sci-Fi & Fantasy"
-      (`src/sources/presets.js`) — a minimal one-off `{id, label, apply(settings)}`
-      shape, not the general format/builder above. Covered by
-      `src/sources/presets.test.js`. **2026-07-29: reworked after a live-testing
-      pass found two real problems** — see decisions log. Now browses two
-      curated Commons categories (`Category:Science fiction art`,
-      `Category:Fantasy art`) instead of a noisy free-text search, and
-      `wikimedia.js` filters out anything outside a Public
-      domain/CC0/CC-BY(-SA) license allowlist and shows attribution in the
-      metadata ribbon when a license requires it. Same fix applies to
-      Wikimedia used standalone (not just via this preset), since the license
-      mix issue isn't preset-specific. **Same day, follow-up:** Alex pointed
-      out the Preset dropdown was a confusing way to reach this (it's a
-      one-shot trigger that resets to blank right after applying, no
-      persistent indication of what's on) and asked for the two categories
-      to be directly toggleable in the Wikimedia Commons section instead.
-      Added a `checkboxGroup` FilterSpec type (`src/settings/panel.js`) —
-      one checkbox per option, stored as an array — and exposed "Sci-Fi art"
-      /"Fantasy art" as real checkboxes there; checked boxes take priority
-      over the free-text field, which still supports manually typed
-      Category: browsing as a fallback. The preset button still exists as a
-      shortcut (ticks both + enables NASA) but the checkboxes are now the
-      primary, always-visible way to use this. Verified live: check/uncheck
-      each box, confirmed the stored filter array and the real merged
-      playlist both update correctly.
+- [x] ~~One specific preset built ahead of the rest of this phase: "Sci-Fi &
+      Fantasy"~~ **2026-07-29: removed.** Went through two revisions same day
+      (noisy free-text search → curated-category free text → a real
+      `checkboxGroup` FilterSpec with "Sci-Fi art"/"Fantasy art" checkboxes
+      directly in the Wikimedia Commons section), and once the checkboxes
+      existed, Alex said the Preset dropdown itself was now redundant and
+      asked for it gone entirely. Deleted `src/sources/presets.js` +
+      `src/sources/presets.test.js` and the dropdown/handler in
+      `src/settings/panel.js` — no preset mechanism exists anymore, just the
+      Wikimedia category checkboxes doing the same job directly. If Phase 5's
+      general preset format ever gets built, it's starting from zero, not
+      extending this.
 - [ ] Custom preset builder + save/load (localStorage)
 
 ## Phase 6 — Settings & offline/download support
