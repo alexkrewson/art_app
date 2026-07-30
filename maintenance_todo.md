@@ -285,7 +285,20 @@ note above), so don't trust the checkboxes blindly.
       domain/CC0/CC-BY(-SA) license allowlist and shows attribution in the
       metadata ribbon when a license requires it. Same fix applies to
       Wikimedia used standalone (not just via this preset), since the license
-      mix issue isn't preset-specific.
+      mix issue isn't preset-specific. **Same day, follow-up:** Alex pointed
+      out the Preset dropdown was a confusing way to reach this (it's a
+      one-shot trigger that resets to blank right after applying, no
+      persistent indication of what's on) and asked for the two categories
+      to be directly toggleable in the Wikimedia Commons section instead.
+      Added a `checkboxGroup` FilterSpec type (`src/settings/panel.js`) —
+      one checkbox per option, stored as an array — and exposed "Sci-Fi art"
+      /"Fantasy art" as real checkboxes there; checked boxes take priority
+      over the free-text field, which still supports manually typed
+      Category: browsing as a fallback. The preset button still exists as a
+      shortcut (ticks both + enables NASA) but the checkboxes are now the
+      primary, always-visible way to use this. Verified live: check/uncheck
+      each box, confirmed the stored filter array and the real merged
+      playlist both update correctly.
 - [ ] Custom preset builder + save/load (localStorage)
 
 ## Phase 6 — Settings & offline/download support
