@@ -63,6 +63,19 @@ export const wikimediaSource = {
         options: [
           { value: 'Science fiction art', label: 'Sci-Fi art' },
           { value: 'Fantasy art', label: 'Fantasy art' },
+          // Commons' "Featured pictures" and "Quality images" are its own
+          // peer-reviewed quality tiers, which is what makes these worth
+          // browsing as categories rather than searching — they're the
+          // closest legitimate equivalent to what a photography subreddit
+          // surfaces, minus the licensing problem. One checkbox pairs both
+          // tiers via the `|` split below. File counts verified live against
+          // the API while adding these; categories that sound like they
+          // should exist but don't (seascapes, skies, aurorae, deserts) were
+          // dropped rather than shipped as silently-empty checkboxes.
+          { value: 'Featured pictures of landscapes|Quality images of landscapes', label: 'Landscapes' },
+          { value: 'Featured pictures of mountains|Quality images of mountains', label: 'Mountains' },
+          { value: 'Featured pictures of forests|Quality images of forests', label: 'Forests' },
+          { value: 'Quality images of waterfalls', label: 'Waterfalls' },
         ],
       },
       {
@@ -99,7 +112,13 @@ export const wikimediaSource = {
     // Commons' relevance search has no genre concept — categories fix that.
     let categoryTitles = null;
     if (checkedCategories.length > 0) {
-      categoryTitles = checkedCategories.map(c => `Category:${c}`);
+      // A single checkbox may name several categories, `|`-separated — the
+      // quality-tier options above pair Commons' "Featured pictures of X"
+      // with "Quality images of X" so one tick means "the good ones", rather
+      // than making the user reason about Commons' internal review tiers.
+      categoryTitles = checkedCategories
+        .flatMap(c => c.split('|').map(s => s.trim()).filter(Boolean))
+        .map(c => `Category:${c}`);
     } else {
       const segments = query.split('|').map(s => s.trim()).filter(Boolean);
       if (segments.length > 0 && segments.every(s => s.toLowerCase().startsWith('category:'))) {

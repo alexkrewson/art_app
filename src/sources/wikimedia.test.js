@@ -98,6 +98,24 @@ describe('wikimediaSource', () => {
     expect(urls.some(u => u.includes('sunflowers'))).toBe(false);
   });
 
+  it('expands a single checkbox naming several |-separated categories', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => pages([]) }));
+    vi.stubGlobal('fetch', fetchMock);
+    // How the quality-tier options are defined: one tick, both Commons
+    // review tiers, so the user never has to know the tiers exist.
+    await wikimediaSource.fetchBatch({
+      filters: { categories: ['Featured pictures of landscapes|Quality images of landscapes'] },
+      count: 24,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const titles = fetchMock.mock.calls
+      .map(c => new URL(c[0]).searchParams.get('gcmtitle'));
+    expect(titles).toEqual([
+      'Category:Featured pictures of landscapes',
+      'Category:Quality images of landscapes',
+    ]);
+  });
+
   it('uses the search generator for a plain-text query', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => pages([]) }));
     vi.stubGlobal('fetch', fetchMock);

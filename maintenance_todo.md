@@ -21,7 +21,7 @@ Conditional sections that apply here: "Third-party API integrations without AI
 cost" (all the museum/archive sources — exercise live by hand occasionally, never
 in a tight automated loop) and "Offline / local-only mode" (Phase 6 caching is
 exactly this — mocked IndexedDB/Cache API is the Thorough tier's foundation for it).
-`npm test` runs the automated Thorough-tier suite (Vitest): 68 tests across sources
+`npm test` runs the automated Thorough-tier suite (Vitest): 99 tests across sources
 (mocked `fetch`, one file per API adapter), the playlist manager (mocked
 registry/cache, covers merge/fallback/offline/failure paths), the settings store,
 and the offline cache (mocked Cache API + real `fake-indexeddb`). **Not yet
@@ -296,6 +296,49 @@ note above), so don't trust the checkboxes blindly.
       `npm test`. This is the Thorough-tier automated substitute for exercising each
       adapter's *logic*; it doesn't replace occasionally exercising the real APIs by
       hand per the third-party-API section of the shared testing guidelines.
+- [x] **2026-08-08: three photography sources added** (Alex asked about using
+      subreddits like r/EarthPorn; that's not redistributable — see the decisions
+      log — so this is the legal route to the same look):
+      - **Openverse** (`openverse.js`) — keyless, CORS-open aggregator over
+        Flickr (~536M), iNaturalist (~266M), Wikimedia (~89M), Europeana and
+        the museums, with a machine-readable licence per record. Gated to
+        `license_type=commercial,modification`, which leaves CC0 / PDM /
+        CC BY / CC BY-SA. **The one live source that's safe in a distributed
+        APK**: its limits are per-IP (20/min, 200/day), not per-key, so it
+        has none of the shared-baked-in-key problem. Anonymous callers are
+        capped at `page_size` 20 and 240 results deep — both measured, both
+        encoded in the adapter, which picks a random page inside that window
+        so the pool over time is 240/subject rather than the same top 20.
+      - **NPS** (`nps.js`) — US National Park Service gallery, ~205k assets.
+        Uses the same api.data.gov key as Smithsonian. Every asset carries a
+        blanket `copyright` warning (the gallery mixes staff and donated
+        work), but also a machine-readable `constraintsInfo`; the adapter
+        requires `constraint: "Public domain"` AND `grantingRights: "Full"`.
+        Serves `/proxy/hires` (~220KB) rather than the ~2MB original.
+      - **Flickr** (`flickr.js`) — built, registered, and `[!]` **unusable for
+        now**: Flickr disabled API-key creation for free accounts partway
+        through this work ("API key creation is available to all Flickr PRO
+        subscribers"). Left in place rather than deleted — it's complete and
+        tested, and needs only a key if Alex ever takes a PRO subscription.
+        Licence allowlist is IDs 4/5/7/8/9/10, excluding All Rights Reserved,
+        every NonCommercial licence, and every NoDerivatives licence (Ken
+        Burns crops, so ND doesn't apply cleanly). No practical loss meanwhile:
+        Openverse indexes Flickr's CC pool without a key.
+      - **Wikimedia Commons** gained Landscapes / Mountains / Forests /
+        Waterfalls checkboxes, browsing Commons' own peer-reviewed "Featured
+        pictures of X" + "Quality images of X" tiers. One checkbox may now name
+        several `|`-separated categories so a single tick covers both tiers.
+        Category names and file counts were verified live; four that sounded
+        plausible (seascapes, skies, aurorae, deserts) don't exist on Commons
+        and were dropped rather than shipped as silently-empty checkboxes.
+- [x] **2026-08-08: verified live end-to-end**, not just unit-tested — a Node
+      script drove `fetchBatch()` against the real APIs for Openverse (subjects
+      *and* free-text), NPS (via api.data.gov's public `DEMO_KEY`) and the new
+      Wikimedia checkbox. All four returned their full requested count with no
+      missing image/title, and the returned image URLs were then actually
+      fetched: 200/206 `image/jpeg` across the board, including with a foreign
+      `Referer` (so no repeat of the AIC hotlink-protection bug). 27 new unit
+      tests, suite now 99 passing.
 - [x] **Checkpoint: pause for manual testing — done 2026-07-29** via Playwright MCP
       against the dev server: enabled local + Met + AIC + Wikimedia + NASA
       simultaneously through the actual Settings UI (not just localStorage) and
@@ -504,6 +547,45 @@ note above), so don't trust the checkboxes blindly.
     instead of searching, via a new `|`-separated multi-category mode. All 72
     tests pass (69 → 72, three new cases for the license filter/attribution/
     multi-category behavior).
+- 2026-08-08: Alex asked whether subreddits (r/EarthPorn was the example) could
+  be an image source for the Android app. Answer was no, on three independent
+  grounds, and the first is the one that actually decides it:
+  - **Copyright.** Reddit doesn't own the photos; the posters do. Reddit's User
+    Agreement licenses content to *Reddit*, and that doesn't flow to a
+    third-party app. Every other source in this project can answer "what licence
+    is this image under?" per-image — that's the whole architecture, from Met's
+    public-domain filter to wikimedia.js' allowlist. Reddit can't answer it at
+    all. A full-screen slideshow with no attribution, no link back and no
+    subreddit context is also about the weakest fair-use posture available.
+  - **API terms.** Free tier is non-commercial only at 100 QPM per OAuth client
+    ID; commercial needs manual approval at $0.24/1K calls, with the real
+    commercial tier starting around $12k/month. A single client ID baked into a
+    distributed APK is shared and extractable — the same objection already
+    logged against shipping a personal api.data.gov key. Reddit also began
+    403ing all unauthenticated requests in late May 2026, so the old `.json`
+    trick is dead. And Phase 6's offline cache would be storing content Reddit's
+    terms require us to drop on deletion.
+  - **Play Store.** Reddit content is UGC, which pulls in the moderation/
+    reporting/blocking requirements; even well-modded SFW subs surface shock
+    content before mods catch it.
+  Built the legal equivalent instead (see the Phase 4 entry above). Also ruled
+  out **Unsplash and Pexels** despite their permissive *image* licences: both
+  API guidelines specifically prohibit replicating their core experience, and
+  Unsplash names wallpaper apps as the example — "a wallpaper app returns
+  Unsplash images for downloading. Without the integration, the app has no
+  content and no value to users." SlowFrame is exactly that shape. Don't
+  revisit these two without re-reading their guidelines first.
+- 2026-08-08: two things worth knowing before tuning the new sources:
+  - The Wikimedia landscape categories are overwhelmingly CC BY-SA, so the
+    metadata ribbon will show a credit line on nearly every slide from them —
+    correct behaviour, not a bug, but it looks different from the museum
+    sources where most images are public domain and the ribbon stays clean.
+  - Openverse **free-text** search has the same weakness the Commons free-text
+    search turned out to have on 2026-07-29: querying "glacier" returned NPS
+    documentary snapshots (a plant nursery, a ranger portrait) alongside
+    scenery, because relevance search has no concept of "is this a landscape".
+    The curated subject checkboxes are the good path and are what the source
+    defaults to; free text is the escape hatch, not the headline feature.
 - 2026-07-26: Added automated Thorough-tier test coverage (Vitest,
   `/home/alex/apps/shared/testing-guidelines.md`) for everything with mockable
   logic: all 8 image sources (mocked `fetch`, one file each), the playlist manager
