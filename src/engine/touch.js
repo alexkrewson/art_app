@@ -2,6 +2,21 @@
 // on a Slideshow instance via its transform API (xf/clampXf/applyXf) plus
 // its playback methods (goNext/goPrev/togglePause).
 
+// #settings-gear is a child of #stage, so taps on it bubble into the handlers
+// below — and those call preventDefault() unconditionally, which suppresses
+// the synthetic `click` the gear's own listener in main.js depends on. The
+// gear was therefore completely unreachable by touch: the tap fell through to
+// the stage's own tap handling and just un-paused, hiding the gear again.
+//
+// It kept working under a mouse the whole time, because a mouse click fires no
+// touch events at all — so every desktop and Playwright pass missed it. Found
+// 2026-08-08 by Alex on a real phone, on the first APK ever installed.
+// (The settings panel itself is appended to document.body, not #stage, so its
+// own taps never reach here and it needs no exemption.)
+function isInteractiveTarget(e) {
+  return e.target instanceof Element && !!e.target.closest('#settings-gear');
+}
+
 export function attachTouch(stageEl, slideshow, settingsPanel) {
   let tStartX = 0, tStartY = 0, tStartMs = 0;
   let tPrevX = 0, tPrevY = 0;
@@ -17,6 +32,7 @@ export function attachTouch(stageEl, slideshow, settingsPanel) {
   }
 
   stageEl.addEventListener('touchstart', e => {
+    if (isInteractiveTarget(e)) return;
     e.preventDefault();
     if (e.touches.length === 1) {
       const t = e.touches[0];
@@ -40,6 +56,7 @@ export function attachTouch(stageEl, slideshow, settingsPanel) {
   }, { passive: false });
 
   stageEl.addEventListener('touchmove', e => {
+    if (isInteractiveTarget(e)) return;
     e.preventDefault();
     const c = stageCenter();
 
@@ -79,6 +96,7 @@ export function attachTouch(stageEl, slideshow, settingsPanel) {
   }, { passive: false });
 
   stageEl.addEventListener('touchend', e => {
+    if (isInteractiveTarget(e)) return;
     e.preventDefault();
     if (e.touches.length > 0) return; // not all fingers lifted yet
 

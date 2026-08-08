@@ -427,8 +427,44 @@ note above), so don't trust the checkboxes blindly.
       the bundled local starter images). `BUILD SUCCESSFUL`. Not yet installed on a
       device/emulator to confirm it actually runs — that's the remaining gap, not the
       Gradle build itself.
-- [ ] `[!]` Still needs a device or emulator to confirm the installed app actually
-      launches/runs correctly — the build succeeding is necessary but not sufficient
+- [x] **2026-08-08: first real device install — and it immediately found a bug
+      no desktop pass could.** Built the APK on Windows (needed a new
+      `android/local.properties`; SDK at `%LOCALAPPDATA%\Android\Sdk`), and Alex
+      installed it on his phone. The app ran, tap-to-pause worked, but **the
+      settings gear was completely unreachable**: tapping it just resumed
+      playback. Root cause: `#settings-gear` is a child of `#stage`, and
+      `touch.js`'s `touchstart`/`touchend` handlers called `e.preventDefault()`
+      unconditionally on everything that bubbled to them. `preventDefault()` on
+      `touchend` suppresses the synthetic `click`, so the gear's own listener in
+      `main.js` never fired, and the stage's tap handling then ran
+      `togglePause()` — hiding the gear again. It worked under a mouse the entire
+      time because a mouse click fires no touch events at all, which is why every
+      desktop and Playwright pass missed it. Fixed by exempting
+      `#settings-gear` from the three touch handlers. Second, smaller bug in the
+      same report: the gear rendered dead centre over the artwork, because
+      `lastMouse` only ever updated on `mousemove` and a touch device never fires
+      one — now also tracked from `touchstart`, so the gear appears where you
+      tapped. `src/engine/touch.test.js` is new (7 tests, the first engine tests
+      in the project): verified they genuinely catch it by reverting the fix and
+      confirming 3 fail. Suite 99 → 106.
+      **Lesson worth keeping: the emulator/desktop cannot catch this whole class
+      of bug.** Anything involving `preventDefault` on touch, synthetic clicks,
+      or the absence of a cursor only shows up on real hardware.
+- [x] **2026-08-08: the Gradle auto-upload hook does not work** — and fails
+      silently, which is worse than not existing. `afterEvaluate` iterates
+      `assembleDebug`'s `t.outputs.files` looking for a `.apk`, but under this AGP
+      version `assembleDebug` is a lifecycle task whose outputs don't include the
+      APK, so the `doLast` loop matches nothing and no-ops. `BUILD SUCCESSFUL`
+      therefore reads as "uploaded" while `AndroidBuilds/art/` stays empty —
+      confirmed by checking Drive after a green build. Worked around by calling
+      `bash android/upload-apk.sh <apk>` directly (verified landed: byte sizes
+      match, 104,993,347 both ends). `[ ]` **Not yet fixed** — the fix is to read
+      the APK path from the variant's artifact provider instead of
+      `t.outputs.files`. Also note `rclone` now warns on every call that its
+      shared Google Drive `client_id` retires during 2026, as predicted on
+      2026-07-29; it needs Alex's own client_id before then.
+- [ ] `[!]` Still needs a wider device pass — the app launches and runs, but only
+      pause/resume, the gear and Settings have actually been exercised on hardware
 - [ ] Fully Kiosk Browser parity check (or Capacitor equivalent kiosk mode)
 
 ## Phase 9 — Polish

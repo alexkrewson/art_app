@@ -22,14 +22,23 @@ async function main() {
   const settings = loadSettings();
 
   // Tracked so the gear icon (below) and the settings panel (panel.js) can
-  // both appear near wherever the mouse actually is instead of a fixed
+  // both appear near wherever the pointer actually is instead of a fixed
   // corner/center — Alex asked for this after finding the fixed gear icon
   // required too much mouse travel to reach. Falls back to the stage
-  // center if the mouse hasn't moved yet (e.g. keyboard-only/touch use).
-  let lastMouse = null;
-  document.addEventListener('mousemove', e => { lastMouse = { x: e.clientX, y: e.clientY }; });
-  function cursorPos() {
-    if (lastMouse) return lastMouse;
+  // center if nothing has been pointed at yet (e.g. keyboard-only use).
+  let lastPointer = null;
+  document.addEventListener('mousemove', e => { lastPointer = { x: e.clientX, y: e.clientY }; });
+  // A touch device never fires mousemove, so on a phone this stayed null and
+  // the gear always landed at the stage centre — directly over the artwork
+  // and nowhere near the tap that summoned it (visible in Alex's 2026-08-08
+  // screenshot from the first APK). Capture phase so the position is recorded
+  // before the stage's own touch handling runs.
+  document.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    if (t) lastPointer = { x: t.clientX, y: t.clientY };
+  }, { passive: true, capture: true });
+  function pointerPos() {
+    if (lastPointer) return lastPointer;
     const r = stageEl.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
@@ -44,17 +53,17 @@ async function main() {
     onMeta: img => ribbon.update(img),
     onPauseChange: paused => {
       settingsGear.hidden = !paused;
-      if (paused) positionGearAtCursor();
+      if (paused) positionGearAtPointer();
       else settingsPanel.close();
     },
   });
 
-  // Places the gear icon at the cursor's last known position (clamped to
+  // Places the gear icon at the pointer's last known position (clamped to
   // stay fully inside the stage), overriding its CSS default bottom-left
   // corner. Relative to the stage, since #settings-gear is `position:
   // absolute` inside `#stage` (`position: relative`), not the viewport.
-  function positionGearAtCursor() {
-    const { x, y } = cursorPos();
+  function positionGearAtPointer() {
+    const { x, y } = pointerPos();
     const stageRect = stageEl.getBoundingClientRect();
     const size = 44; // .icon-btn's fixed touch-target size
     const margin = 8;
@@ -70,7 +79,7 @@ async function main() {
 
   settingsGear.addEventListener('click', e => {
     e.stopPropagation();
-    settingsPanel.toggle(cursorPos());
+    settingsPanel.toggle(pointerPos());
   });
 
   // Space: pause/resume. Left/Right: previous/next (mirrors the swipe
@@ -95,7 +104,7 @@ async function main() {
         settingsPanel.close();
       } else {
         if (!slideshow.paused) slideshow.togglePause();
-        settingsPanel.open(cursorPos());
+        settingsPanel.open(pointerPos());
       }
     }
   });
