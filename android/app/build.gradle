@@ -53,22 +53,55 @@ try {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
 }
 
-// Auto-upload the built APK to Google Drive via rclone (see ../upload-apk.sh).
-// No-ops quietly if rclone or the "gdrive" remote isn't set up yet.
-afterEvaluate {
-    ['assembleDebug', 'assembleRelease'].each { taskName ->
-        def t = tasks.findByName(taskName)
-        if (t != null) {
-            t.doLast {
-                t.outputs.files.each { f ->
-                    if (f.name.endsWith('.apk')) {
-                        exec {
-                            commandLine 'bash', "${rootProject.projectDir}/upload-apk.sh", f.absolutePath
-                            ignoreExitValue = true
-                        }
-                    }
-                }
+// Auto-upload built artifacts to Google Drive via rclone (see
+// ../../scripts/upload-apk.mjs). No-ops quietly if rclone or the "gdrive"
+// remote isn't set up.
+//
+// Do NOT go back to iterating t.outputs.files: assemble* are aggregation tasks
+// that declare no outputs ("Task has not declared any outputs despite executing
+// actions"), so the loop body never ran and the upload silently never happened.
+// Scan the real output directory instead. That exact bug shipped here and went
+// unnoticed until 2026-08-08, when a green BUILD SUCCESSFUL was followed by an
+// empty Drive folder — the failure mode is silence, which is why the logging
+// below is unconditional.
+// node, not bash — bash is absent from Android Studio's Gradle environment on
+// Windows while being present in Git Bash, so a bash uploader fails depending
+// on how you launched the build. node is already required to have produced the
+// web assets, so it's the one interpreter a Capacitor build can rely on.
+def uploader = "${rootProject.projectDir}/../../apps-shared/scripts/upload-apk.mjs"
+
+def uploadArtifacts = { String subdir, String ext ->
+    def dir = new File("${buildDir}/outputs/${subdir}")
+    if (!dir.isDirectory()) {
+        logger.lifecycle("upload-apk: ${dir} does not exist, nothing to upload")
+        return
+    }
+    def found = dir.listFiles()?.findAll { it.isFile() && it.name.endsWith(ext) } ?: []
+    if (found.isEmpty()) logger.lifecycle("upload-apk: no ${ext} found in ${dir}")
+    if (!found.isEmpty() && !new File(uploader).isFile()) {
+        // The uploader lives in the apps-shared sibling repo, per its "call
+        // shared scripts by path, never vendor them" rule. If that checkout
+        // isn't next to this one, say so — don't just quietly not upload.
+        logger.error("upload-apk: uploader not found at ${uploader} — is the apps-shared repo checked out alongside this one? Artifact NOT uploaded.")
+        return
+    }
+    found.each { f ->
+        try {
+            exec {
+                commandLine 'node', uploader, f.absolutePath, '--dest=AndroidBuilds/art/'
+                ignoreExitValue = true
             }
+        } catch (Exception e) {
+            // ignoreExitValue only covers a non-zero exit; a missing executable
+            // throws, which would fail the whole build over an optional upload.
+            // Loud, actionable, non-fatal is the right shape for all three.
+            logger.error("upload-apk: could not run the uploader (${e.message}). Is node on PATH for the environment Gradle was launched from? The build is fine — the artifact simply wasn't uploaded.")
         }
     }
+}
+
+afterEvaluate {
+    tasks.findByName('assembleDebug')?.doLast { uploadArtifacts('apk/debug', '.apk') }
+    tasks.findByName('assembleRelease')?.doLast { uploadArtifacts('apk/release', '.apk') }
+    tasks.findByName('bundleRelease')?.doLast { uploadArtifacts('bundle/release', '.aab') }
 }

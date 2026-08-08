@@ -1,0 +1,17 @@
+{
+  "project": "art_app (SlowFrame)",
+  "checks": [
+    {"type": "command", "name": "node", "min_version": "22",
+     "fix": "winget install OpenJS.NodeJS.22 — also required by the Gradle APK upload hook, which shells out to node"},
+    {"type": "command", "name": "python",
+     "fix": "needed by fetch.py / add_captions.py / build.py. Use `python`, not `python3` — python3 is a 0-byte Microsoft Store stub on this machine"},
+    {"type": "command", "name": "rclone", "required": false,
+     "fix": "winget install Rclone.Rclone then `rclone config` for a gdrive: remote — without it, APK uploads are skipped (loudly, not silently)"},
+    {"type": "env", "name": "JAVA_HOME", "required": false,
+     "fix": "needed for Android builds — Temurin JDK 21"},
+    {"type": "file", "path": "android/local.properties", "required": false,
+     "fix": "gitignored and machine-specific; create it with sdk.dir=<path to Android SDK>, e.g. C\\:/Users/you/AppData/Local/Android/Sdk"},
+    {"type": "clean_install"},
+    {"type": "adb_device", "required": false}
+  ]
+}

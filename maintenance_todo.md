@@ -463,6 +463,31 @@ note above), so don't trust the checkboxes blindly.
       `t.outputs.files`. Also note `rclone` now warns on every call that its
       shared Google Drive `client_id` retires during 2026, as predicted on
       2026-07-29; it needs Alex's own client_id before then.
+- [x] **2026-08-08 (same day): fixed, and the fix promoted to `apps-shared`.**
+      It turned out `argument_mapper` had already hit this exact bug and fixed
+      it — its `build.gradle` even carries a "Do NOT go back to iterating
+      t.outputs.files" comment — but the knowledge lived only in that project,
+      so this repo had no way to inherit it and rediscovered it the hard way.
+      That's the actual gap, and it's now closed: the uploader lives at
+      `apps-shared/scripts/upload-apk.mjs` (generalised with `--dest` and
+      repo-root detection), `best-practices.md` gained a "Shipping an Android
+      build" section with the canonical snippet, and this project's
+      `android/upload-apk.sh` is deleted. Verified end-to-end with a real
+      `assembleDebug`: `upload-apk: uploading … to gdrive:AndroidBuilds/art/
+      app-debug-v1-20260808-1423-964164d-dirty.apk` → `uploaded`. Uploads are
+      now named with versionCode + timestamp + short sha (+ `-dirty`), which
+      fixes the *other* problem today exposed — two different builds both called
+      `app-debug.apk`, distinguishable only by byte count.
+      Hardening added beyond argument_mapper's version: a missing uploader
+      script logs an error rather than skipping silently, and `exec` is wrapped
+      in try/catch because `ignoreExitValue` covers a non-zero exit but **not** a
+      missing executable — without it, "no node on PATH" would fail the entire
+      build over an optional upload. New `.doctor.json` (7 checks, all passing)
+      declares node/python/rclone/JAVA_HOME/local.properties so a machine is
+      checked before a 20-minute build finds out.
+      `argument_mapper` deliberately left alone — nothing broken there and a Play
+      Store submission was mid-flight; a dated migration note is in its
+      `maintenance_todo.txt`.
 - [ ] `[!]` Still needs a wider device pass — the app launches and runs, but only
       pause/resume, the gear and Settings have actually been exercised on hardware
 - [ ] Fully Kiosk Browser parity check (or Capacitor equivalent kiosk mode)
