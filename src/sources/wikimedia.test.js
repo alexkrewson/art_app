@@ -98,6 +98,42 @@ describe('wikimediaSource', () => {
     expect(urls.some(u => u.includes('sunflowers'))).toBe(false);
   });
 
+  it('asks for a scaled thumbnail and prefers it over the original', async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => pages([{
+        title: 'File:Huge.jpg',
+        imageinfo: [{
+          url: 'https://upload.wikimedia.org/full/Huge.jpg',
+          thumburl: 'https://upload.wikimedia.org/thumb/Huge.jpg/1920px-Huge.jpg',
+          mime: 'image/jpeg',
+          extmetadata: { LicenseShortName: { value: 'CC BY-SA 3.0' } },
+        }],
+      }]),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const [record] = await wikimediaSource.fetchBatch({ filters: { query: 'x' }, count: 24 });
+    // A sample of Featured pictures averaged 20.5 MB as originals; the
+    // thumbnails of the same files were ~0.5 MB. On a phone that is the whole
+    // difference between a slideshow and a stall.
+    expect(fetchMock.mock.calls[0][0]).toContain('iiurlwidth=1920');
+    expect(record.image).toBe('https://upload.wikimedia.org/thumb/Huge.jpg/1920px-Huge.jpg');
+  });
+
+  it('falls back to the original when Commons rendered no thumbnail', async () => {
+    const data = pages([{
+      title: 'File:Odd.jpg',
+      imageinfo: [{
+        url: 'https://upload.wikimedia.org/full/Odd.jpg',
+        mime: 'image/jpeg',
+        extmetadata: { LicenseShortName: { value: 'Public domain' } },
+      }],
+    }]);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
+    const [record] = await wikimediaSource.fetchBatch({ filters: { query: 'x' }, count: 24 });
+    expect(record.image).toBe('https://upload.wikimedia.org/full/Odd.jpg');
+  });
+
   it('expands a single checkbox naming several |-separated categories', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => pages([]) }));
     vi.stubGlobal('fetch', fetchMock);

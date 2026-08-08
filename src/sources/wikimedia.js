@@ -8,6 +8,21 @@ import { shuffle } from './base.js';
 
 const API = 'https://commons.wikimedia.org/w/api.php';
 
+// Commons' `imageinfo.url` is the ORIGINAL file, and on this collection that is
+// not a reasonable thing to put on a phone: a sample of ten "Featured pictures
+// of landscapes" averaged 20.5 MB, with one 80.9 MB file at 17806x6969. Asking
+// for `iiurlwidth` makes the API also return `thumburl`, a server-rendered
+// scale-down — the same two files come back at 1.01 MB and 0.43 MB, i.e. 33x
+// and 189x smaller.
+//
+// This was not a theoretical concern. It was Alex's 2026-08-08 report that the
+// slideshow "gets stuck for 30 seconds" once live sources are enabled, while
+// the bundled local set at the same 2s interval is perfectly smooth.
+//
+// 1920 is chosen to still look right on a 1080p wall display with Ken Burns
+// zoomed in, while staying around half a megabyte.
+const THUMB_WIDTH = 1920;
+
 // Commons' extmetadata values are raw wiki HTML (links, spans) — strip tags
 // for plain-text display in the metadata ribbon.
 function stripHtml(html) {
@@ -44,7 +59,9 @@ function toRecord(page) {
     artist,
     date: stripHtml(meta.DateTimeOriginal?.value) || stripHtml(meta.DateTime?.value) || '',
     department: '',
-    image: info.url,
+    // thumburl is absent for formats Commons can't render a thumbnail of;
+    // falling back to the original is still better than showing nothing.
+    image: info.thumburl || info.url,
     source: 'wikimedia',
     attribution: requiresCredit ? license : '',
   };
@@ -131,14 +148,14 @@ export const wikimediaSource = {
       const batches = await Promise.all(categoryTitles.map(gcmtitle => fetchPages(new URLSearchParams({
         action: 'query', format: 'json', origin: '*',
         generator: 'categorymembers', gcmtitle, gcmtype: 'file', gcmlimit: limit,
-        prop: 'imageinfo', iiprop: 'url|extmetadata|mime',
+        prop: 'imageinfo', iiprop: 'url|extmetadata|mime', iiurlwidth: String(THUMB_WIDTH),
       }))));
       pages = batches.flat();
     } else {
       pages = await fetchPages(new URLSearchParams({
         action: 'query', format: 'json', origin: '*',
         generator: 'search', gsrsearch: query, gsrnamespace: '6', gsrlimit: limit,
-        prop: 'imageinfo', iiprop: 'url|extmetadata|mime',
+        prop: 'imageinfo', iiprop: 'url|extmetadata|mime', iiurlwidth: String(THUMB_WIDTH),
       }));
     }
 

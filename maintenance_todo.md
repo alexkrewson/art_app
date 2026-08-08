@@ -348,6 +348,55 @@ note above), so don't trust the checkboxes blindly.
       it works. See decisions log for the two AIC bugs this pass found and fixed,
       and a note on Met/Smithsonian flakiness observed during testing.
 
+## Performance — per-image payload (added 2026-08-08)
+
+Alex on the APK: local-only at a 2s slide duration advances reliably every 2s,
+but with several live sources enabled it "gets stuck" for up to ~30 seconds.
+Two causes, both measured rather than guessed:
+
+- [x] **Wikimedia was serving full-resolution ORIGINALS.** `imageinfo.url` is the
+      original file, and the landscape categories added the same day are Commons'
+      highest-resolution showcase images: a 10-file sample of "Featured pictures
+      of landscapes" averaged **20.5 MB**, with one at **80.9 MB** (17806x6969).
+      Fixed with `iiurlwidth=1920` + preferring `thumburl` — the same two files
+      then come back at 1.01 MB and 0.43 MB (33x and 189x smaller). Verified live
+      after the fix: the source now averages **0.30 MB** per image.
+- [x] **Nothing was preloaded, and in-flight loads were being abandoned.**
+      `loadAndShow` assigns `waiting.src` and waits on `onload`; a tick arriving
+      while the previous image is still downloading reassigns `src`, cancelling
+      that download to start another. At a 2s interval against images that take
+      longer than 2s, the slideshow spends its time cancelling itself — which is
+      why the bundled local set (instant, loaded from the APK) never showed this
+      and every live source did. Added `Slideshow.prefetchNext()`: warms the next
+      image into the HTTP cache as soon as the current one is displayed, with
+      `referrerPolicy = 'no-referrer'` so AIC's hotlink protection doesn't 403 it.
+      6 unit tests.
+
+Measured per-image payload after the fixes (live, as the slideshow requests it):
+
+| Source | avg per image | note |
+|---|---|---|
+| Met | 0.06 MB | `primaryImageSmall` — smallest, possibly *too* soft for a wall |
+| Openverse | 0.23 MB | Flickr `_b` (1024px) and similar |
+| Wikimedia | 0.30 MB | was 20.5 MB before the `iiurlwidth` fix |
+| AIC | 0.24 MB | bounded IIIF `!843,843` |
+| NPS | 3.30 MB | `/proxy/hires`, 1330–2714px — the heavy one, deliberately |
+
+NPS was left on `/proxy/hires` on purpose: the smaller `/proxy/large` variant is
+only ~500-680px wide (measured), which would look soft full-screen and worse
+under Ken Burns zoom. Its weight is the right thing to solve with prefetching
+rather than by shipping a blurry image. Note `/proxy/hires` is *sometimes*
+identical to the original — it is a cap, not a guaranteed downscale.
+
+- [ ] **Not yet checked for the same problem:** `europeana.js` uses
+      `edmIsShownBy`, which is the full object rather than a preview, and
+      `smithsonian.js` uses whatever `online_media` hands back. Both are still
+      unverified against their live APIs, so measure their payload at the same
+      time as verifying their field paths.
+- [ ] Met's 0.06 MB may be too low-quality for a large display — `primaryImage`
+      (the full version) is the other extreme. Worth eyeballing on the wall before
+      deciding; this is a quality call, not a bug.
+
 ## Phase 5 — Presets
 - [ ] Preset config format (bundles source + filter combinations) — no general
       format yet, see below

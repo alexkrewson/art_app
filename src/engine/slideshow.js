@@ -110,6 +110,34 @@ export class Slideshow {
     this.init(images);
   }
 
+  // Warms the next image into the browser's HTTP cache as soon as the current
+  // one is on screen, so the next tick assigns a `src` that resolves locally.
+  //
+  // Without this, every slide paid full network latency at the moment it was
+  // due — and worse, a tick arriving while the previous image was still in
+  // flight would reassign `waiting.src` and abandon that download to start
+  // another. At a 2s interval against images that take longer than 2s to
+  // fetch, the slideshow can spend a long time cancelling itself and showing
+  // nothing, which is exactly the "sometimes it sticks for 30 seconds" Alex
+  // reported on 2026-08-08 with several live sources enabled. The bundled
+  // local set never showed it because those images load from the APK.
+  //
+  // Deliberately fire-and-forget: a prefetch that fails costs nothing, because
+  // loadAndShow still does its own load and has its own onerror path.
+  prefetchNext() {
+    if (this.images.length < 2) return;
+    const next = this.images[(this.index + 1) % this.images.length];
+    if (!next?.image || next.image === this.prefetchedUrl) return;
+    this.prefetchedUrl = next.image;
+    const im = new Image();
+    // Matches the <img> elements in index.html. AIC's IIIF server 403s any
+    // request carrying a foreign Referer, so without this the prefetch would
+    // reliably miss for that source and quietly do nothing useful.
+    im.referrerPolicy = 'no-referrer';
+    im.src = next.image;
+    this.prefetchImg = im; // hold a reference so it isn't collected mid-flight
+  }
+
   loadAndShow(img, instant) {
     // A slide interval at or below MIN_ANIMATED_SLIDE_MS can't show a
     // transition or Ken Burns pan as anything but a flicker, so treat it as
@@ -132,6 +160,7 @@ export class Slideshow {
       this.waiting.style.clipPath = '';
       this.inFade = false;
       if (!this.paused && this.displayMode === 'kenburns' && this.slideMs > MIN_ANIMATED_SLIDE_MS) this.kb.start();
+      this.prefetchNext();
     };
 
     const display = () => {
