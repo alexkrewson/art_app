@@ -15,23 +15,75 @@
 // means offline playback of live-source images genuinely depends on the
 // service worker being registered and active, not just this module.
 const DB_NAME = 'slowframe-cache';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = 'images';
 const CACHE_NAME = 'slowframe-images';
 
-// Global cap across all sources combined, not per-source — simplest thing
-// that bounds tablet storage growth without an eviction policy. Once hit,
-// caching just stops; existing cached images are unaffected.
+// Cap for INCIDENTAL caching only — images cached as a side effect of being
+// shown. Once hit, that caching stops; nothing is evicted. Explicit offline
+// downloads (`pinned: true`) ignore this entirely and answer to the storage
+// budget below instead, because a user who deliberately asked for a category
+// offline should not have that silently refused by a quota that filled up on
+// its own.
 const SOFT_CAP = 300;
+
+// A count cap is a bad fit once real payloads are known: 300 images is ~18 MB
+// of Met but over 1 GB of NPS (measured 2026-08-08, a 55x spread). Downloads
+// are therefore bounded by bytes, and the ceiling is asked of the device rather
+// than hardcoded — a dedicated wall tablet and a phone that's nearly full
+// should not get the same answer.
+//
+// Note on accuracy: image bytes are stored as *opaque* responses (see the
+// header comment), and browsers deliberately pad opaque entries in quota
+// accounting, so `usage` reads higher than the real byte total. That's the
+// right number to budget against anyway — it's the one the browser will
+// enforce a QuotaExceededError against.
+const BUDGET_SHARE = 0.5;                      // of the quota offered to this origin
+const BUDGET_CEILING = 4 * 1024 * 1024 * 1024; // a 500 GB desktop quota shouldn't imply a 250 GB budget
+const BUDGET_FLOOR = 200 * 1024 * 1024;        // still allow a modest download on a cramped device
+
+export async function getStorageBudget() {
+  let usage = 0;
+  let quota = 0;
+  try {
+    if (typeof navigator !== 'undefined' && navigator.storage?.estimate) {
+      const est = await navigator.storage.estimate();
+      usage = est.usage || 0;
+      quota = est.quota || 0;
+    }
+  } catch {
+    /* Storage Manager unavailable (older WebView, private mode) — fall through
+       to the floor, so downloads still work rather than being refused. */
+  }
+  const budget = quota
+    ? Math.min(Math.max(quota * BUDGET_SHARE, BUDGET_FLOOR), BUDGET_CEILING)
+    : BUDGET_FLOOR;
+  return { usage, quota, budget, available: Math.max(0, budget - usage) };
+}
 
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = () => {
+    req.onupgradeneeded = e => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        const store = db.createObjectStore(STORE, { keyPath: 'id' });
-        store.createIndex('sourceId', 'sourceId', { unique: false });
+      const store = db.objectStoreNames.contains(STORE)
+        ? req.transaction.objectStore(STORE)
+        : (() => {
+            const s = db.createObjectStore(STORE, { keyPath: 'id' });
+            s.createIndex('sourceId', 'sourceId', { unique: false });
+            return s;
+          })();
+      // v1 -> v2: offline downloads need to be listable and removable as a
+      // unit. Rows written by v1 have no `collection`, so they simply don't
+      // appear in this index — which is correct, they were incidental caching.
+      //
+      // multiEntry because one image can belong to several downloads at once:
+      // Commons' "Landscapes" and "Mountains" categories genuinely overlap, and
+      // so do two Openverse subject searches. Keying a row to a single
+      // collection would mean removing one download could delete bytes another
+      // still needs.
+      if (e.oldVersion < 2 && !store.indexNames.contains('collections')) {
+        store.createIndex('collections', 'collections', { multiEntry: true });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -84,9 +136,20 @@ export async function getCachedRecords(sourceId) {
 // Fire-and-forget from the caller's perspective: downloads the image bytes
 // (if not already cached) and records the metadata alongside them. Safe to
 // call repeatedly for the same record — skips work once cached.
-export async function cacheRecord(record) {
-  if (!record?.image) return;
-  if (await isCacheFull()) return;
+//
+// `pinned` marks a record as part of an explicit offline download: it bypasses
+// SOFT_CAP and is bounded by the storage budget instead, and `collection` is
+// what lets it be listed and removed as a unit later. Returns a short status
+// string so a download loop can report why it stopped rather than appearing to
+// succeed while doing nothing — the failure mode this whole area keeps hitting.
+export async function cacheRecord(record, { pinned = false, collection = null, label = null } = {}) {
+  if (!record?.image) return 'skipped';
+  if (pinned) {
+    const { available } = await getStorageBudget();
+    if (available <= 0) return 'budget-full';
+  } else if (await isCacheFull()) {
+    return 'cap-full';
+  }
 
   const id = cacheKey(record);
   const db = await openDB();
@@ -95,7 +158,25 @@ export async function cacheRecord(record) {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
-  if (already) return;
+  // An image already cached still needs its collection membership recorded when
+  // it turns up in a download — whether it was cached incidentally (so it's
+  // unpinned and evictable) or as part of a different, overlapping collection.
+  // The bytes are already there, so this is a metadata-only update.
+  if (already) {
+    const collections = already.collections || [];
+    if (!pinned || collections.includes(collection)) return 'already';
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      tx.objectStore(STORE).put({
+        ...already,
+        collections: [...collections, collection],
+        labels: { ...(already.labels || {}), [collection]: label },
+      });
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    return 'promoted';
+  }
 
   try {
     // `no-cors` is required for cross-origin image CDNs that don't send
@@ -111,13 +192,91 @@ export async function cacheRecord(record) {
 
     await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite');
-      tx.objectStore(STORE).put({ id, sourceId: record.source, record, cachedAt: Date.now() });
+      tx.objectStore(STORE).put({
+        id, sourceId: record.source, record, cachedAt: Date.now(),
+        // Only set on pinned rows: an undefined `collection` keeps incidental
+        // caching out of the collection index, which is what makes
+        // listDownloads() mean "things the user actually asked for".
+        ...(pinned ? { collections: [collection], labels: { [collection]: label } } : {}),
+      });
       tx.oncomplete = resolve;
       tx.onerror = () => reject(tx.error);
     });
+    return 'cached';
   } catch (err) {
     console.warn('[SlowFrame] failed to cache image:', record.image, err);
+    return 'failed';
   }
+}
+
+// Everything the user has explicitly taken offline, grouped for display.
+export async function listDownloads() {
+  const db = await openDB();
+  const rows = await new Promise((resolve, reject) => {
+    const req = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+
+  const groups = new Map();
+  for (const row of rows) {
+    for (const collection of row.collections || []) {
+      const g = groups.get(collection) || {
+        collection,
+        label: row.labels?.[collection] || collection,
+        sourceId: row.sourceId,
+        count: 0,
+        newestAt: 0,
+      };
+      g.count += 1;
+      g.newestAt = Math.max(g.newestAt, row.cachedAt || 0);
+      groups.set(collection, g);
+    }
+  }
+  return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+// Removes one downloaded collection: its metadata rows and its image bytes.
+// An image that's also in another collection keeps its bytes — deleting a
+// "Mountains" download shouldn't blank out half of "Landscapes".
+export async function removeDownload(collection) {
+  const db = await openDB();
+  const rows = await new Promise((resolve, reject) => {
+    const req = db.transaction(STORE, 'readonly').objectStore(STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+
+  const affected = rows.filter(r => (r.collections || []).includes(collection));
+  const cache = await caches.open(CACHE_NAME);
+
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    for (const row of affected) {
+      const remaining = row.collections.filter(c => c !== collection);
+      if (remaining.length) {
+        // Still wanted by another download — drop this membership, keep the
+        // bytes. Removing "Mountains" must not blank out half of "Landscapes".
+        const labels = { ...(row.labels || {}) };
+        delete labels[collection];
+        store.put({ ...row, collections: remaining, labels });
+      } else {
+        store.delete(row.id);
+      }
+    }
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+
+  // Bytes are deleted only for rows that are now gone entirely.
+  for (const row of affected) {
+    if (row.collections.filter(c => c !== collection).length === 0) {
+      await cache.delete(row.record.image);
+    }
+  }
+
+  return affected.length;
 }
 
 export async function clearCache() {

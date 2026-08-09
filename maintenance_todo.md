@@ -426,8 +426,42 @@ identical to the original — it is a cap, not a guaranteed downscale.
       `no-cors` responses that only a service worker (not page JS) can hand back to
       the browser's image loader. Also makes the app shell itself
       (index.html/JS/CSS) reloadable with zero connectivity.
-- [ ] "Download content" action — fetch a batch from enabled sources to local storage
-      on demand (distinct from the automatic background caching above) — not started
+- [x] **"Download content" action — built 2026-08-08.** Alex asked for the
+      Spotify/YouTube shape: pick a category, take it offline before losing
+      signal. New **Offline downloads** settings section listing one row per
+      curated category of every *enabled* live source (local/localFiles are
+      excluded — they're already offline), each with a count picker
+      (25/50/100/250/500, Alex's choice over a fixed batch) and a Download
+      button that shows live `42/100` progress in place of its label.
+      Downloads are listed with their image counts and can be removed
+      individually. `src/cache/downloads.js` orchestrates; `imageCache.js`
+      gained the storage/pinning model.
+      Three design points that matter:
+      - **Pinned records ignore the 300-image `SOFT_CAP`.** That cap now
+        governs *incidental* caching only. A deliberate download must never be
+        refused because background caching happened to fill a quota first.
+      - **Downloads are bounded by bytes, asked of the device.** A count cap is
+        meaningless at a 55x payload spread (300 images = 18 MB of Met, >1 GB of
+        NPS). `navigator.storage.estimate()` gives quota; the budget is half of
+        it, clamped to 200 MB–4 GB, shown as a used/total bar. Falls back to the
+        floor rather than refusing everything when Storage Manager is missing.
+        Note browsers pad *opaque* responses in quota accounting, so `usage`
+        reads high — that's the number the browser enforces, so it's the right
+        one to budget against.
+      - **An image can belong to several downloads at once.** Caught by a test:
+        the row key is `source::image`, so the first model silently put a shared
+        image in one collection only, and removing that collection deleted bytes
+        another still needed. Commons' Landscapes and Mountains categories
+        genuinely overlap. Rows now carry a `collections[]` multiEntry index;
+        removing a download drops the membership and only deletes bytes when the
+        last one goes.
+      22 new tests (11 cache, 11 downloads), suite 114 -> 133.
+- [ ] **Not yet done on downloads:** no in-browser/device pass yet (the section
+      renders and the logic is unit-tested, but nothing has been clicked); no
+      way to refresh/top-up every download at once; and the download runs
+      sequentially on purpose to avoid competing with playback, which means a
+      500-image download of a heavy source is slow — worth a progress
+      notification or a cancel button if that proves annoying in practice.
 - [ ] Cached-vs-network indicator per image — not started
 - [x] Backward compatibility with `~/art_app/images/` + `images.json` preserved —
       `localManifest.js` still wraps them as the zero-network fallback source

@@ -10,7 +10,8 @@ import { loadSettings, saveSettings } from './store.js';
 import { TRANSITIONS } from '../engine/transitions/index.js';
 import { SOURCES } from '../sources/registry.js';
 import { buildPlaylist, orderPlaylist } from '../sources/manager.js';
-import { getCacheStats, clearCache } from '../cache/imageCache.js';
+import { getCacheStats, clearCache, listDownloads, removeDownload } from '../cache/imageCache.js';
+import { downloadableTargets, downloadTarget, storageSummary, formatBytes } from '../cache/downloads.js';
 
 const DISPLAY_MODES = [
   { id: 'kenburns', label: 'Ken Burns', hint: 'Slow pan & zoom' },
@@ -185,11 +186,97 @@ function renderSourcesSection(settings, sourceFilters) {
   `;
 }
 
+// "Download this category so it's there without a connection" — the Spotify
+// shape Alex asked for. Only enabled sources are listed: downloading from a
+// source you've switched off would be storing images the playlist won't use.
+const DOWNLOAD_COUNTS = [25, 50, 100, 250, 500];
+
+// Says what actually happened, including the awkward outcomes. A download that
+// asked for 250 and saved 60 must not look identical to one that saved 250 —
+// this whole feature exists so the user knows what they'll have offline.
+function downloadOutcome(result) {
+  if (!result) return '';
+  const REASONS = {
+    'budget-full': 'the storage budget is full — remove a download to make room',
+    'source-returned-fewer': 'that\'s all the source had for these filters',
+    'no-results': 'the source returned nothing — check its filters or API key',
+    'fetch-failed': 'the source could not be reached',
+    'unknown-source': 'that source is no longer available',
+  };
+  const why = REASONS[result.reason];
+  if (!result.stoppedEarly) return `<p class="field-hint">Saved ${result.added} images.</p>`;
+  return `<p class="field-hint">Saved ${result.added} of ${result.requested}${why ? ` — ${why}` : ''}.</p>`;
+}
+
+function renderDownloadsSection(settings, downloads, storage, busy, lastResult) {
+  const enabled = Object.entries(SOURCES).filter(([id]) => settings.sources[id]?.enabled);
+  const liveEnabled = enabled.filter(([id]) => id !== 'local' && id !== 'localFiles');
+
+  const bar = storage ? `
+    <div class="field-group">
+      <span class="field-label">Storage used by offline images</span>
+      <div class="storage-bar" role="img"
+           aria-label="${storage.percent}% of the offline storage budget used">
+        <div class="storage-bar-fill" style="width:${storage.percent}%"></div>
+      </div>
+      <span class="field-hint">${formatBytes(storage.usage)} of ${formatBytes(storage.budget)} used
+        &middot; budget is a share of what this device offers</span>
+    </div>` : '<span class="field-hint">Checking available storage&hellip;</span>';
+
+  const existing = downloads?.length ? `
+    <div class="field-group">
+      <span class="field-label">Downloaded</span>
+      ${downloads.map(d => `
+        <div class="download-row">
+          <span class="download-row-label">${d.label}</span>
+          <span class="field-hint">${d.count} image${d.count === 1 ? '' : 's'}</span>
+          <button type="button" class="btn-secondary" data-remove-download="${d.collection}">Remove</button>
+        </div>`).join('')}
+    </div>` : '';
+
+  const targets = liveEnabled.flatMap(([id, source]) => downloadableTargets(id, source));
+
+  const available = targets.length ? `
+    <div class="field-group">
+      <span class="field-label">Available to download</span>
+      ${targets.map(t => {
+        const have = downloads?.find(d => d.collection === t.collection);
+        const state = busy?.[t.collection];
+        return `
+        <div class="download-row">
+          <span class="download-row-label">${t.label}${have ? ` <span class="field-hint">(${have.count} saved)</span>` : ''}</span>
+          <select class="field field-inline" data-download-count="${t.collection}" ${state ? 'disabled' : ''}>
+            ${DOWNLOAD_COUNTS.map(n => `<option value="${n}" ${n === 100 ? 'selected' : ''}>${n}</option>`).join('')}
+          </select>
+          <button type="button" class="btn-secondary" data-download="${t.collection}" ${state ? 'disabled' : ''}>
+            ${state ? state : (have ? 'Add more' : 'Download')}
+          </button>
+        </div>`;
+      }).join('')}
+    </div>` : `<p class="field-hint">Enable a live source under <strong>Sources</strong> first —
+       there's nothing to download from the bundled starter set or a local folder,
+       they're already offline.</p>`;
+
+  return `
+    <p class="field-hint">Save a category to this device so the slideshow keeps
+    working with no connection. Downloads are kept until you remove them — the
+    automatic cache can't evict them.</p>
+    ${bar}
+    ${downloadOutcome(lastResult)}
+    ${existing}
+    ${available}`;
+}
+
 const SECTIONS = [
   {
     id: 'sources',
     label: 'Sources',
     render: ctx => renderSourcesSection(ctx.settings, ctx.sourceFilters),
+  },
+  {
+    id: 'downloads',
+    label: 'Offline downloads',
+    render: ctx => renderDownloadsSection(ctx.settings, ctx.downloads, ctx.storage, ctx.downloadBusy, ctx.lastDownloadResult),
   },
   {
     id: 'display',
@@ -248,6 +335,10 @@ export function createSettingsPanel(slideshow) {
   let settings = loadSettings();
   let sourceFilters = {}; // sourceId -> FilterSpec[], populated asynchronously below
   let cacheStats = null;
+  let downloads = null;     // grouped pinned collections, loaded asynchronously
+  let storage = null;       // {usage, budget, percent}
+  const downloadBusy = {};  // collection -> progress label, e.g. "42/100"
+  let lastDownloadResult = null; // so a short-fall is reported, not silently absorbed
 
   const root = document.createElement('div');
   root.className = 'settings-panel';
@@ -272,7 +363,7 @@ export function createSettingsPanel(slideshow) {
           <span>${s.label}</span>
           <span class="settings-section-chevron">&#9656;</span>
         </button>
-        <div class="settings-section-content" hidden>${s.render({ currentTheme, settings, sourceFilters, cacheStats })}</div>
+        <div class="settings-section-content" hidden>${s.render({ currentTheme, settings, sourceFilters, cacheStats, downloads, storage, downloadBusy, lastDownloadResult })}</div>
       </section>
     `).join('');
   }
@@ -308,6 +399,22 @@ export function createSettingsPanel(slideshow) {
   const refreshDisplaySection = () => refreshSection('display', () => renderDisplaySection(settings));
   const refreshSourcesSection = () => refreshSection('sources', () => renderSourcesSection(settings, sourceFilters));
   const refreshAdvancedSection = () => refreshSection('advanced', () => renderAdvancedSection(settings, cacheStats));
+  const refreshDownloadsSection = () =>
+    refreshSection('downloads', () => renderDownloadsSection(settings, downloads, storage, downloadBusy, lastDownloadResult));
+
+  // Re-reads both the download list and the storage bar. Called after anything
+  // that changes either, so the numbers on screen are never stale after an
+  // action the user just took.
+  async function refreshDownloadState() {
+    try {
+      [downloads, storage] = await Promise.all([listDownloads(), storageSummary()]);
+    } catch (err) {
+      console.warn('[SlowFrame] could not read offline downloads:', err);
+      downloads = downloads || [];
+    }
+    refreshDownloadsSection();
+  }
+  refreshDownloadState();
 
   async function rebuildPlaylist() {
     const playlist = await buildPlaylist(settings.sources, { cacheEnabled: settings.cacheEnabled });
@@ -341,7 +448,65 @@ export function createSettingsPanel(slideshow) {
           cacheStats = stats;
           refreshAdvancedSection();
         })
+        // Clearing the cache removes pinned rows too, so the downloads list
+        // and storage bar are both stale until this runs.
+        .then(() => refreshDownloadState())
         .catch(err => console.warn('[SlowFrame] failed to clear cache:', err));
+      return;
+    }
+
+    const downloadBtn = e.target.closest('[data-download]');
+    if (downloadBtn) {
+      const collection = downloadBtn.dataset.download;
+      if (downloadBusy[collection]) return; // already running; the button is disabled anyway
+      const countEl = accordion.querySelector(`[data-download-count="${CSS.escape(collection)}"]`);
+      const count = Number(countEl?.value) || 100;
+
+      const target = Object.entries(SOURCES)
+        .flatMap(([id, source]) => downloadableTargets(id, source))
+        .find(t => t.collection === collection);
+      if (!target) return;
+
+      downloadBusy[collection] = 'Starting…';
+      refreshDownloadsSection();
+
+      downloadTarget(
+        target,
+        settings.sources[target.sourceId]?.filters || {},
+        count,
+        // Re-rendering the whole section per image would fight the user's
+        // scroll position, so the progress label is written straight into the
+        // one button instead.
+        ({ done, total }) => {
+          downloadBusy[collection] = `${done}/${total}`;
+          const btn = accordion.querySelector(`[data-download="${CSS.escape(collection)}"]`);
+          if (btn) btn.textContent = downloadBusy[collection];
+        },
+      )
+        .then(result => {
+          delete downloadBusy[collection];
+          if (result.added === 0) {
+            console.warn(`[SlowFrame] download of ${collection} added nothing:`, result.reason);
+          }
+          lastDownloadResult = result;
+          return refreshDownloadState();
+        })
+        // A download that half-finished still saved something, so the list has
+        // to refresh on the failure path too.
+        .catch(err => {
+          delete downloadBusy[collection];
+          console.warn('[SlowFrame] download failed:', err);
+          return refreshDownloadState();
+        });
+      return;
+    }
+
+    const removeBtn = e.target.closest('[data-remove-download]');
+    if (removeBtn) {
+      removeBtn.disabled = true;
+      removeDownload(removeBtn.dataset.removeDownload)
+        .catch(err => console.warn('[SlowFrame] failed to remove download:', err))
+        .then(() => refreshDownloadState());
       return;
     }
 
