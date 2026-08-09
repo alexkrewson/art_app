@@ -1,7 +1,28 @@
-// Core playback state machine, ported from kiosk.html. Owns the two <img>
-// slides (crossfade between them), the current pan/zoom transform, and
-// auto-advance scheduling. Ken Burns and touch handling are separate modules
-// that operate through the small transform API exposed here.
+// Core playback state machine, rewritten 2026-08-09.
+//
+// The previous design (ported from kiosk.html) ran a setInterval that fired
+// every `slideMs` and called into an async load/decode/transition chain, then
+// reconciled the two clocks with a growing pile of booleans — inFade, loading,
+// pendingFinish. Every one of those was added to fix a real symptom, and every
+// one gave the scheduler another way to drop a tick. Alex's report was the
+// accumulation of that: "sometimes it's smooth, sometimes the Ken Burns pauses
+// and then it skips, sometimes it skips over a couple of pictures", and it
+// happened with the LOCAL image set, which rules out the network entirely.
+//
+// This version has one clock. A single async loop does: wait out the dwell,
+// load and decode the next image, transition to it, repeat. Each step awaits
+// the previous, so there is nothing to reconcile:
+//
+//   - a slide cannot be skipped, because nothing fires on a timer that might
+//     arrive while the engine is busy;
+//   - the caption cannot drift from the picture, because onMeta is called at
+//     the same await point as the swap;
+//   - a new src is never written into the element on screen, because the swap
+//     has always completed before the next iteration starts.
+//
+// Animation is handed to the compositor (Web Animations API, see kenburns.js
+// and transitions/crossfade.js) rather than driven frame-by-frame from JS, so
+// a busy main thread no longer shows up as stutter.
 
 import { KenBurns } from './kenburns.js';
 import { resolveTransition, pickRandomTransitionId } from './transitions/index.js';
@@ -10,12 +31,9 @@ const MIN_SCALE = 1.0;
 const MAX_SCALE = 6.0;
 
 // Below this slide interval, an animated transition or Ken Burns pan doesn't
-// have enough frames left to actually read as motion — at 60fps, 400ms is
-// ~24 frames; well under that (e.g. 100ms is ~6 frames) a crossfade reads as
-// a flicker and a "slow pan" isn't perceptible at all, since the slow pan
-// *is* the point of Ken Burns. Rather than run a broken-looking animation,
-// slides at or below this interval hard-cut instantly and skip Ken Burns
-// entirely for that slide.
+// have enough frames left to read as motion — at 60fps, 400ms is ~24 frames.
+// Rather than run a broken-looking animation, slides at or below this interval
+// hard-cut and skip Ken Burns.
 const MIN_ANIMATED_SLIDE_MS = 400;
 
 export class Slideshow {
@@ -26,13 +44,14 @@ export class Slideshow {
    * @param {HTMLImageElement} opts.slideB
    * @param {HTMLElement} opts.overlayEl - full-stage layer used by color/light transitions
    * @param {HTMLElement} opts.pauseIcon
-   * @param {(item: object) => void} opts.onMeta - called with the current image record on show
+   * @param {(item: object) => void} opts.onMeta - called with the record at the moment it appears
    * @param {(paused: boolean) => void} [opts.onPauseChange]
    * @param {'kenburns'|'static'|'fade'} [opts.displayMode]
    * @param {string} [opts.transitionId] - a transitions/index.js key, or 'random'
    * @param {object} [opts.transitionOptions] - e.g. { dipColor, direction }
-   * @param {number} [opts.slideMs] - ms per slide (auto-advance)
+   * @param {number} [opts.slideMs] - ms per slide
    * @param {number} [opts.fadeMs] - transition duration
+   * @param {number} [opts.kbCycleMs] - ms per Ken Burns pan segment
    */
   constructor({
     stageEl, slideA, slideB, overlayEl, pauseIcon, onMeta, onPauseChange,
@@ -55,8 +74,18 @@ export class Slideshow {
     this.paused = false;
     this.active = slideA;
     this.waiting = slideB;
-    this.inFade = false;
     this.slideTimer = null;
+
+    // Retained because the diagnostic overlay reports them; they are now plain
+    // status, not control flow. Nothing branches on them.
+    this.inFade = false;
+    this.loading = false;
+
+    // Invalidates a running loop. Anything that restarts playback bumps it, and
+    // the old loop notices at its next await and exits — which is what makes
+    // "change a setting mid-transition" safe without any locking.
+    this.runToken = 0;
+    this.wake = null; // resolver for the current dwell, so goNext can cut it short
 
     this.xf = { scale: 1, tx: 0, ty: 0 };
 
@@ -64,8 +93,7 @@ export class Slideshow {
       stageSize: () => this.stageSize(),
       getXf: () => this.xf,
       setXf: xf => { this.xf = xf; },
-      applyXf: () => this.applyXf(this.active),
-      isPaused: () => this.paused,
+      getEl: () => this.active,
       cycleMs: kbCycleMs,
     });
   }
@@ -76,12 +104,8 @@ export class Slideshow {
   }
 
   applyXf(el) {
-    // translate3d/scale3d (not translate/scale) reliably force GPU-layer
-    // compositing across browsers — plain 2D transform functions leave some
-    // browsers (notably Firefox) to decide layerization heuristically, which
-    // can fall back to main-thread repaint every frame and show up as
-    // constant low framerate specifically on the animated element.
-    el.style.transform = `translate3d(${this.xf.tx}px,${this.xf.ty}px,0) scale3d(${this.xf.scale},${this.xf.scale},1)`;
+    el.style.transform =
+      `translate3d(${this.xf.tx}px,${this.xf.ty}px,0) scale3d(${this.xf.scale},${this.xf.scale},1)`;
   }
 
   clampXf() {
@@ -98,178 +122,146 @@ export class Slideshow {
 
   // ── Playback ────────────────────────────────────────────────────────
   init(images) {
+    if (!images?.length) return;
     this.images = images;
     this.index = 0;
-    this.loadAndShow(this.images[0], true);
-    this.scheduleSlides();
+    this.restart();
   }
 
-  // Replaces the playlist in place (e.g. the Sources settings changed) and
-  // jumps to its first image, without recreating the engine.
+  // Replaces the playlist in place (e.g. the Sources settings changed).
   setPlaylist(images) {
-    if (!images.length) return;
     this.init(images);
   }
 
-  // Defers the prefetch to idle time instead of firing it the instant the
-  // transition lands. Prefetching *decodes* as well as downloads, and doing
-  // that at the exact moment Ken Burns starts put a decode of a full-screen
-  // photo in the frames where the pan is just getting going — which is the
-  // hitch that survived the first choppiness fix. There's a whole slide's dwell
-  // to play with, so almost any later moment is a better one.
-  schedulePrefetch() {
-    if (this.prefetchPending) return;
-    const run = () => { this.prefetchPending = null; this.prefetchNext(); };
-    if (typeof requestIdleCallback === 'function') {
-      // The timeout matters: on a busy tab idle may never come, and a prefetch
-      // that never runs silently costs the next slide its head start.
-      this.prefetchPending = requestIdleCallback(run, { timeout: 2000 });
-    } else {
-      this.prefetchPending = setTimeout(run, 600);
-    }
+  // Kept for the settings panel, which calls it after changing slide duration.
+  // Restarting the loop is the correct response: the new duration should apply
+  // to the dwell that's running, not the one after it.
+  scheduleSlides() {
+    this.restart();
   }
 
-  // Warms the next image into the browser's HTTP cache as soon as the current
-  // one is on screen, so the next tick assigns a `src` that resolves locally.
-  //
-  // Without this, every slide paid full network latency at the moment it was
-  // due — and worse, a tick arriving while the previous image was still in
-  // flight would reassign `waiting.src` and abandon that download to start
-  // another. At a 2s interval against images that take longer than 2s to
-  // fetch, the slideshow can spend a long time cancelling itself and showing
-  // nothing, which is exactly the "sometimes it sticks for 30 seconds" Alex
-  // reported on 2026-08-08 with several live sources enabled. The bundled
-  // local set never showed it because those images load from the APK.
-  //
-  // Deliberately fire-and-forget: a prefetch that fails costs nothing, because
-  // loadAndShow still does its own load and has its own onerror path.
-  prefetchNext() {
-    if (this.images.length < 2) return;
-    const next = this.images[(this.index + 1) % this.images.length];
-    if (!next?.image || next.image === this.prefetchedUrl) return;
-    this.prefetchedUrl = next.image;
-    const im = new Image();
-    // Matches the <img> elements in index.html. AIC's IIIF server 403s any
-    // request carrying a foreign Referer, so without this the prefetch would
-    // reliably miss for that source and quietly do nothing useful.
-    im.referrerPolicy = 'no-referrer';
-    im.decoding = 'async';
-    im.src = next.image;
-    // Decode it too, not just download it — a warmed HTTP cache still leaves
-    // the main-thread decode to happen at paint time, which is the half of the
-    // hitch that bytes-on-disk doesn't fix.
-    im.decode?.().catch(() => {});
-    this.prefetchImg = im; // hold a reference so it isn't collected mid-flight
+  restart() {
+    const token = ++this.runToken;
+    this.cutDwell();
+    this.run(token);
   }
 
-  loadAndShow(img, instant) {
-    // A slide interval at or below MIN_ANIMATED_SLIDE_MS can't show a
-    // transition or Ken Burns pan as anything but a flicker, so treat it as
-    // an instant cut regardless of the caller's own intent — this also
-    // means auto-advance below the threshold never sets `inFade`, so it
-    // can't stall waiting on an animation that was never going to run.
-    const forceInstant = instant || this.slideMs <= MIN_ANIMATED_SLIDE_MS;
-    if (this.inFade && !forceInstant) return;
+  // Resolves the in-flight dwell early (or does nothing if we aren't dwelling).
+  cutDwell() {
+    if (this.wake) { const w = this.wake; this.wake = null; w(); }
+  }
 
-    // A transition still in flight means active/waiting have NOT been swapped
-    // back yet, so `this.waiting` is the element currently visible on screen.
-    // Writing a new src into it changes the picture with no display() call
-    // behind it — the image moves on while the caption stays where it was.
-    // That is exactly the "ribbon was right for a couple of images then hung
-    // while the images kept going" Alex saw on 2026-08-08. Settle the pending
-    // swap first so `waiting` is genuinely the hidden element again.
-    if (this.pendingFinish) {
-      const settle = this.pendingFinish;
-      this.pendingFinish = null;
-      settle();
-    }
+  dwell(ms) {
+    return new Promise(resolve => {
+      this.wake = resolve;
+      this.slideTimer = setTimeout(() => {
+        if (this.wake === resolve) this.wake = null;
+        resolve();
+      }, ms);
+    }).finally(() => clearTimeout(this.slideTimer));
+  }
 
-    this.waiting.style.transition = 'none';
-    this.waiting.style.opacity = '0';
-    this.waiting.style.clipPath = '';
-    this.waiting.style.transform = 'translate3d(0,0,0) scale3d(1,1,1)';
-    this.waiting.src = img.image;
-
-    const finishSwap = () => {
-      [this.active, this.waiting] = [this.waiting, this.active];
-      this.xf = { scale: 1, tx: 0, ty: 0 };
-      this.applyXf(this.active);
-      this.waiting.style.clipPath = '';
-      this.inFade = false;
-      if (!this.paused && this.displayMode === 'kenburns' && this.slideMs > MIN_ANIMATED_SLIDE_MS) this.kb.start();
-      this.schedulePrefetch();
-    };
-
-    const display = () => {
-      this.loading = false;
-      this.kb.stop();
-      // Caption and pixels are set from the same `img` in the same call, so
-      // they cannot disagree — the ribbon is only ever wrong if this doesn't
-      // run, which is what the tick guard in scheduleSlides now prevents.
-      this.onMeta(img);
-
-      if (forceInstant) {
-        this.active.style.transition = 'none';
-        this.waiting.style.transition = 'none';
-        requestAnimationFrame(() => {
-          this.active.style.opacity = '0';
-          this.waiting.style.opacity = '1';
-          finishSwap();
-        });
-      } else {
-        // Force a style recalculation so the reset applied at the top of
-        // loadAndShow ('transition:none; opacity:0') is actually COMMITTED
-        // before the transition sets its own duration and flips opacity to 1.
-        //
-        // Without this the two land in a single recalculation and the browser
-        // has no start value to animate from, so every transition snaps
-        // instantly regardless of its configured duration. It only started
-        // happening once prefetching made images load from cache: previously
-        // the network round-trip always put a frame boundary between the reset
-        // and the transition, and that accident was doing this job.
-        void this.waiting.offsetWidth;
-
-        this.inFade = true;
-        const transitionId = this.transitionId === 'random' ? pickRandomTransitionId() : this.transitionId;
-        const { run } = resolveTransition(transitionId);
-        // Held so a forced advance arriving mid-transition can settle the swap
-        // rather than writing into an element that's currently on screen.
-        this.pendingFinish = finishSwap;
-        run({
-          activeEl: this.active,
-          waitingEl: this.waiting,
-          overlayEl: this.overlayEl,
-          stageEl: this.stageEl,
-          durationMs: this.fadeMs,
-          options: this.transitionOptions,
-        }).then(() => {
-          // Only if it hasn't already been settled early by a forced advance.
-          if (this.pendingFinish !== finishSwap) return;
-          this.pendingFinish = null;
-          finishSwap();
+  /**
+   * Loads a URL into an element and resolves once it is decoded and genuinely
+   * ready to paint. Resolves false on failure so the caller can move on rather
+   * than stall — a dead image URL must never stop the slideshow.
+   */
+  async prepare(el, url) {
+    el.src = url;
+    try {
+      if (!el.complete || el.naturalWidth === 0) {
+        await new Promise((resolve, reject) => {
+          el.onload = resolve;
+          el.onerror = () => reject(new Error('image failed'));
         });
       }
-    };
+      // Decode off the critical path, so the first paint of this image doesn't
+      // land in the same frame as the transition starting.
+      if (typeof el.decode === 'function') await el.decode();
+      return true;
+    } catch {
+      return false;
+    }
+  }
 
-    // Decode before showing. `onload` only means the bytes arrived — the JPEG
-    // is still decoded lazily, on the main thread, at the moment the browser
-    // first has to paint it. On a full-screen photo that decode lands in the
-    // same frame as the transition starting, which is exactly the hitch Alex
-    // described as "choppy between some of the images". decode() moves it off
-    // the critical path and resolves once the bitmap is genuinely ready.
-    //
-    // It rejects if the src is replaced mid-decode; showing the image anyway is
-    // the right fallback, since the alternative is a slide that never appears.
-    const ready = () => {
-      if (typeof this.waiting.decode !== 'function') return display();
-      this.waiting.decode().then(display, () => display());
-    };
+  // Puts `record` on screen. `instant` skips the transition (first slide, or a
+  // slide interval too short to animate).
+  async show(record, instant) {
+    const forceInstant = instant || this.slideMs <= MIN_ANIMATED_SLIDE_MS;
+
+    this.waiting.style.transition = 'none';
+    this.waiting.style.clipPath = '';
+    this.waiting.style.opacity = '0';
+    this.waiting.style.transform = 'translate3d(0,0,0) scale3d(1,1,1)';
 
     this.loading = true;
-    if (this.waiting.complete && this.waiting.naturalWidth > 0) ready();
-    else {
-      this.waiting.onload = ready;
-      this.waiting.onerror = display; // a broken URL must not wedge `loading`
+    const ok = await this.prepare(this.waiting, record.image);
+    this.loading = false;
+    if (!ok) return false;
+
+    this.kb.stop();
+
+    // Caption and picture are set at the same point in the sequence, so they
+    // cannot disagree — the drift that produced two failed fixes is structurally
+    // impossible now rather than merely guarded against.
+    this.onMeta(record);
+
+    if (forceInstant) {
+      this.active.style.opacity = '0';
+      this.waiting.style.opacity = '1';
+    } else {
+      this.inFade = true;
+      const id = this.transitionId === 'random' ? pickRandomTransitionId() : this.transitionId;
+      const { run } = resolveTransition(id);
+      await run({
+        activeEl: this.active,
+        waitingEl: this.waiting,
+        overlayEl: this.overlayEl,
+        stageEl: this.stageEl,
+        durationMs: this.fadeMs,
+        options: this.transitionOptions,
+      });
+      this.inFade = false;
+    }
+
+    [this.active, this.waiting] = [this.waiting, this.active];
+    this.xf = { scale: 1, tx: 0, ty: 0 };
+    this.applyXf(this.active);
+    this.waiting.style.clipPath = '';
+
+    if (!this.paused && this.displayMode === 'kenburns' && this.slideMs > MIN_ANIMATED_SLIDE_MS) {
+      this.kb.start();
+    }
+    return true;
+  }
+
+  /**
+   * The one clock. Shows the current image, then loops: dwell, advance, repeat.
+   * Every step awaits the one before it, so there is no second timer to fall
+   * out of step with and nothing to guard.
+   */
+  async run(token) {
+    if (!this.images.length) return;
+
+    await this.show(this.images[this.index], true);
+    if (token !== this.runToken) return;
+
+    while (token === this.runToken) {
+      // Dwell for the remainder of the slide after the transition it already
+      // spent. Floor at a quarter of the interval so a long transition can
+      // never squeeze the dwell to nothing and spin the loop.
+      const rest = Math.max(this.slideMs * 0.25, this.slideMs - this.fadeMs);
+      await this.dwell(rest);
+      if (token !== this.runToken || this.paused) return;
+
+      // Skip past unloadable records rather than stopping, but don't spin
+      // forever if the whole playlist is broken.
+      let shown = false;
+      for (let tries = 0; tries < Math.min(5, this.images.length) && !shown; tries++) {
+        this.index = (this.index + 1) % this.images.length;
+        shown = await this.show(this.images[this.index], false);
+        if (token !== this.runToken) return;
+      }
     }
   }
 
@@ -289,45 +281,29 @@ export class Slideshow {
     if (options) this.transitionOptions = { ...this.transitionOptions, ...options };
   }
 
-  scheduleSlides() {
-    clearInterval(this.slideTimer);
-    if (!this.paused) {
-      this.slideTimer = setInterval(() => {
-        // Skip the tick entirely rather than advancing past it. Previously
-        // `index` was incremented before loadAndShow could decline the tick
-        // (mid-transition, or still downloading), so the counter ran ahead of
-        // what was on screen: records got silently skipped, prefetchNext warmed
-        // the wrong image, and the next completed load showed an image several
-        // places along from the caption that had been rendered for it.
-        if (this.inFade || this.loading) return;
-        this.index = (this.index + 1) % this.images.length;
-        this.loadAndShow(this.images[this.index], false);
-      }, this.slideMs);
-    }
-  }
-
-  goNext() {
+  async goNext() {
     this.index = (this.index + 1) % this.images.length;
-    this.loadAndShow(this.images[this.index], true);
-    if (!this.paused) this.scheduleSlides();
+    await this.show(this.images[this.index], true);
+    if (!this.paused) this.restart();
   }
 
-  goPrev() {
+  async goPrev() {
     this.index = (this.index - 1 + this.images.length) % this.images.length;
-    this.loadAndShow(this.images[this.index], true);
-    if (!this.paused) this.scheduleSlides();
+    await this.show(this.images[this.index], true);
+    if (!this.paused) this.restart();
   }
 
   togglePause() {
     this.paused = !this.paused;
+    this.pauseIcon.style.opacity = this.paused ? '1' : '0';
+
     if (this.paused) {
-      clearInterval(this.slideTimer);
-      this.kb.stop();
-      this.pauseIcon.style.opacity = '1';
+      this.kb.stop();          // also writes the frozen position back into xf
+      this.runToken++;         // stops the loop at its next await
+      this.cutDwell();
     } else {
-      this.pauseIcon.style.opacity = '0';
-      if (this.displayMode === 'kenburns') this.kb.start();
-      this.scheduleSlides();
+      this.restart();
+      if (this.displayMode === 'kenburns' && this.slideMs > MIN_ANIMATED_SLIDE_MS) this.kb.start();
     }
     this.onPauseChange(this.paused);
   }

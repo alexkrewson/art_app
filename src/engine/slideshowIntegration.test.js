@@ -1,14 +1,30 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Slideshow } from './slideshow.js';
 
-// A real end-to-end harness for the advance cycle, added 2026-08-08 after two
-// attempts to fix "the caption lags the picture" by reading the code both
-// failed. jsdom won't run CSS transitions, but the bug isn't in the animation
-// — it's in WHICH element is on screen when, and that is fully observable
-// here.
+// Tests for the sequential-loop engine (rewritten 2026-08-09). The old suite
+// tested prefetchNext / the setInterval tick / pendingFinish — all machinery
+// that existed only to reconcile two clocks, and all deleted with the rewrite.
 //
-// The invariant under test, stated plainly: at every settled moment, the
-// visible <img> must be showing the same record the ribbon last described.
+// What's worth pinning now is behaviour, not internals: captions stay with
+// their pictures, nothing is skipped, a dead URL doesn't wedge playback, and
+// pause actually stops.
+
+// jsdom has no Web Animations API. The engine only needs animate() to return
+// something with `finished`, `cancel` and `commitStyles`.
+function stubAnimate(el) {
+  el.animate = (keyframes, opts) => {
+    const last = keyframes[keyframes.length - 1];
+    let done;
+    const finished = new Promise(r => { done = r; });
+    // Resolve on a macrotask so tests can observe the in-flight state.
+    const timer = setTimeout(() => { Object.assign(el.style, last); done(); }, opts?.duration ?? 0);
+    return {
+      finished,
+      cancel() { clearTimeout(timer); done(); },
+      commitStyles() { Object.assign(el.style, last); },
+    };
+  };
+}
 
 function fakeImg(id) {
   const el = document.createElement('img');
@@ -17,19 +33,28 @@ function fakeImg(id) {
   let complete = false;
   Object.defineProperty(el, 'src', {
     get: () => src,
-    // Assigning src resets the load, exactly as a browser does.
-    set: v => { src = v; complete = false; },
+    set: v => {
+      src = v;
+      complete = false;
+      // Loads on a microtask-ish delay, like a real (cached) image.
+      queueMicrotask(() => {
+        if (src !== v) return;
+        if (String(v).includes('broken')) { el.onerror?.(); return; }
+        complete = true;
+        el.onload?.();
+      });
+    },
     configurable: true,
   });
   Object.defineProperty(el, 'complete', { get: () => complete, configurable: true });
   Object.defineProperty(el, 'naturalWidth', { get: () => (complete ? 100 : 0), configurable: true });
-  el.decode = () => Promise.resolve();
-  el._finishLoad = () => { complete = true; el.onload?.(); };
+  el.decode = () => (complete ? Promise.resolve() : Promise.reject(new Error('not decodable')));
+  stubAnimate(el);
   return el;
 }
 
-function setup({ slideMs = 1000, fadeMs = 400 } = {}) {
-  document.body.innerHTML = '<div id="stage"><div id="overlay"></div><div id="pause"></div></div>';
+function setup({ slideMs = 100, fadeMs = 20, displayMode = 'static' } = {}) {
+  document.body.innerHTML = '<div id="stage"><div id="ov"></div><div id="pi"></div></div>';
   const stageEl = document.getElementById('stage');
   const slideA = fakeImg('A');
   const slideB = fakeImg('B');
@@ -38,89 +63,112 @@ function setup({ slideMs = 1000, fadeMs = 400 } = {}) {
   const captions = [];
   const show = new Slideshow({
     stageEl, slideA, slideB,
-    overlayEl: document.getElementById('overlay'),
-    pauseIcon: document.getElementById('pause'),
+    overlayEl: document.getElementById('ov'),
+    pauseIcon: document.getElementById('pi'),
     onMeta: rec => captions.push(rec.image),
-    slideMs, fadeMs,
-    displayMode: 'static',   // keep Ken Burns' RAF loop out of it
+    slideMs, fadeMs, displayMode,
     transitionId: 'crossfade',
   });
-  return { show, slideA, slideB, captions, stageEl };
+  return { show, slideA, slideB, captions };
 }
 
-// Which element is actually on screen, by opacity.
-function visible(slideA, slideB) {
-  if (slideA.style.opacity === '1') return slideA;
-  if (slideB.style.opacity === '1') return slideB;
-  return null;
-}
+const visible = (a, b) => (a.style.opacity === '1' ? a : b.style.opacity === '1' ? b : null);
+const tick = (ms = 50) => new Promise(r => setTimeout(r, ms));
 
-// Settle everything: pending loads, decode microtasks, rAF, and the
-// transition's own timer.
-async function settle(slides, ms = 1000) {
-  for (const el of slides) if (!el.complete && el.src) el._finishLoad();
-  await Promise.resolve(); await Promise.resolve();
-  vi.advanceTimersByTime(ms);
-  await Promise.resolve(); await Promise.resolve();
-  vi.advanceTimersByTime(ms);
-  await Promise.resolve(); await Promise.resolve();
-}
+describe('Slideshow (sequential loop)', () => {
+  beforeEach(() => { document.body.innerHTML = ''; });
 
-describe('Slideshow advance cycle', () => {
-  beforeEach(() => {
-    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'requestAnimationFrame', 'cancelAnimationFrame'] });
-  });
-  afterEach(() => vi.useRealTimers());
-
-  it('never assigns a new src to the element currently on screen', async () => {
-    const { show, slideA, slideB } = setup();
-    show.init([{ image: '1.jpg' }, { image: '2.jpg' }, { image: '3.jpg' }]);
-    await settle([slideA, slideB]);
-
-    const onScreen = visible(slideA, slideB);
-    const srcBefore = onScreen?.src;
-
-    // Advance. The moment `waiting.src` is written, the visible element must
-    // NOT be the one being written to — otherwise the picture changes with no
-    // caption behind it, and every caption from then on is one behind.
-    show.loadAndShow(show.images[1], false);
-    expect(onScreen?.src).toBe(srcBefore);
-  });
-
-  it('keeps the caption and the visible image in step across several advances', async () => {
+  it('shows the first image and captions it', async () => {
     const { show, slideA, slideB, captions } = setup();
-    const playlist = [{ image: '1.jpg' }, { image: '2.jpg' }, { image: '3.jpg' }, { image: '4.jpg' }];
-    show.init(playlist);
-    await settle([slideA, slideB]);
+    show.init([{ image: '1.jpg' }, { image: '2.jpg' }]);
+    await tick(30);
 
-    for (let i = 1; i < playlist.length; i++) {
-      show.index = i;
-      show.loadAndShow(playlist[i], false);
-      await settle([slideA, slideB]);
+    expect(visible(slideA, slideB)?.src).toBe('1.jpg');
+    expect(captions).toEqual(['1.jpg']);
+    show.togglePause();
+  });
 
-      const onScreen = visible(slideA, slideB);
-      expect(onScreen, `no visible slide after advance ${i}`).not.toBeNull();
-      expect(onScreen.src, `picture/caption disagree after advance ${i}`)
-        .toBe(captions[captions.length - 1]);
+  it('keeps caption and picture in step over many advances', async () => {
+    const { show, slideA, slideB, captions } = setup({ slideMs: 40, fadeMs: 10 });
+    show.init([{ image: '1.jpg' }, { image: '2.jpg' }, { image: '3.jpg' }, { image: '4.jpg' }]);
+    await tick(400);
+    show.togglePause();
+
+    // The invariant that two previous fixes failed to hold: whatever is on
+    // screen is what the ribbon was last told to describe.
+    expect(visible(slideA, slideB)?.src).toBe(captions[captions.length - 1]);
+    expect(captions.length).toBeGreaterThan(2); // it really did advance
+  });
+
+  it('advances one image at a time, never skipping', async () => {
+    const { show, captions } = setup({ slideMs: 40, fadeMs: 10 });
+    show.init([{ image: '1.jpg' }, { image: '2.jpg' }, { image: '3.jpg' }]);
+    await tick(400);
+    show.togglePause();
+
+    // Consecutive captions must walk the playlist in order and wrap — the old
+    // engine could jump two or three at once when ticks landed mid-transition.
+    const order = ['1.jpg', '2.jpg', '3.jpg'];
+    for (let i = 1; i < captions.length; i++) {
+      const prev = order.indexOf(captions[i - 1]);
+      expect(captions[i]).toBe(order[(prev + 1) % order.length]);
     }
   });
 
-  it('runs the transition rather than snapping when the image is already cached', async () => {
-    const { show, slideA, slideB } = setup({ fadeMs: 400 });
-    show.init([{ image: '1.jpg' }, { image: '2.jpg' }]);
-    await settle([slideA, slideB]);
+  it('never writes a new src into the element that is on screen', async () => {
+    const { show, slideA, slideB } = setup({ slideMs: 40, fadeMs: 10 });
+    show.init([{ image: '1.jpg' }, { image: '2.jpg' }, { image: '3.jpg' }]);
+    await tick(30);
 
-    show.index = 1;
-    show.loadAndShow(show.images[1], false);
-    // Let the load + decode resolve, but NOT the transition's duration.
-    for (const el of [slideA, slideB]) if (!el.complete && el.src) el._finishLoad();
-    await Promise.resolve(); await Promise.resolve();
-    vi.advanceTimersByTime(0);
-    await Promise.resolve(); await Promise.resolve();
+    for (let i = 0; i < 6; i++) {
+      const onScreen = visible(slideA, slideB);
+      const src = onScreen?.src;
+      await tick(25);
+      // Between advances the visible element's src must never change under it:
+      // that's the fault that made the picture move while the caption stayed.
+      if (visible(slideA, slideB) === onScreen) expect(onScreen.src).toBe(src);
+    }
+    show.togglePause();
+  });
 
-    // A transition is in flight, so the swap must not have been finalised yet.
-    expect(show.inFade).toBe(true);
-    const incoming = slideA.src === '2.jpg' ? slideA : slideB;
-    expect(incoming.style.transition).toContain('400ms');
+  it('skips a broken image instead of stalling', async () => {
+    const { show, captions } = setup({ slideMs: 30, fadeMs: 5 });
+    show.init([{ image: '1.jpg' }, { image: 'broken.jpg' }, { image: '3.jpg' }]);
+    await tick(300);
+    show.togglePause();
+
+    expect(captions).toContain('3.jpg');
+    expect(captions).not.toContain('broken.jpg');
+  });
+
+  it('stops advancing when paused and resumes afterwards', async () => {
+    const { show, captions } = setup({ slideMs: 30, fadeMs: 5 });
+    show.init([{ image: '1.jpg' }, { image: '2.jpg' }, { image: '3.jpg' }]);
+    await tick(80);
+    show.togglePause();
+    const atPause = captions.length;
+
+    await tick(150);
+    expect(captions.length).toBe(atPause);
+
+    show.togglePause();
+    await tick(150);
+    expect(captions.length).toBeGreaterThan(atPause);
+    show.togglePause();
+  });
+
+  it('abandons the old loop when the playlist is replaced', async () => {
+    const { show, captions } = setup({ slideMs: 30, fadeMs: 5 });
+    show.init([{ image: 'old1.jpg' }, { image: 'old2.jpg' }]);
+    await tick(60);
+
+    show.setPlaylist([{ image: 'new1.jpg' }, { image: 'new2.jpg' }]);
+    await tick(150);
+    show.togglePause();
+
+    // Nothing from the old playlist may appear after the swap — two loops
+    // running at once would interleave them.
+    const afterSwap = captions.slice(captions.indexOf('new1.jpg'));
+    expect(afterSwap.every(c => c.startsWith('new'))).toBe(true);
   });
 });
