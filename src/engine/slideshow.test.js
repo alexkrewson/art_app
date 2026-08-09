@@ -65,3 +65,70 @@ describe('Slideshow.prefetchNext', () => {
     expect(created).toHaveLength(0);
   });
 });
+
+// The auto-advance tick. Same .call() approach — scheduleSlides only touches
+// timers and a handful of fields.
+const scheduleSlides = Slideshow.prototype.scheduleSlides;
+
+function ticker(overrides = {}) {
+  return {
+    paused: false,
+    slideMs: 1000,
+    index: 0,
+    images: [{ image: 'a.jpg' }, { image: 'b.jpg' }, { image: 'c.jpg' }],
+    inFade: false,
+    loading: false,
+    loadAndShow: vi.fn(),
+    ...overrides,
+  };
+}
+
+describe('Slideshow.scheduleSlides', () => {
+  beforeEach(() => vi.useFakeTimers());
+
+  it('advances one image per tick', () => {
+    const self = ticker();
+    scheduleSlides.call(self);
+    vi.advanceTimersByTime(1000);
+    expect(self.index).toBe(1);
+    expect(self.loadAndShow).toHaveBeenCalledWith(self.images[1], false);
+  });
+
+  it('skips the tick entirely while an image is still loading', () => {
+    const self = ticker({ loading: true });
+    scheduleSlides.call(self);
+    vi.advanceTimersByTime(3000);
+    // The index must NOT run ahead of what's on screen. When it did, records
+    // were silently skipped and the caption rendered for one image could end
+    // up over a different one several places along.
+    expect(self.index).toBe(0);
+    expect(self.loadAndShow).not.toHaveBeenCalled();
+  });
+
+  it('skips the tick while a transition is mid-flight', () => {
+    const self = ticker({ inFade: true });
+    scheduleSlides.call(self);
+    vi.advanceTimersByTime(3000);
+    expect(self.index).toBe(0);
+    expect(self.loadAndShow).not.toHaveBeenCalled();
+  });
+
+  it('resumes advancing once the load finishes', () => {
+    const self = ticker({ loading: true });
+    scheduleSlides.call(self);
+    vi.advanceTimersByTime(2000);
+    expect(self.index).toBe(0);
+
+    self.loading = false;
+    vi.advanceTimersByTime(1000);
+    expect(self.index).toBe(1);
+    expect(self.loadAndShow).toHaveBeenCalledTimes(1);
+  });
+
+  it('schedules nothing at all while paused', () => {
+    const self = ticker({ paused: true });
+    scheduleSlides.call(self);
+    vi.advanceTimersByTime(5000);
+    expect(self.loadAndShow).not.toHaveBeenCalled();
+  });
+});

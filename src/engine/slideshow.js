@@ -134,7 +134,12 @@ export class Slideshow {
     // request carrying a foreign Referer, so without this the prefetch would
     // reliably miss for that source and quietly do nothing useful.
     im.referrerPolicy = 'no-referrer';
+    im.decoding = 'async';
     im.src = next.image;
+    // Decode it too, not just download it — a warmed HTTP cache still leaves
+    // the main-thread decode to happen at paint time, which is the half of the
+    // hitch that bytes-on-disk doesn't fix.
+    im.decode?.().catch(() => {});
     this.prefetchImg = im; // hold a reference so it isn't collected mid-flight
   }
 
@@ -164,7 +169,11 @@ export class Slideshow {
     };
 
     const display = () => {
+      this.loading = false;
       this.kb.stop();
+      // Caption and pixels are set from the same `img` in the same call, so
+      // they cannot disagree — the ribbon is only ever wrong if this doesn't
+      // run, which is what the tick guard in scheduleSlides now prevents.
       this.onMeta(img);
 
       if (forceInstant) {
@@ -190,8 +199,26 @@ export class Slideshow {
       }
     };
 
-    if (this.waiting.complete && this.waiting.naturalWidth > 0) display();
-    else { this.waiting.onload = display; this.waiting.onerror = display; }
+    // Decode before showing. `onload` only means the bytes arrived — the JPEG
+    // is still decoded lazily, on the main thread, at the moment the browser
+    // first has to paint it. On a full-screen photo that decode lands in the
+    // same frame as the transition starting, which is exactly the hitch Alex
+    // described as "choppy between some of the images". decode() moves it off
+    // the critical path and resolves once the bitmap is genuinely ready.
+    //
+    // It rejects if the src is replaced mid-decode; showing the image anyway is
+    // the right fallback, since the alternative is a slide that never appears.
+    const ready = () => {
+      if (typeof this.waiting.decode !== 'function') return display();
+      this.waiting.decode().then(display, () => display());
+    };
+
+    this.loading = true;
+    if (this.waiting.complete && this.waiting.naturalWidth > 0) ready();
+    else {
+      this.waiting.onload = ready;
+      this.waiting.onerror = display; // a broken URL must not wedge `loading`
+    }
   }
 
   setDisplayMode(mode) {
@@ -214,6 +241,13 @@ export class Slideshow {
     clearInterval(this.slideTimer);
     if (!this.paused) {
       this.slideTimer = setInterval(() => {
+        // Skip the tick entirely rather than advancing past it. Previously
+        // `index` was incremented before loadAndShow could decline the tick
+        // (mid-transition, or still downloading), so the counter ran ahead of
+        // what was on screen: records got silently skipped, prefetchNext warmed
+        // the wrong image, and the next completed load showed an image several
+        // places along from the caption that had been rendered for it.
+        if (this.inFade || this.loading) return;
         this.index = (this.index + 1) % this.images.length;
         this.loadAndShow(this.images[this.index], false);
       }, this.slideMs);

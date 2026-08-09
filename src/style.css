@@ -49,7 +49,12 @@ body { display:flex; flex-direction:column; }
 .slide {
   position:absolute; inset:0;
   width:100%; height:100%;
-  object-fit:contain;
+  /* `cover`, not `contain`: fill the frame on every side at the image's own
+     aspect ratio, cropping whatever doesn't fit. Alex asked for this after
+     seeing letterboxed bars top and bottom on the phone — losing some of the
+     edges is fine and actively helps Ken Burns, which now always has real
+     overscan to pan into instead of drifting across dead black. */
+  object-fit:cover;
   opacity:0;
   /* transform handled entirely by JS — no CSS transition on it */
   will-change: transform, opacity; /* keeps the Ken Burns pan/zoom on its own
@@ -125,9 +130,12 @@ body { display:flex; flex-direction:column; }
   color: var(--text-primary);
   border-radius:10px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  max-width:480px; width:100%;
-  max-height:80vh; overflow-y:auto;
-  padding:1.25rem 1.5rem;
+  max-width:560px; width:100%;
+  max-height:85vh; overflow-y:auto;
+  padding:1.5rem 1.75rem;
+  /* Alex asked for a much larger settings font — this is the base every
+     size below is relative to, so the whole panel scales from one number. */
+  font-size:1.05rem;
 }
 
 .settings-panel-header {
@@ -135,7 +143,7 @@ body { display:flex; flex-direction:column; }
   margin-bottom:0.75rem;
 }
 .settings-title {
-  font:italic 1.25rem Georgia, serif;
+  font:italic 1.6rem Georgia, serif;
   color: var(--text-primary);
 }
 
@@ -147,22 +155,22 @@ body { display:flex; flex-direction:column; }
   width:100%;
   padding:0.6rem 0.25rem;
   background:none; border:none; cursor:pointer;
-  font-size:0.7rem; font-weight:700;
+  font-size:0.95rem; font-weight:700;
   text-transform:uppercase; letter-spacing:0.06em;
   color: var(--text-tertiary);
 }
 .settings-section-toggle[aria-expanded="true"] { color: var(--accent); }
 .settings-section-chevron {
-  font-size:0.6rem;
+  font-size:0.8rem;
   transition: transform 0.15s ease;
 }
 .settings-section-toggle[aria-expanded="true"] .settings-section-chevron { transform: rotate(90deg); }
 
 .settings-section-content {
   padding:0 0.25rem 0.9rem;
-  font-size:0.85rem;
+  font-size:1rem;
   color: var(--text-secondary);
-  line-height:1.5;
+  line-height:1.6;
 }
 .settings-section-content p + p { margin-top:0.6rem; }
 .settings-section-content a { color: var(--accent); }
@@ -183,7 +191,7 @@ body { display:flex; flex-direction:column; }
   border:1px solid var(--border);
   border-radius:6px;
   color: var(--text-primary);
-  font-size:0.85rem;
+  font-size:1rem;
   cursor:pointer;
   text-align:left;
 }
@@ -201,7 +209,7 @@ body { display:flex; flex-direction:column; }
 .field-group:last-child { margin-bottom:0; }
 .field-label {
   display:block;
-  font-size:0.7rem; font-weight:700;
+  font-size:0.85rem; font-weight:700;
   text-transform:uppercase; letter-spacing:0.06em;
   color: var(--text-tertiary);
   margin-bottom:0.4rem;
@@ -211,7 +219,7 @@ body { display:flex; flex-direction:column; }
 .radio-row {
   display:flex; align-items:center; gap:0.5rem;
   min-height:44px;
-  font-size:0.85rem;
+  font-size:1rem;
   color: var(--text-primary);
   cursor:pointer;
 }
@@ -231,7 +239,7 @@ body { display:flex; flex-direction:column; }
   color: var(--text-primary);
   border:1px solid var(--border);
   border-radius:6px;
-  font-size:0.85rem;
+  font-size:1rem;
   font-weight:500;
   cursor:pointer;
 }
@@ -249,7 +257,7 @@ body { display:flex; flex-direction:column; }
 .download-row-label {
   flex:1 1 8rem;
   min-width:0;
-  font-size:0.9rem;
+  font-size:1rem;
   color: var(--text-primary);
 }
 /* The count picker sits inline beside its button, unlike .field which is a
@@ -284,7 +292,10 @@ body { display:flex; flex-direction:column; }
   min-height:44px;
   border:1px solid var(--border);
   border-radius:6px;
-  font-size:0.85rem;
+  /* 1rem minimum on form controls: below 16px, mobile Safari and some Android
+     WebViews auto-zoom the page on focus. Also part of the larger settings
+     type scale Alex asked for. */
+  font-size:1rem;
   font-family:inherit;
   background: var(--bg-surface);
   color: var(--text-primary);

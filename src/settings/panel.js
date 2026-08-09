@@ -67,17 +67,17 @@ function formatSeconds(ms) {
   return Number.isInteger(sec) ? String(sec) : sec.toFixed(1);
 }
 
+// The cache toggle used to live here, buried under Advanced. Alex asked for it
+// next to the source/playback controls instead — it decides what the slideshow
+// can still show with no connection, which is a Sources question, not a
+// debug-menu one. Clearing the cache stays here: it's destructive and rare.
 function renderAdvancedSection(settings, cacheStats) {
   return `
-    <label class="radio-row">
-      <input type="checkbox" name="cacheEnabled" ${settings.cacheEnabled ? 'checked' : ''}>
-      <span>Cache images for offline use <span class="field-hint">— once an
-      image has been downloaded it keeps playing with no internet
-      connection; only images you haven't seen yet need a live fetch.</span></span>
-    </label>
     <div class="field-group">
-      <span class="field-hint">${cacheStats ? `${cacheStats.count} of ${cacheStats.cap} images cached` : 'Loading cache stats…'}</span>
+      <span class="field-hint">${cacheStats ? `${cacheStats.count} of ${cacheStats.cap} images cached automatically` : 'Loading cache stats…'}</span>
       <button type="button" class="btn-secondary" id="clearCacheBtn">Clear cache</button>
+      <div class="field-hint">Also removes anything saved under <strong>Offline
+      downloads</strong>.</div>
     </div>
     <p>Density, sound, and debug options are planned — see
     <code>maintenance_todo.md</code>.</p>
@@ -183,6 +183,16 @@ function renderSourcesSection(settings, sourceFilters) {
       <label class="radio-row"><input type="radio" name="order" value="sequential" ${settings.order === 'sequential' ? 'checked' : ''}><span>Sequential</span></label>
       <label class="radio-row"><input type="radio" name="order" value="shuffle" ${settings.order === 'shuffle' ? 'checked' : ''}><span>Shuffle</span></label>
     </div>
+    <div class="field-group">
+      <span class="field-label">Offline</span>
+      <label class="radio-row">
+        <input type="checkbox" name="cacheEnabled" ${settings.cacheEnabled ? 'checked' : ''}>
+        <span>Cache images as they're shown <span class="field-hint">— once an
+        image has been displayed it keeps playing with no internet connection.
+        To choose what's available offline in advance, use
+        <strong>Offline downloads</strong>.</span></span>
+      </label>
+    </div>
   `;
 }
 
@@ -209,8 +219,13 @@ function downloadOutcome(result) {
 }
 
 function renderDownloadsSection(settings, downloads, storage, busy, lastResult) {
-  const enabled = Object.entries(SOURCES).filter(([id]) => settings.sources[id]?.enabled);
-  const liveEnabled = enabled.filter(([id]) => id !== 'local' && id !== 'localFiles');
+  // Every live source, not only the enabled ones. Requiring a source to be
+  // switched on first was a hidden precondition: Alex opened this section and
+  // reported "I don't see anything clickable", which is exactly what it shows
+  // when nothing live happens to be ticked. Wanting a category offline is
+  // itself the intent to use it, so the button is always offered and enabling
+  // the source is handled for you when a download succeeds.
+  const live = Object.entries(SOURCES).filter(([id]) => id !== 'local' && id !== 'localFiles');
 
   const bar = storage ? `
     <div class="field-group">
@@ -234,28 +249,30 @@ function renderDownloadsSection(settings, downloads, storage, busy, lastResult) 
         </div>`).join('')}
     </div>` : '';
 
-  const targets = liveEnabled.flatMap(([id, source]) => downloadableTargets(id, source));
+  const targets = live.flatMap(([id, source]) => downloadableTargets(id, source));
 
-  const available = targets.length ? `
+  const available = `
     <div class="field-group">
       <span class="field-label">Available to download</span>
       ${targets.map(t => {
         const have = downloads?.find(d => d.collection === t.collection);
         const state = busy?.[t.collection];
+        // A keyed source with no key can't fetch anything, so say that on the
+        // row rather than letting the download fail with an empty result.
+        const source = SOURCES[t.sourceId];
+        const needsKey = source.needsApiKey && !settings.sources[t.sourceId]?.filters?.apiKey;
         return `
         <div class="download-row">
-          <span class="download-row-label">${t.label}${have ? ` <span class="field-hint">(${have.count} saved)</span>` : ''}</span>
-          <select class="field field-inline" data-download-count="${t.collection}" ${state ? 'disabled' : ''}>
+          <span class="download-row-label">${t.label}${have ? ` <span class="field-hint">(${have.count} saved)</span>` : ''}${needsKey ? ' <span class="field-hint">— needs an API key in Sources</span>' : ''}</span>
+          <select class="field field-inline" data-download-count="${t.collection}" ${state || needsKey ? 'disabled' : ''}>
             ${DOWNLOAD_COUNTS.map(n => `<option value="${n}" ${n === 100 ? 'selected' : ''}>${n}</option>`).join('')}
           </select>
-          <button type="button" class="btn-secondary" data-download="${t.collection}" ${state ? 'disabled' : ''}>
+          <button type="button" class="btn-secondary" data-download="${t.collection}" ${state || needsKey ? 'disabled' : ''}>
             ${state ? state : (have ? 'Add more' : 'Download')}
           </button>
         </div>`;
       }).join('')}
-    </div>` : `<p class="field-hint">Enable a live source under <strong>Sources</strong> first —
-       there's nothing to download from the bundled starter set or a local folder,
-       they're already offline.</p>`;
+    </div>`;
 
   return `
     <p class="field-hint">Save a category to this device so the slideshow keeps
@@ -489,6 +506,19 @@ export function createSettingsPanel(slideshow) {
             console.warn(`[SlowFrame] download of ${collection} added nothing:`, result.reason);
           }
           lastDownloadResult = result;
+          // Downloading a category is a clear statement that you want to see
+          // it, so switch the source on rather than saving images the playlist
+          // will then ignore. Only on success — enabling a source that just
+          // failed would be worse than doing nothing.
+          if (result.added > 0 && !settings.sources[target.sourceId]?.enabled) {
+            settings.sources[target.sourceId] = {
+              ...(settings.sources[target.sourceId] || { filters: {} }),
+              enabled: true,
+            };
+            saveSettings(settings);
+            refreshSourcesSection();
+            rebuildPlaylist();
+          }
           return refreshDownloadState();
         })
         // A download that half-finished still saved something, so the list has
@@ -591,7 +621,9 @@ export function createSettingsPanel(slideshow) {
       }
       // API-key fields gate the enable checkbox itself (disabled/enabled,
       // hint text) — everything else just needs the playlist rebuilt.
-      if (key === 'apiKey') refreshSourcesSection();
+      // An API key also un-disables that source's rows under Offline
+      // downloads, which show "needs an API key in Sources" without one.
+      if (key === 'apiKey') { refreshSourcesSection(); refreshDownloadsSection(); }
       rebuildPlaylist();
     } else if (el.name === 'cacheEnabled') {
       settings.cacheEnabled = el.checked;
@@ -617,21 +649,21 @@ export function createSettingsPanel(slideshow) {
   // fixed gear icon (see main.js) required too much mouse travel to reach.
   // `cursorPos` is optional so the panel still works (centered, via the
   // existing flex layout) if ever opened without a known mouse position.
-  function open(cursorPos) {
+  // Always centred, via the flex centering on `.settings-panel`. The panel used
+  // to open at the pointer (2026-07-30, to save mouse travel on the desktop),
+  // but Alex asked for it centred after using it on the phone: with a bigger
+  // panel and no cursor to be near, "wherever you last tapped" just means the
+  // panel lands somewhere different every time. The gear itself still follows
+  // the pointer — that's the part that saved the travel.
+  //
+  // Takes and ignores a position argument so the existing callers don't need
+  // to care; clearing the inline styles matters because a build that had
+  // positioned it before would otherwise leave them stuck on the element.
+  function open() {
     root.hidden = false;
-    if (!cursorPos) {
-      inner.style.position = '';
-      inner.style.left = '';
-      inner.style.top = '';
-      return;
-    }
-    inner.style.position = 'absolute';
-    const rect = inner.getBoundingClientRect();
-    const margin = 12;
-    const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
-    const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
-    inner.style.left = `${Math.max(margin, Math.min(maxLeft, cursorPos.x - rect.width / 2))}px`;
-    inner.style.top = `${Math.max(margin, Math.min(maxTop, cursorPos.y - rect.height / 2))}px`;
+    inner.style.position = '';
+    inner.style.left = '';
+    inner.style.top = '';
   }
   function close() { root.hidden = true; }
 
