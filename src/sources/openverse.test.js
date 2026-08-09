@@ -72,6 +72,20 @@ describe('openverseSource', () => {
     expect(records.map(r => r.image)).toEqual(['https://x/keep.jpg']);
   });
 
+  it('deduplicates on the Openverse id, not just the URL', async () => {
+    // Openverse indexes the same photo more than once with different URLs; a
+    // live batch of 12 came back with one image twice, which on screen reads
+    // as the slideshow having stuck rather than as a duplicate.
+    const data = results([
+      image({ id: 'same', url: 'https://x/a.jpg' }),
+      image({ id: 'same', url: 'https://x/b.jpg' }),
+      image({ id: 'other', url: 'https://x/c.jpg' }),
+    ]);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
+    const records = await openverseSource.fetchBatch({ filters: {}, count: 24 });
+    expect(records).toHaveLength(2);
+  });
+
   it('queries each ticked subject and ignores the free-text field', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => results([]) }));
     vi.stubGlobal('fetch', fetchMock);

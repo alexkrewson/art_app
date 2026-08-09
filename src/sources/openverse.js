@@ -136,12 +136,18 @@ export const openverseSource = {
     const seen = new Set();
     for (const r of shuffle(batches.flat())) {
       if (results.length >= count) break;
-      if (!r.url || seen.has(r.url)) continue;
+      // Deduplicate on the Openverse id as well as the URL. Two subject
+      // searches overlap heavily, and the same photo also turns up indexed
+      // more than once with different URLs — a live batch of 12 came back with
+      // the same MTAPhotos image twice, which reads on screen as the slideshow
+      // having got stuck rather than as a duplicate.
+      if (!r.url || seen.has(r.url) || (r.id && seen.has(r.id))) continue;
       // Belt-and-braces on top of `mature=false`: the API applies it, but this
       // runs unattended on a wall display, so a flag that arrives set anyway
       // is not something to pass through on trust.
       if (r.mature) continue;
       seen.add(r.url);
+      if (r.id) seen.add(r.id);
       results.push(toRecord(r));
     }
     return results;

@@ -110,6 +110,24 @@ export class Slideshow {
     this.init(images);
   }
 
+  // Defers the prefetch to idle time instead of firing it the instant the
+  // transition lands. Prefetching *decodes* as well as downloads, and doing
+  // that at the exact moment Ken Burns starts put a decode of a full-screen
+  // photo in the frames where the pan is just getting going — which is the
+  // hitch that survived the first choppiness fix. There's a whole slide's dwell
+  // to play with, so almost any later moment is a better one.
+  schedulePrefetch() {
+    if (this.prefetchPending) return;
+    const run = () => { this.prefetchPending = null; this.prefetchNext(); };
+    if (typeof requestIdleCallback === 'function') {
+      // The timeout matters: on a busy tab idle may never come, and a prefetch
+      // that never runs silently costs the next slide its head start.
+      this.prefetchPending = requestIdleCallback(run, { timeout: 2000 });
+    } else {
+      this.prefetchPending = setTimeout(run, 600);
+    }
+  }
+
   // Warms the next image into the browser's HTTP cache as soon as the current
   // one is on screen, so the next tick assigns a `src` that resolves locally.
   //
@@ -165,7 +183,7 @@ export class Slideshow {
       this.waiting.style.clipPath = '';
       this.inFade = false;
       if (!this.paused && this.displayMode === 'kenburns' && this.slideMs > MIN_ANIMATED_SLIDE_MS) this.kb.start();
-      this.prefetchNext();
+      this.schedulePrefetch();
     };
 
     const display = () => {

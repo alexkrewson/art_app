@@ -268,8 +268,17 @@ function renderDownloadsSection(settings, downloads, storage, busy, lastResult) 
             ${DOWNLOAD_COUNTS.map(n => `<option value="${n}" ${n === 100 ? 'selected' : ''}>${n}</option>`).join('')}
           </select>
           <button type="button" class="btn-secondary" data-download="${t.collection}" ${state || needsKey ? 'disabled' : ''}>
-            ${state ? state : (have ? 'Add more' : 'Download')}
+            ${state ? 'Saving…' : (have ? 'Add more' : 'Download')}
           </button>
+        </div>
+        <!-- Its own row beneath, so a long category name can't squash the bar.
+             Hidden until a download starts; updated in place while it runs so
+             the section isn't re-rendered under the user's finger. -->
+        <div class="download-progress" data-progress="${t.collection}" ${state ? '' : 'hidden'}>
+          <div class="download-progress-track">
+            <div class="download-progress-fill" style="width:${state?.percent ?? 0}%"></div>
+          </div>
+          <span class="field-hint" data-progress-label="${t.collection}">${state?.label ?? ''}</span>
         </div>`;
       }).join('')}
     </div>`;
@@ -484,7 +493,7 @@ export function createSettingsPanel(slideshow) {
         .find(t => t.collection === collection);
       if (!target) return;
 
-      downloadBusy[collection] = 'Starting…';
+      downloadBusy[collection] = { percent: 0, label: `0 of ${count}…` };
       refreshDownloadsSection();
 
       downloadTarget(
@@ -492,12 +501,14 @@ export function createSettingsPanel(slideshow) {
         settings.sources[target.sourceId]?.filters || {},
         count,
         // Re-rendering the whole section per image would fight the user's
-        // scroll position, so the progress label is written straight into the
-        // one button instead.
-        ({ done, total }) => {
-          downloadBusy[collection] = `${done}/${total}`;
-          const btn = accordion.querySelector(`[data-download="${CSS.escape(collection)}"]`);
-          if (btn) btn.textContent = downloadBusy[collection];
+        // scroll position, so the bar and its label are written in place.
+        ({ done, total, added }) => {
+          const percent = total ? Math.round((done / total) * 100) : 0;
+          downloadBusy[collection] = { percent, label: `${done} of ${total} — ${added} saved` };
+          const fill = accordion.querySelector(`[data-progress="${CSS.escape(collection)}"] .download-progress-fill`);
+          const label = accordion.querySelector(`[data-progress-label="${CSS.escape(collection)}"]`);
+          if (fill) fill.style.width = `${percent}%`;
+          if (label) label.textContent = downloadBusy[collection].label;
         },
       )
         .then(result => {

@@ -267,6 +267,31 @@ body { display:flex; flex-direction:column; }
   min-width:5rem;
   flex:0 0 auto;
 }
+/* Per-download progress, on its own row under the button it belongs to. */
+.download-progress {
+  display:flex;
+  align-items:center;
+  gap:0.6rem;
+  padding:0 0 0.45rem;
+}
+.download-progress[hidden] { display:none; }
+.download-progress-track {
+  flex:1 1 auto;
+  height:6px;
+  border-radius:3px;
+  background: var(--bg-surface);
+  border:1px solid var(--border);
+  overflow:hidden;
+}
+.download-progress-fill {
+  height:100%;
+  background: var(--accent);
+  transition: width 0.2s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .download-progress-fill { transition:none; }
+}
+
 .storage-bar {
   height:8px;
   border-radius:4px;
