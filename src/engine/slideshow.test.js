@@ -125,6 +125,33 @@ describe('Slideshow.scheduleSlides', () => {
     expect(self.loadAndShow).toHaveBeenCalledTimes(1);
   });
 
+  it('settles a pending swap before starting a new load', () => {
+    // While a transition is in flight, active/waiting haven't been swapped
+    // back, so `waiting` is the element ON SCREEN. Writing a src into it moves
+    // the picture on with no display() behind it — the image changes and the
+    // caption doesn't, which is what Alex saw.
+    const settled = vi.fn();
+    const self = {
+      slideMs: 12000, inFade: true, pendingFinish: settled,
+      active: { style: {} },
+      waiting: { style: {}, complete: false, decode: () => Promise.resolve() },
+      kb: { stop() {}, start() {} },
+      onMeta: vi.fn(),
+      images: [], index: 0,
+    };
+    Slideshow.prototype.loadAndShow.call(self, { image: 'x.jpg' }, true);
+    expect(settled).toHaveBeenCalledTimes(1);
+    expect(self.pendingFinish).toBeNull();
+  });
+
+  it('leaves a non-forced advance to be skipped rather than settling anything', () => {
+    const settled = vi.fn();
+    const self = { slideMs: 12000, inFade: true, pendingFinish: settled };
+    Slideshow.prototype.loadAndShow.call(self, { image: 'x.jpg' }, false);
+    // The tick guard already declines this one; nothing should be disturbed.
+    expect(settled).not.toHaveBeenCalled();
+  });
+
   it('schedules nothing at all while paused', () => {
     const self = ticker({ paused: true });
     scheduleSlides.call(self);

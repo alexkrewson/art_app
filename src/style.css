@@ -267,6 +267,23 @@ body { display:flex; flex-direction:column; }
   min-width:5rem;
   flex:0 0 auto;
 }
+/* Ken Burns speed slider. The hint row beneath carries Slower / value / Faster,
+   so it lays out as three columns rather than the usual single line. */
+.field-range {
+  width:100%;
+  min-height:44px;   /* keeps the 44px touch target the shared recipe requires */
+  accent-color: var(--accent);
+  background:none;
+  border:none;
+  cursor:pointer;
+}
+.field-range:disabled { opacity:0.4; cursor:not-allowed; }
+.field-range + .field-hint {
+  display:flex;
+  justify-content:space-between;
+  gap:0.5rem;
+}
+
 /* Per-download progress, on its own row under the button it belongs to. */
 .download-progress {
   display:flex;

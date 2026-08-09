@@ -50,6 +50,7 @@ async function main() {
     transitionOptions: { dipColor: settings.dipColor },
     slideMs: settings.slideMs,
     fadeMs: settings.transitionMs,
+    kbCycleMs: settings.kbCycleMs,
     onMeta: img => ribbon.update(img),
     onPauseChange: paused => {
       settingsGear.hidden = !paused;

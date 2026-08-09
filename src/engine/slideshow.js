@@ -37,7 +37,7 @@ export class Slideshow {
   constructor({
     stageEl, slideA, slideB, overlayEl, pauseIcon, onMeta, onPauseChange,
     displayMode = 'kenburns', transitionId = 'crossfade', transitionOptions = {},
-    slideMs = 12000, fadeMs = 1500,
+    slideMs = 12000, fadeMs = 1500, kbCycleMs = 13000,
   }) {
     this.stageEl = stageEl;
     this.overlayEl = overlayEl;
@@ -66,6 +66,7 @@ export class Slideshow {
       setXf: xf => { this.xf = xf; },
       applyXf: () => this.applyXf(this.active),
       isPaused: () => this.paused,
+      cycleMs: kbCycleMs,
     });
   }
 
@@ -170,6 +171,19 @@ export class Slideshow {
     const forceInstant = instant || this.slideMs <= MIN_ANIMATED_SLIDE_MS;
     if (this.inFade && !forceInstant) return;
 
+    // A transition still in flight means active/waiting have NOT been swapped
+    // back yet, so `this.waiting` is the element currently visible on screen.
+    // Writing a new src into it changes the picture with no display() call
+    // behind it — the image moves on while the caption stays where it was.
+    // That is exactly the "ribbon was right for a couple of images then hung
+    // while the images kept going" Alex saw on 2026-08-08. Settle the pending
+    // swap first so `waiting` is genuinely the hidden element again.
+    if (this.pendingFinish) {
+      const settle = this.pendingFinish;
+      this.pendingFinish = null;
+      settle();
+    }
+
     this.waiting.style.transition = 'none';
     this.waiting.style.opacity = '0';
     this.waiting.style.clipPath = '';
@@ -203,9 +217,24 @@ export class Slideshow {
           finishSwap();
         });
       } else {
+        // Force a style recalculation so the reset applied at the top of
+        // loadAndShow ('transition:none; opacity:0') is actually COMMITTED
+        // before the transition sets its own duration and flips opacity to 1.
+        //
+        // Without this the two land in a single recalculation and the browser
+        // has no start value to animate from, so every transition snaps
+        // instantly regardless of its configured duration. It only started
+        // happening once prefetching made images load from cache: previously
+        // the network round-trip always put a frame boundary between the reset
+        // and the transition, and that accident was doing this job.
+        void this.waiting.offsetWidth;
+
         this.inFade = true;
         const transitionId = this.transitionId === 'random' ? pickRandomTransitionId() : this.transitionId;
         const { run } = resolveTransition(transitionId);
+        // Held so a forced advance arriving mid-transition can settle the swap
+        // rather than writing into an element that's currently on screen.
+        this.pendingFinish = finishSwap;
         run({
           activeEl: this.active,
           waitingEl: this.waiting,
@@ -213,7 +242,12 @@ export class Slideshow {
           stageEl: this.stageEl,
           durationMs: this.fadeMs,
           options: this.transitionOptions,
-        }).then(finishSwap);
+        }).then(() => {
+          // Only if it hasn't already been settled early by a forced advance.
+          if (this.pendingFinish !== finishSwap) return;
+          this.pendingFinish = null;
+          finishSwap();
+        });
       }
     };
 

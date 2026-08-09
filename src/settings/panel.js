@@ -55,6 +55,21 @@ function renderDisplaySection(settings) {
       <label class="field-label" for="transitionMsInput">Transition duration (ms)</label>
       <input type="number" id="transitionMsInput" class="field" name="transitionMs" min="200" max="6000" step="100" value="${settings.transitionMs}">
     </div>
+    <div class="field-group">
+      <label class="field-label" for="kbCycleInput">Ken Burns speed</label>
+      <!-- Inverted on purpose: the stored value is a segment DURATION, so a
+           bigger number is slower. Dragging right should mean faster, so the
+           slider runs on the negated value and the handler flips it back. -->
+      <input type="range" id="kbCycleInput" class="field-range" name="kbCycle"
+             min="-40000" max="-4000" step="1000" value="${-settings.kbCycleMs}"
+             ${settings.displayMode === 'kenburns' ? '' : 'disabled'}>
+      <div class="field-hint">
+        <span>Slower</span>
+        <span id="kbCycleValue">${(settings.kbCycleMs / 1000).toFixed(0)}s per pan</span>
+        <span>Faster</span>
+      </div>
+      ${settings.displayMode === 'kenburns' ? '' : '<div class="field-hint">Only applies in Ken Burns display mode.</div>'}
+    </div>
   `;
 }
 
@@ -566,6 +581,18 @@ export function createSettingsPanel(slideshow) {
     }
   });
 
+  // A range input only fires `change` when the thumb is released, so without
+  // this the speed and its readout wouldn't move until you let go — which for
+  // a "how fast should the pan be" control is the whole feedback loop.
+  accordion.addEventListener('input', e => {
+    if (e.target.name !== 'kbCycle') return;
+    const ms = Math.max(4000, Math.min(40000, -Number(e.target.value) || 13000));
+    settings.kbCycleMs = ms;
+    slideshow.kb.cycleMs = ms;
+    const out = accordion.querySelector('#kbCycleValue');
+    if (out) out.textContent = `${Math.round(ms / 1000)}s per pan`;
+  });
+
   accordion.addEventListener('change', e => {
     const el = e.target;
 
@@ -579,8 +606,10 @@ export function createSettingsPanel(slideshow) {
       if (el.value !== 'kenburns') {
         settings.transitionId = 'crossfade';
         slideshow.setTransition('crossfade');
-        refreshDisplaySection();
       }
+      // Always re-render: the Ken Burns speed slider is disabled outside Ken
+      // Burns mode, so it has to reflect the new mode either way.
+      refreshDisplaySection();
     } else if (el.name === 'transitionId') {
       settings.transitionId = el.value;
       slideshow.setTransition(el.value);
@@ -611,6 +640,17 @@ export function createSettingsPanel(slideshow) {
       const ms = Math.max(200, Math.min(6000, Number(el.value) || 1500));
       settings.transitionMs = ms;
       slideshow.fadeMs = ms;
+    } else if (el.name === 'kbCycle') {
+      // The slider carries the negated duration so that dragging right reads
+      // as "faster"; flip it back to the real segment length here.
+      const ms = Math.max(4000, Math.min(40000, -Number(el.value) || 13000));
+      settings.kbCycleMs = ms;
+      slideshow.kb.cycleMs = ms;
+      // Restart the current segment so the new speed is felt immediately
+      // rather than after the current 13-second pan finishes.
+      if (!slideshow.paused && settings.displayMode === 'kenburns') slideshow.kb.start();
+      const out = accordion.querySelector('#kbCycleValue');
+      if (out) out.textContent = `${Math.round(ms / 1000)}s per pan`;
     } else if (el.name.startsWith('src-')) {
       const id = el.name.slice(4);
       settings.sources[id].enabled = el.checked;

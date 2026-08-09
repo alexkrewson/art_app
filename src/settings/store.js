@@ -9,6 +9,10 @@ export const DEFAULTS = {
   dipColor: '#8a5a3b',
   slideMs: 12000,
   transitionMs: 1500,
+  // Ken Burns pan/zoom segment length in ms — lower is faster drift. 13s was
+  // the hardcoded value inherited from kiosk.html; Alex asked for it to be
+  // adjustable, so it is now a setting with that value as the default.
+  kbCycleMs: 13000,
   order: 'sequential', // 'sequential' | 'shuffle'
   cacheEnabled: true, // cache live-source images (Cache API + IndexedDB) so the app keeps working offline
   sources: {
