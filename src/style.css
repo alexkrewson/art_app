@@ -63,6 +63,22 @@ body { display:flex; flex-direction:column; }
   backface-visibility: hidden;
 }
 
+/* Temporary diagnostic readout (Settings > Advanced). Top-left rather than
+   bottom, to stay clear of the pause icon and the gear. */
+#debug-overlay {
+  position:absolute; top:8px; left:8px;
+  z-index:900;
+  margin:0; padding:0.5rem 0.7rem;
+  background: rgba(0,0,0,0.78);
+  color:#7CFC9A;
+  font:11px/1.45 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  border:1px solid rgba(124,252,154,0.35);
+  border-radius:5px;
+  white-space:pre;
+  pointer-events:none;   /* must never swallow a tap meant for the artwork */
+  user-select:text;
+}
+
 /* Used by fade-to-color and light-leak transitions; opacity/background are
    set per-transition in JS, this just establishes the full-stage layer. */
 #transition-overlay {

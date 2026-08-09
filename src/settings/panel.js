@@ -94,7 +94,16 @@ function renderAdvancedSection(settings, cacheStats) {
       <div class="field-hint">Also removes anything saved under <strong>Offline
       downloads</strong>.</div>
     </div>
-    <p>Density, sound, and debug options are planned — see
+    <div class="field-group">
+      <label class="radio-row">
+        <input type="checkbox" name="debugOverlay" ${settings.debugOverlay ? 'checked' : ''}>
+        <span>Show diagnostic overlay <span class="field-hint">— a small readout
+        over the artwork showing which image is on screen versus which one the
+        caption describes. For pinning down the caption/picture mismatch;
+        screenshot it and turn it back off.</span></span>
+      </label>
+    </div>
+    <p>Density and sound options are planned — see
     <code>maintenance_todo.md</code>.</p>
   `;
 }
@@ -371,7 +380,7 @@ const SECTIONS = [
   },
 ];
 
-export function createSettingsPanel(slideshow) {
+export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {} } = {}) {
   let currentTheme = applyTheme(loadTheme());
   let settings = loadSettings();
   let sourceFilters = {}; // sourceId -> FilterSpec[], populated asynchronously below
@@ -678,6 +687,9 @@ export function createSettingsPanel(slideshow) {
       rebuildPlaylist();
     } else if (el.name === 'cacheEnabled') {
       settings.cacheEnabled = el.checked;
+    } else if (el.name === 'debugOverlay') {
+      settings.debugOverlay = el.checked;
+      onDebugOverlayChange(el.checked);
     } else if (el.name === 'order') {
       settings.order = el.value;
       // Reorder in place — no need to re-fetch from every source just to

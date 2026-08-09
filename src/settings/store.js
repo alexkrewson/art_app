@@ -14,6 +14,11 @@ export const DEFAULTS = {
   // adjustable, so it is now a setting with that value as the default.
   kbCycleMs: 13000,
   order: 'sequential', // 'sequential' | 'shuffle'
+  // Temporary on-screen diagnostic. Added 2026-08-08 because two attempts to
+  // fix the lagging caption by reading the code both failed, and a jsdom
+  // harness of the advance cycle could not reproduce it either — so the next
+  // step is measuring the real thing rather than guessing a third time.
+  debugOverlay: false,
   cacheEnabled: true, // cache live-source images (Cache API + IndexedDB) so the app keeps working offline
   sources: {
     local: { enabled: true, filters: {} },

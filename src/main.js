@@ -51,7 +51,9 @@ async function main() {
     slideMs: settings.slideMs,
     fadeMs: settings.transitionMs,
     kbCycleMs: settings.kbCycleMs,
-    onMeta: img => ribbon.update(img),
+    // lastMeta is what the ribbon was last told to show; the overlay compares
+    // it against the src of whichever element is actually visible.
+    onMeta: img => { lastMeta = img; ribbon.update(img); updateDebug(); },
     onPauseChange: paused => {
       settingsGear.hidden = !paused;
       if (paused) positionGearAtPointer();
@@ -75,7 +77,56 @@ async function main() {
     settingsGear.style.bottom = 'auto';
   }
 
-  const settingsPanel = createSettingsPanel(slideshow);
+  // ── Diagnostic overlay ────────────────────────────────────────────────
+  // Reports, four times a second, what is ACTUALLY on screen versus what the
+  // ribbon is describing. Exists because the "caption lags the picture" report
+  // survived two fixes reasoned from the source, and a jsdom harness of the
+  // whole advance cycle couldn't reproduce it either — so the next move is to
+  // measure the running app instead of guessing a third time.
+  //
+  // Deliberately reads the same fields the engine uses rather than being told
+  // anything: if the overlay and the ribbon disagree, the engine is the liar.
+  let debugEl = null;
+  let debugTimer = null;
+  let lastMeta = null;
+
+  function fileOf(url) {
+    return String(url || '').split('/').pop()?.slice(-26) || '—';
+  }
+
+  function updateDebug() {
+    if (!debugEl) return;
+    const onScreen = [slideA, slideB].find(el => el.style.opacity === '1');
+    const shown = onScreen ? fileOf(onScreen.src) : 'none visible';
+    const caption = lastMeta ? fileOf(lastMeta.image) : '—';
+    debugEl.textContent = [
+      `idx ${slideshow.index}/${slideshow.images.length}`,
+      `slide ${slideshow.slideMs}ms  fade ${slideshow.fadeMs}ms`,
+      `inFade ${slideshow.inFade ? 'Y' : 'n'}  loading ${slideshow.loading ? 'Y' : 'n'}`,
+      `active=${slideshow.active === slideA ? 'A' : 'B'} visible=${onScreen ? (onScreen === slideA ? 'A' : 'B') : '-'}`,
+      `SCREEN  ${shown}`,
+      `CAPTION ${caption}`,
+      shown === caption ? 'IN STEP' : '*** MISMATCH ***',
+    ].join('\n');
+  }
+
+  function setDebugOverlay(on) {
+    if (on && !debugEl) {
+      debugEl = document.createElement('pre');
+      debugEl.id = 'debug-overlay';
+      stageEl.appendChild(debugEl);
+      debugTimer = setInterval(updateDebug, 250);
+      updateDebug();
+    } else if (!on && debugEl) {
+      clearInterval(debugTimer);
+      debugEl.remove();
+      debugEl = null;
+      debugTimer = null;
+    }
+  }
+
+  const settingsPanel = createSettingsPanel(slideshow, { onDebugOverlayChange: setDebugOverlay });
+  setDebugOverlay(settings.debugOverlay);
   attachTouch(stageEl, slideshow, settingsPanel);
 
   settingsGear.addEventListener('click', e => {
