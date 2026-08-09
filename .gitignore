@@ -4,10 +4,14 @@ dist/
 *.log
 .playwright-mcp/
 
-# public/images/ (the Met Museum starter set) IS committed, as a stopgap so
-# the live GitHub Pages deploy has something to show before Phase 3/4 wire up
-# live multi-source fetching. images_captioned/ is an unused experimental
-# variant (add_captions.py) — stays ignored, not referenced by public/images.json.
+# public/images/ (the Met Museum starter set) IS committed — it's the
+# zero-network fallback for a first run with no connection. Trimmed from 425
+# images (96 MB) to 25 (7 MB) on 2026-08-08: at 105 MB the APK reliably hung
+# Android's package installer, and by then eight live sources plus the offline
+# download feature had made a large bundled set unnecessary. The full set is
+# still in git history if it's ever wanted back.
+# images_captioned/ is an unused experimental variant (add_captions.py) —
+# stays ignored, not referenced by public/images.json.
 /images_captioned/
 
 # Capacitor/Android build outputs and machine-specific project files
