@@ -1,5 +1,33 @@
 apply plugin: 'com.android.application'
 
+// versionCode from the commit count, so every build of a new commit is a higher
+// version than the last with nothing to remember. Until 2026-08-08 this was a
+// hardcoded 1 on every build, which meant Android could not tell two APKs apart
+// and each test install needed a manual uninstall first.
+//
+// Commit count is monotonic on a linear main branch and needs no state file. The
+// floor exists because a shallow clone or a missing git reports 0 or fails, and
+// a versionCode that went DOWN would be rejected by Play and would break
+// installs — never let this return less than what's already been shipped.
+def gitVersionCode() {
+    try {
+        def out = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'rev-list', '--count', 'HEAD'
+            standardOutput = out
+            workingDir = rootProject.projectDir
+            errorOutput = new ByteArrayOutputStream()
+        }
+        def n = out.toString().trim() as Integer
+        return Math.max(n, 1)
+    } catch (Exception e) {
+        logger.lifecycle("versionCode: git unavailable (${e.message}) — falling back to 1")
+        return 1
+    }
+}
+
+ext.computedVersionCode = gitVersionCode()
+
 android {
     namespace "com.alexkrewson.slowframe"
     compileSdk rootProject.ext.compileSdkVersion
@@ -7,7 +35,7 @@ android {
         applicationId "com.alexkrewson.slowframe"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode project.ext.computedVersionCode
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -94,7 +122,14 @@ def uploadArtifacts = { String subdir, String ext ->
     found.each { f ->
         try {
             exec {
-                commandLine 'node', uploader, f.absolutePath, '--dest=AndroidBuilds/art/'
+                // --version is passed explicitly because versionCode is now
+                // computed above: the uploader's fallback reads it out of this
+                // file with a regex, which finds no digits in
+                // `project.ext.computedVersionCode` and would silently drop the
+                // vN from the filename.
+                commandLine 'node', uploader, f.absolutePath,
+                            '--dest=AndroidBuilds/art/',
+                            "--version=${project.ext.computedVersionCode}"
                 ignoreExitValue = true
             }
         } catch (Exception e) {
