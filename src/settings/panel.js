@@ -230,11 +230,14 @@ function renderSourceBlock(source, settings, sourceFilters, lib, expanded) {
     const count = settings.categories?.[c.cat]?.count ?? DEFAULT_COUNT;
     const have = lib?.byCat?.[c.cat] || 0;
     const busy = lib?.busy?.[c.cat];
+    // Downloaded-but-unticked is a real state now: the images stay on the
+    // device and are simply out of the rotation.
+    const note = busy ? '' : have ? (on ? `(${have})` : `(${have} saved, hidden)`) : '';
     return `
       <div class="cat-row">
         <label class="radio-row cat-row-label">
           <input type="checkbox" name="cat::${c.cat}" ${on ? 'checked' : ''} ${gatedByKey || busy ? 'disabled' : ''}>
-          <span>${c.label}${have ? ` <span class="field-hint">(${have})</span>` : ''}</span>
+          <span>${c.label}${note ? ` <span class="field-hint">${note}</span>` : ''}</span>
         </label>
         <input type="number" class="field field-inline" name="catcount::${c.cat}"
                min="10" max="500" step="10" value="${count}" ${busy ? 'disabled' : ''}
@@ -243,6 +246,10 @@ function renderSourceBlock(source, settings, sourceFilters, lib, expanded) {
                 ${on && have && !busy ? '' : 'disabled'}
                 title="Replace these with new images, keeping any you've thumbed up"
                 aria-label="Refresh ${c.label}">&#8635;</button>
+        <button type="button" class="btn-secondary btn-tiny" data-delete="${c.cat}"
+                ${have && !busy ? '' : 'disabled'}
+                title="Delete these images from the device"
+                aria-label="Delete downloaded images for ${c.label}">&#128465;</button>
       </div>
       <div class="download-progress" data-progress="${c.cat}" ${busy ? '' : 'hidden'}>
         <div class="download-progress-track">
@@ -275,7 +282,8 @@ function renderSourcesSection(settings, sourceFilters, lib, expanded = new Set()
   return `
     <p class="field-hint">Ticking a category downloads it to this device — the
     slideshow only ever plays images you already have, so it never uses data
-    while it's running. Set how many images each category should keep.</p>
+    while it's running. Unticking just hides it from the rotation; the images
+    stay, and the bin button is what deletes them.</p>
     ${lib ? `<div class="field-group"><span class="field-hint">${lib.count} images stored · ${formatBytes(lib.bytes)}${lib.free ? ` · ${formatBytes(lib.free)} free` : ''}</span></div>` : ''}
     ${Object.values(SOURCES).map(source => renderSourceBlock(source, settings, sourceFilters, lib, expanded)).join('')}
     <div class="field-group" role="radiogroup" aria-label="Playback order">
@@ -553,6 +561,26 @@ You have about ${formatBytes(lib.free)} free.` : ''),
       return;
     }
 
+    // Delete a category's images from the device. The only action here that
+    // destroys anything, hence the confirmation and the separate button.
+    const delBtn = e.target.closest('[data-delete]');
+    if (delBtn) {
+      const cat = delBtn.dataset.delete;
+      if (busy[cat]) return;
+      const have = lib?.byCat?.[cat] || 0;
+      if (!window.confirm(`Delete ${have} downloaded image${have === 1 ? '' : 's'} from this device?
+
+Images you've thumbed up are kept. Anything shared with another downloaded category stays too.`)) return;
+      delete settings.categories[cat];
+      saveSettings(settings);
+      refreshSourcesSection();
+      removeCategory(cat).then(async () => {
+        await refreshLibrary();
+        rebuildPlaylist();
+      });
+      return;
+    }
+
     // Refresh one category: swap the un-upvoted images for new ones, same
     // count. For when a set starts to feel stale.
     const refreshBtn = e.target.closest('[data-refresh]');
@@ -614,17 +642,12 @@ Anything you've thumbed up is kept.`)) return;
       const id = noneBtn.dataset.selectNone;
       const on = categoriesOf(id, SOURCES[id]).filter(c => settings.categories?.[c.cat]);
       if (!on.length) return;
-      if (!window.confirm(`Remove ${on.length} downloaded categor${on.length === 1 ? 'y' : 'ies'} from this device?
-
-Images you've given a thumbs up are kept.`)) return;
+      // Hides rather than deletes, matching what unticking does. Nothing is
+      // removed from the device, so this needs no confirmation.
       on.forEach(c => { delete settings.categories[c.cat]; });
       saveSettings(settings);
       refreshSourcesSection();
-      (async () => {
-        for (const c of on) await removeCategory(c.cat);
-        await refreshLibrary();
-        rebuildPlaylist();
-      })();
+      rebuildPlaylist();
       return;
     }
 
@@ -728,20 +751,37 @@ Images you've given a thumbs up are kept.`)) return;
       if (!c) return;
       settings.categories = settings.categories || {};
 
+      const held = lib?.byCat?.[cat] || 0;
+
       if (el.checked) {
         const spec = specFor(c);
-        if (!confirmSize([spec])) { el.checked = false; return; }
         settings.categories[cat] = { count: spec.count };
         saveSettings(settings);
-        runDownload(spec);
+
+        // Already on the device: this is an unhide, not a download. No
+        // network, no size warning — nothing is being fetched.
+        if (held >= spec.count) {
+          refreshSourcesSection();
+          rebuildPlaylist();
+          return;
+        }
+        const missing = spec.count - held;
+        if (!confirmSize([{ ...spec, count: missing }])) {
+          delete settings.categories[cat];
+          saveSettings(settings);
+          el.checked = false;
+          return;
+        }
+        runDownload({ ...spec, count: missing });
       } else {
+        // Hide only. Unticking used to delete the images, which made an
+        // ordinary "not right now" indistinguishable from "throw these away"
+        // — and re-ticking meant downloading them all again. The files stay;
+        // the bin button next to it is what deletes.
         delete settings.categories[cat];
         saveSettings(settings);
         refreshSourcesSection();
-        removeCategory(cat).then(async () => {
-          await refreshLibrary();
-          rebuildPlaylist();
-        });
+        rebuildPlaylist();
       }
       return;
     } else if (el.name.startsWith('catcount::')) {

@@ -35,13 +35,38 @@ export const nasaSource = {
 
   listFilters() {
     return [
+      {
+        // NASA has no subject taxonomy in its API, only free-text search — so
+        // unlike Commons' real categories these are curated queries. Added
+        // 2026-08-09: under the download model a source with no categories is
+        // a single tickable entry, which for a collection this varied meant
+        // "all of NASA" collapsed to one generic search. Each was checked
+        // against the live API and returns a full page of results.
+        key: 'subjects', label: 'Curated subjects', type: 'checkboxGroup',
+        options: [
+          { value: 'nebula', label: 'Nebulae' },
+          { value: 'galaxy', label: 'Galaxies' },
+          { value: 'hubble deep field', label: 'Deep field' },
+          { value: 'mars surface', label: 'Mars' },
+          { value: 'saturn jupiter', label: 'Outer planets' },
+          { value: 'earth from orbit', label: 'Earth from orbit' },
+          { value: 'aurora from space', label: 'Aurora from space' },
+          { value: 'solar eclipse', label: 'Sun & eclipses' },
+          { value: 'apollo', label: 'Apollo' },
+          { value: 'international space station', label: 'Space station' },
+        ],
+      },
       { key: 'keyword', label: 'Keyword', type: 'text', placeholder: 'e.g. nebula, apollo, mars' },
     ];
   },
 
   async fetchBatch({ filters = {}, count = 24 } = {}) {
     const params = new URLSearchParams({ media_type: 'image' });
-    const keyword = (filters.keyword || '').trim();
+    // Ticked subjects win over the free-text field, the same precedence every
+    // other curated source uses. The download model narrows to one subject per
+    // call, so this is normally a single value.
+    const subjects = Array.isArray(filters.subjects) ? filters.subjects.filter(Boolean) : [];
+    const keyword = subjects.length ? subjects.join(' ') : (filters.keyword || '').trim();
     if (keyword) params.set('q', keyword);
 
     const res = await fetch(`${API}?${params.toString()}`);

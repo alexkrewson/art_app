@@ -39,6 +39,20 @@ describe('nasaSource', () => {
     expect(results).toEqual([]);
   });
 
+  it('searches for the ticked subject, ignoring the free-text field', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => collection([]) }));
+    vi.stubGlobal('fetch', fetchMock);
+    await nasaSource.fetchBatch({ filters: { subjects: ['nebula'], keyword: 'ignored' }, count: 24 });
+    expect(fetchMock.mock.calls[0][0]).toContain('q=nebula');
+    expect(fetchMock.mock.calls[0][0]).not.toContain('ignored');
+  });
+
+  it('exposes curated subjects rather than one generic entry', () => {
+    const spec = nasaSource.listFilters().find(f => f.type === 'checkboxGroup');
+    expect(spec.options.length).toBeGreaterThanOrEqual(8);
+    expect(spec.options.map(o => o.value)).toContain('nebula');
+  });
+
   it('only adds q to params when a keyword is given', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, json: async () => collection([]) }));
     vi.stubGlobal('fetch', fetchMock);
