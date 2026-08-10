@@ -215,7 +215,14 @@ async function main() {
     }
   });
 
-  const playlist = await buildPlaylist(settings.sources, { cacheEnabled: settings.cacheEnabled });
+  // `categories` is what selects the downloaded library — without it every
+  // launch built an empty playlist and fell back to the bundled starter set,
+  // so a device with hundreds of downloaded images showed none of them until
+  // something in Settings happened to trigger a rebuild. Missed when the
+  // download model landed because panel.js's rebuildPlaylist was updated and
+  // this call site wasn't; caught by watching a tablet with 723 images play
+  // Met artworks.
+  const playlist = await buildPlaylist(settings.sources, { categories: settings.categories || {} });
   slideshow.init(orderPlaylist(playlist, settings.order));
 }
 
