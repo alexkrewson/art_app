@@ -489,6 +489,21 @@ input[type="color"].field, #dipColorInput {
   z-index:800;
 }
 #vote-bar[hidden] { display:none; }
+
+/* Sits directly above the thumbs in the same corner, so it stays put whether
+   the vote bar and ribbon are shown or not. Fainter than the vote buttons —
+   it is a development aid, not part of the frame. */
+#build-tag {
+  position:fixed; bottom:64px; right:16px;
+  z-index:800;
+  pointer-events:none;            /* never steals a tap meant for the artwork */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size:0.7rem; line-height:1;
+  padding:3px 6px; border-radius:5px;
+  color: rgba(255,255,255,0.55);
+  background: rgba(0,0,0,0.30);
+  opacity:0.5;
+}
 .vote-btn {
   display:inline-flex; align-items:center; justify-content:center;
   min-width:44px; min-height:44px;   /* full touch target despite the faint look */

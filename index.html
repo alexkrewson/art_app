@@ -25,6 +25,11 @@
     <button type="button" class="vote-btn" id="vote-up" aria-label="Keep this image">&#128077;</button>
     <button type="button" class="vote-btn" id="vote-down" aria-label="Never show this image again">&#128078;</button>
   </div>
+  <!-- Development build stamp. A sibling of #vote-bar rather than a child,
+       because that whole element is hidden when voting is off and this has no
+       toggle of its own: Alex uses it to tell at a glance which APK is on
+       which tablet. -->
+  <div id="build-tag"></div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>

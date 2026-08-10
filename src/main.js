@@ -194,6 +194,13 @@ async function main() {
     onRibbonChange: setRibbonVisible,
     onVotingChange: setVotingVisible,
   });
+  // Development build stamp — no setting gates it, by request. The guard is
+  // for the test environment, where the Vite define is not always applied.
+  const buildTag = document.getElementById('build-tag');
+  if (buildTag) {
+    buildTag.textContent = typeof __BUILD_STAMP__ === 'string' ? __BUILD_STAMP__ : 'v0.dev';
+  }
+
   setRibbonVisible(settings.showRibbon !== false);
   setDebugOverlay(settings.debugOverlay);
   attachTouch(stageEl, slideshow, settingsPanel);
