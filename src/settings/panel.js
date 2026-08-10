@@ -28,6 +28,20 @@ function renderDisplaySection(settings) {
     </option>`).join('');
 
   return `
+    <div class="field-group">
+      <span class="field-label">On screen</span>
+      <label class="radio-row">
+        <input type="checkbox" name="showRibbon" ${settings.showRibbon !== false ? 'checked' : ''}>
+        <span>Info ribbon <span class="field-hint">— title, artist and credit
+        along the bottom. Off gives the artwork the whole screen.</span></span>
+      </label>
+      <label class="radio-row">
+        <input type="checkbox" name="showVoting" ${settings.showVoting ? 'checked' : ''}>
+        <span>Thumbs up / down <span class="field-hint">— faint buttons beside
+        the ribbon. Thumbs up keeps an image through a refresh; thumbs down
+        deletes it and never shows it again.</span></span>
+      </label>
+    </div>
     <div class="field-group" role="radiogroup" aria-label="Display mode">
       <span class="field-label">Display mode</span>
       ${DISPLAY_MODES.map(m => `
@@ -56,23 +70,6 @@ function renderDisplaySection(settings) {
     <div class="field-group">
       <label class="field-label" for="transitionMsInput">Transition duration (ms)</label>
       <input type="number" id="transitionMsInput" class="field" name="transitionMs" min="200" max="6000" step="100" value="${settings.transitionMs}">
-    </div>
-    <div class="field-group">
-      <label class="radio-row">
-        <input type="checkbox" name="showVoting" ${settings.showVoting ? 'checked' : ''}>
-        <span>Show thumbs up / down <span class="field-hint">— faint buttons in
-        the top corner. A thumbs up keeps an image when its category is
-        refreshed or unticked; a thumbs down deletes it and never shows it
-        again.</span></span>
-      </label>
-    </div>
-    <div class="field-group">
-      <label class="radio-row">
-        <input type="checkbox" name="showRibbon" ${settings.showRibbon !== false ? 'checked' : ''}>
-        <span>Show the info ribbon <span class="field-hint">— title, artist and
-        credit along the bottom. Switch it off and the artwork takes the whole
-        screen.</span></span>
-      </label>
     </div>
     <div class="field-group">
       <label class="field-label" for="kbCycleInput">Ken Burns speed</label>
