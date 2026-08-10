@@ -53,7 +53,7 @@ async function main() {
     kbCycleMs: settings.kbCycleMs,
     // lastMeta is what the ribbon was last told to show; the overlay compares
     // it against the src of whichever element is actually visible.
-    onMeta: img => { lastMeta = img; ribbon.update(img); updateDebug(); },
+    onMeta: img => { lastMeta = img; ribbon.update(img); updateDebug(); syncVoteBar?.(); },
     onPauseChange: paused => {
       settingsGear.hidden = !paused;
       if (paused) positionGearAtPointer();
@@ -133,9 +133,51 @@ async function main() {
     slideshow.applyXf(slideshow.active); // re-apply against the new stage size
   }
 
+  // ── Voting ────────────────────────────────────────────────────────────
+  // Up keeps an image (it survives its category being unticked, and a refresh
+  // won't replace it). Down deletes the file and blocks the URL for good, then
+  // moves on immediately — waiting out the rest of a slide you've just said you
+  // dislike would be a strange thing to make someone do.
+  const voteBar = document.getElementById('vote-bar');
+  const voteUp = document.getElementById('vote-up');
+  const voteDown = document.getElementById('vote-down');
+
+  function syncVoteBar() {
+    const rec = lastMeta;
+    // Bundled and local-folder images aren't in the library, so there's nothing
+    // to vote on — hide rather than offer a button that can't do anything.
+    const votable = settings.showVoting && !!rec?.url;
+    voteBar.hidden = !votable;
+    if (votable) voteUp.setAttribute('aria-pressed', String(rec.vote === 1));
+  }
+
+  function setVotingVisible(on) {
+    settings.showVoting = on;
+    syncVoteBar();
+  }
+
+  async function vote(value) {
+    const rec = lastMeta;
+    if (!rec?.url) return;
+    const { setVote } = await import('./library/library.js');
+    await setVote(rec.url, value);
+    if (value === 1) {
+      rec.vote = 1;
+      syncVoteBar();
+    } else {
+      // The image is gone from disk; drop it from the running playlist too
+      // rather than leaving an entry that would fail to load next time round.
+      await slideshow.dropCurrent();
+    }
+  }
+
+  voteUp.addEventListener('click', e => { e.stopPropagation(); vote(1); });
+  voteDown.addEventListener('click', e => { e.stopPropagation(); vote(-1); });
+
   const settingsPanel = createSettingsPanel(slideshow, {
     onDebugOverlayChange: setDebugOverlay,
     onRibbonChange: setRibbonVisible,
+    onVotingChange: setVotingVisible,
   });
   setRibbonVisible(settings.showRibbon !== false);
   setDebugOverlay(settings.debugOverlay);

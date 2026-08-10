@@ -17,6 +17,10 @@ export const DEFAULTS = {
   // Title/artist ribbon along the bottom. On by default; switching it off
   // gives the artwork the full screen height rather than leaving a gap.
   showRibbon: true,
+  // Faded thumbs up/down over the artwork. Off by default: this is an ambient
+  // picture frame, and controls on the image are opt-in. An upvote protects an
+  // image from a refresh; a downvote deletes it and blocks it for good.
+  showVoting: false,
   // Temporary on-screen diagnostic. Added 2026-08-08 because two attempts to
   // fix the lagging caption by reading the code both failed, and a jsdom
   // harness of the advance cycle could not reproduce it either — so the next

@@ -474,3 +474,35 @@ input[type="color"].field, #dipColorInput {
   border-left:2px solid var(--border);
   margin-left:0.35rem;
 }
+
+
+/* Vote controls — deliberately faint so they don't compete with the artwork,
+   coming up to full strength only when touched. */
+#vote-bar {
+  position:absolute; top:14px; right:16px;
+  display:flex; gap:0.4rem;
+  z-index:800;
+}
+#vote-bar[hidden] { display:none; }
+.vote-btn {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-width:44px; min-height:44px;   /* full touch target despite the faint look */
+  background: rgba(0,0,0,0.30);
+  border:1px solid rgba(255,255,255,0.18);
+  border-radius:8px;
+  font-size:1.25rem; line-height:1;
+  cursor:pointer;
+  opacity:0.35;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.vote-btn:hover, .vote-btn:focus-visible { opacity:1; }
+.vote-btn:active { transform: scale(0.92); }
+/* Latched state for an image already kept. */
+.vote-btn[aria-pressed="true"] {
+  opacity:1;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+@media (prefers-reduced-motion: reduce) {
+  .vote-btn { transition:none; }
+}

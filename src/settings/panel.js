@@ -60,6 +60,15 @@ function renderDisplaySection(settings) {
     </div>
     <div class="field-group">
       <label class="radio-row">
+        <input type="checkbox" name="showVoting" ${settings.showVoting ? 'checked' : ''}>
+        <span>Show thumbs up / down <span class="field-hint">— faint buttons in
+        the top corner. A thumbs up keeps an image when its category is
+        refreshed or unticked; a thumbs down deletes it and never shows it
+        again.</span></span>
+      </label>
+    </div>
+    <div class="field-group">
+      <label class="radio-row">
         <input type="checkbox" name="showRibbon" ${settings.showRibbon !== false ? 'checked' : ''}>
         <span>Show the info ribbon <span class="field-hint">— title, artist and
         credit along the bottom. Switch it off and the artwork takes the whole
@@ -230,6 +239,10 @@ function renderSourceBlock(source, settings, sourceFilters, lib, expanded) {
         <input type="number" class="field field-inline" name="catcount::${c.cat}"
                min="10" max="500" step="10" value="${count}" ${busy ? 'disabled' : ''}
                aria-label="Images to keep for ${c.label}">
+        <button type="button" class="btn-secondary btn-tiny" data-refresh="${c.cat}"
+                ${on && have && !busy ? '' : 'disabled'}
+                title="Replace these with new images, keeping any you've thumbed up"
+                aria-label="Refresh ${c.label}">&#8635;</button>
       </div>
       <div class="download-progress" data-progress="${c.cat}" ${busy ? '' : 'hidden'}>
         <div class="download-progress-track">
@@ -334,7 +347,9 @@ const SECTIONS = [
   },
 ];
 
-export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}, onRibbonChange = () => {} } = {}) {
+export function createSettingsPanel(slideshow, {
+  onDebugOverlayChange = () => {}, onRibbonChange = () => {}, onVotingChange = () => {},
+} = {}) {
   let currentTheme = applyTheme(loadTheme());
   let settings = loadSettings();
   let sourceFilters = {}; // sourceId -> FilterSpec[], populated asynchronously below
@@ -538,6 +553,34 @@ You have about ${formatBytes(lib.free)} free.` : ''),
       return;
     }
 
+    // Refresh one category: swap the un-upvoted images for new ones, same
+    // count. For when a set starts to feel stale.
+    const refreshBtn = e.target.closest('[data-refresh]');
+    if (refreshBtn) {
+      const cat = refreshBtn.dataset.refresh;
+      const c = allCategories().find(x => x.cat === cat);
+      if (!c || busy[cat]) return;
+      const have = lib?.byCat?.[cat] || 0;
+      if (!window.confirm(`Replace ${have} image${have === 1 ? '' : 's'} in this category with new ones?
+
+Anything you've thumbed up is kept.`)) return;
+
+      busy[cat] = { percent: 0, label: 'refreshing…' };
+      refreshSourcesSection();
+      refreshCategory(specFor(c), ({ done, total }) => showProgress(cat, done, total))
+        .then(async () => {
+          delete busy[cat];
+          await refreshLibrary();
+          rebuildPlaylist();
+        })
+        .catch(async err => {
+          console.warn('[SlowFrame] refresh failed:', err);
+          delete busy[cat];
+          await refreshLibrary();
+        });
+      return;
+    }
+
     const expandBtn = e.target.closest('[data-expand]');
     if (expandBtn) {
       const id = expandBtn.dataset.expand;
@@ -670,6 +713,9 @@ Images you've given a thumbs up are kept.`)) return;
       if (!slideshow.paused && settings.displayMode === 'kenburns') slideshow.kb.start();
       const out = accordion.querySelector('#kbCycleValue');
       if (out) out.textContent = `${Math.round(ms / 1000)}s per pan`;
+    } else if (el.name === 'showVoting') {
+      settings.showVoting = el.checked;
+      onVotingChange(el.checked);
     } else if (el.name === 'showRibbon') {
       settings.showRibbon = el.checked;
       onRibbonChange(el.checked);

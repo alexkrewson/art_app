@@ -301,6 +301,24 @@ export class Slideshow {
     }
   }
 
+  /**
+   * Drops the image on screen from the playlist and moves to the next one.
+   *
+   * For a downvote: rebuilding the whole playlist would work but restarts it
+   * from the beginning, so disliking one picture would throw you back to the
+   * top of the rotation. This removes just that entry and carries on.
+   */
+  async dropCurrent() {
+    if (this.images.length <= 1) return false;
+    const dropped = this.images[this.index];
+    this.images = this.images.filter(r => r !== dropped);
+    // Step back one so the loop's own increment lands on what would have been
+    // the next image rather than skipping it.
+    this.index = (this.index - 1 + this.images.length) % this.images.length;
+    this.restart();
+    return true;
+  }
+
   setDisplayMode(mode) {
     this.displayMode = mode;
     if (mode !== 'kenburns') {
