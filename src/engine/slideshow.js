@@ -184,11 +184,14 @@ export class Slideshow {
     }
   }
 
-  // Puts `record` on screen. `instant` skips the transition (first slide, or a
-  // slide interval too short to animate).
-  async show(record, instant) {
-    const forceInstant = instant || this.slideMs <= MIN_ANIMATED_SLIDE_MS;
-
+  // Resets the hidden slide and loads `record` into it. Split out from show()
+  // so the loop can start this DURING the current slide's dwell instead of
+  // after it: otherwise every image's download time is added to the slide
+  // duration, and the pacing drifts even though each transition itself is
+  // perfectly smooth. Loading into the real hidden element (rather than a
+  // detached Image, as the old prefetch did) means there's nothing to keep in
+  // sync — the bytes land exactly where they're needed.
+  async load(record) {
     this.waiting.style.transition = 'none';
     this.waiting.style.clipPath = '';
     this.waiting.style.opacity = '0';
@@ -197,7 +200,21 @@ export class Slideshow {
     this.loading = true;
     const ok = await this.prepare(this.waiting, record.image);
     this.loading = false;
+    return ok;
+  }
+
+  // Puts `record` on screen. `instant` skips the transition (first slide, or a
+  // slide interval too short to animate).
+  async show(record, instant) {
+    const ok = await this.load(record);
     if (!ok) return false;
+    return this.present(record, instant);
+  }
+
+  // The visible half: caption, transition, swap. Assumes `waiting` already
+  // holds a decoded image, which is what makes the transition reliable.
+  async present(record, instant) {
+    const forceInstant = instant || this.slideMs <= MIN_ANIMATED_SLIDE_MS;
 
     this.kb.stop();
 
@@ -247,6 +264,16 @@ export class Slideshow {
     if (token !== this.runToken) return;
 
     while (token === this.runToken) {
+      // Start fetching the next image immediately, then dwell. The download
+      // overlaps the time the current slide is on screen instead of being
+      // added to it, so a slow image costs nothing as long as it arrives
+      // within the dwell — and if it doesn't, the current slide simply holds
+      // a little longer rather than the transition running on a half-loaded
+      // image. This is the prefetch, but with no second copy to keep in sync:
+      // it loads into the very element the transition will reveal.
+      let next = (this.index + 1) % this.images.length;
+      let loading = this.load(this.images[next]);
+
       // Dwell for the remainder of the slide after the transition it already
       // spent. Floor at a quarter of the interval so a long transition can
       // never squeeze the dwell to nothing and spin the loop.
@@ -258,8 +285,17 @@ export class Slideshow {
       // forever if the whole playlist is broken.
       let shown = false;
       for (let tries = 0; tries < Math.min(5, this.images.length) && !shown; tries++) {
-        this.index = (this.index + 1) % this.images.length;
-        shown = await this.show(this.images[this.index], false);
+        const ok = await loading;
+        if (token !== this.runToken) return;
+        if (ok) {
+          this.index = next;
+          shown = await this.present(this.images[next], false);
+        } else {
+          // Dead URL: line up the one after it and try again straight away,
+          // without waiting out another full dwell.
+          next = (next + 1) % this.images.length;
+          loading = this.load(this.images[next]);
+        }
         if (token !== this.runToken) return;
       }
     }
