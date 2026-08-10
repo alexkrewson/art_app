@@ -16,7 +16,7 @@
 // leaves disk when its last category does.
 
 import { SOURCES } from '../sources/registry.js';
-import { storeImage, deleteStored, isNative, usageBytes, freeBytes } from '../cache/fileStore.js';
+import { storeImage, deleteStored, isNative, usageBytes, freeBytes, clearAll } from '../cache/fileStore.js';
 
 const DB_NAME = 'slowframe-library';
 const DB_VERSION = 1;
@@ -310,6 +310,21 @@ export async function downloadCategory({ sourceId, subjectKey, subject, cat, cou
     requested: count,
     reason: reason || (added < count ? 'source-returned-fewer' : null),
   };
+}
+
+/**
+ * Deletes every downloaded image and its file.
+ *
+ * The downvote blocklist deliberately survives: "never show me this again" is a
+ * statement about the image, not about this particular download, and having it
+ * quietly reset by a cleanup would be a nasty surprise.
+ */
+export async function clearLibrary() {
+  const db = await openDB();
+  const rows = await getAll(db, IMAGES);
+  await clearAll();
+  await tx(db, IMAGES, 'readwrite', s => s.clear());
+  return rows.length;
 }
 
 /**

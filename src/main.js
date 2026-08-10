@@ -226,14 +226,18 @@ async function main() {
   slideshow.init(orderPlaylist(playlist, settings.order));
 }
 
-// Lets the app shell itself (not the artwork, which imageCache.js handles)
-// reload with zero connectivity — e.g. reopening a tab in airplane mode.
-// Feature-detected so it degrades harmlessly wherever service workers
-// aren't supported. PROD-gated: a cache-first service worker registered
-// against `vite dev`'s unbundled, constantly-changing modules serves stale
-// code across reloads — confirmed directly, it masked an unrelated settings
-// bug during manual testing until the SW was unregistered by hand.
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+// App-shell caching for the WEB build only.
+//
+// Gated on Capacitor because a service worker cannot register inside its
+// WebView — it fails with "An unknown error occurred when fetching the script"
+// and logged that on every single launch. That failure is also why downloaded
+// images are real files now (see cache/fileStore.js) rather than opaque
+// responses only a service worker could serve back.
+//
+// PROD-gated as well: a cache-first worker registered against `vite dev`'s
+// unbundled modules serves stale code across reloads — confirmed directly, it
+// masked an unrelated settings bug during manual testing.
+if (import.meta.env.PROD && !window.Capacitor?.isNativePlatform?.() && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`)

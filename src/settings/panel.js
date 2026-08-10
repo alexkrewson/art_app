@@ -10,10 +10,9 @@ import { loadSettings, saveSettings } from './store.js';
 import { TRANSITIONS } from '../engine/transitions/index.js';
 import { SOURCES } from '../sources/registry.js';
 import { buildPlaylist, orderPlaylist } from '../sources/manager.js';
-import { getCacheStats, clearCache } from '../cache/imageCache.js';
 import {
   categoriesOf, catId, DEFAULT_COUNT, downloadCategory, removeCategory,
-  refreshCategory, stats as libraryStats, estimateBytes, formatBytes,
+  refreshCategory, stats as libraryStats, estimateBytes, formatBytes, clearLibrary,
 } from '../library/library.js';
 
 const DISPLAY_MODES = [
@@ -106,13 +105,22 @@ function formatSeconds(ms) {
 // next to the source/playback controls instead — it decides what the slideshow
 // can still show with no connection, which is a Sources question, not a
 // debug-menu one. Clearing the cache stays here: it's destructive and rare.
-function renderAdvancedSection(settings, cacheStats) {
+// Reports the downloaded library, which is the only image storage there is now.
+// This used to show the old Cache-API counter and a button claiming to clear
+// downloads — the counter read zero because nothing writes to that cache any
+// more, and the button cleared it rather than the images, so it deleted
+// precisely nothing while saying otherwise.
+function renderAdvancedSection(settings, lib) {
   return `
     <div class="field-group">
-      <span class="field-hint">${cacheStats ? `${cacheStats.count} of ${cacheStats.cap} images cached automatically` : 'Loading cache stats…'}</span>
-      <button type="button" class="btn-secondary" id="clearCacheBtn">Clear cache</button>
-      <div class="field-hint">Also removes anything saved under <strong>Offline
-      downloads</strong>.</div>
+      <span class="field-label">Storage</span>
+      <span class="field-hint">${lib
+        ? `${lib.count} image${lib.count === 1 ? '' : 's'} downloaded · ${formatBytes(lib.bytes)}${lib.upvoted ? ` · ${lib.upvoted} thumbed up` : ''}${lib.free ? ` · ${formatBytes(lib.free)} free` : ''}`
+        : 'Reading storage…'}</span>
+      <button type="button" class="btn-secondary" id="clearLibraryBtn" ${lib?.count ? '' : 'disabled'}>Delete all downloaded images</button>
+      <div class="field-hint">Removes every downloaded image from this device,
+      including ones you've thumbed up. Categories stay ticked, so they will
+      download again. Images you've thumbed <em>down</em> stay blocked.</div>
     </div>
     <div class="field-group">
       <label class="radio-row">
@@ -351,7 +359,7 @@ const SECTIONS = [
   {
     id: 'advanced',
     label: 'Advanced',
-    render: ctx => renderAdvancedSection(ctx.settings, ctx.cacheStats),
+    render: ctx => renderAdvancedSection(ctx.settings, ctx.lib),
   },
 ];
 
@@ -361,7 +369,6 @@ export function createSettingsPanel(slideshow, {
   let currentTheme = applyTheme(loadTheme());
   let settings = loadSettings();
   let sourceFilters = {}; // sourceId -> FilterSpec[], populated asynchronously below
-  let cacheStats = null;
   // What's on disk: counts per category, total bytes, free space. `busy` holds
   // in-flight downloads so a ticked category shows progress rather than
   // appearing to do nothing for a minute.
@@ -406,7 +413,7 @@ export function createSettingsPanel(slideshow, {
 
   function renderActive() {
     const sec = SECTIONS.find(x => x.id === activeTab) || SECTIONS[0];
-    panelEl.innerHTML = sec.render({ currentTheme, settings, sourceFilters, cacheStats, lib, expanded });
+    panelEl.innerHTML = sec.render({ currentTheme, settings, sourceFilters, lib, expanded });
     panelEl.scrollTop = 0;
   }
 
@@ -427,11 +434,6 @@ export function createSettingsPanel(slideshow, {
       .then(() => refreshSourcesSection());
   });
 
-  getCacheStats().then(stats => {
-    cacheStats = stats;
-    refreshAdvancedSection();
-  }).catch(err => console.warn('[SlowFrame] could not load cache stats:', err));
-
   // Only the visible tab is in the DOM, so a refresh for a hidden one is a
   // no-op — it'll render current data whenever it's next selected.
   function refreshSection(id, renderFn) {
@@ -443,13 +445,14 @@ export function createSettingsPanel(slideshow, {
 
   const refreshDisplaySection = () => refreshSection('display', () => renderDisplaySection(settings));
   const refreshSourcesSection = () => refreshSection('sources', () => renderSourcesSection(settings, sourceFilters, lib, expanded));
-  const refreshAdvancedSection = () => refreshSection('advanced', () => renderAdvancedSection(settings, cacheStats));
+  const refreshAdvancedSection = () => refreshSection('advanced', () => renderAdvancedSection(settings, lib));
   // Re-reads what's actually on disk. Called after anything that changes it,
   // so the counts and the storage line are never stale after an action the
   // user just took.
   async function refreshLibrary(rerender = true) {
     try {
       lib = { ...(await libraryStats()), busy };
+      refreshAdvancedSection();
     } catch (err) {
       console.warn('[SlowFrame] could not read the library:', err);
       lib = lib || { count: 0, bytes: 0, byCat: {}, busy };
@@ -546,23 +549,22 @@ You have about ${formatBytes(lib.free)} free.` : ''),
       return;
     }
 
-    const clearCacheBtn = e.target.closest('#clearCacheBtn');
-    if (clearCacheBtn) {
-      clearCache()
-        .then(() => getCacheStats())
-        .then(stats => {
-          cacheStats = stats;
-          refreshAdvancedSection();
-        })
-        // Clearing the cache removes pinned rows too, so the downloads list
-        // and storage bar are both stale until this runs.
-        .then(() => refreshLibrary())
-        .catch(err => console.warn('[SlowFrame] failed to clear cache:', err));
+    const clearLibBtn = e.target.closest('#clearLibraryBtn');
+    if (clearLibBtn) {
+      const n = lib?.count || 0;
+      if (!window.confirm(`Delete all ${n} downloaded image${n === 1 ? '' : 's'} from this device?
+
+This includes ones you've thumbed up. Your ticked categories stay selected, so they'll download again.`)) return;
+      clearLibBtn.disabled = true;
+      clearLibrary()
+        .catch(err => console.warn('[SlowFrame] could not clear the library:', err))
+        .then(async () => {
+          await refreshLibrary();
+          rebuildPlaylist();
+        });
       return;
     }
 
-    // Delete a category's images from the device. The only action here that
-    // destroys anything, hence the confirmation and the separate button.
     const delBtn = e.target.closest('[data-delete]');
     if (delBtn) {
       const cat = delBtn.dataset.delete;

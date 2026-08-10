@@ -164,9 +164,13 @@ describe('Slideshow (sequential loop)', () => {
     // Restarting from the top each time meant the first image sat on screen
     // indefinitely while everything else was downloading — seen on the device
     // as one photo for two minutes at a 10-second slide duration.
-    const { show, slideA, slideB, captions } = setup({ slideMs: 60, fadeMs: 10 });
+    // A long dwell on purpose: with a short one, an advance that was already
+    // due can land during the check and look like a failure. The previous
+    // version of this test only passed because setPlaylist reset the dwell —
+    // i.e. it was asserting the bug that the next test now guards against.
+    const { show, slideA, slideB, captions } = setup({ slideMs: 5000, fadeMs: 10 });
     show.init([{ image: '1.jpg' }, { image: '2.jpg' }, { image: '3.jpg' }]);
-    await tick(200);
+    await tick(120);
 
     const onScreen = visible(slideA, slideB)?.src;
     const before = captions.length;

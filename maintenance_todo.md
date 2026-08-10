@@ -8,27 +8,91 @@ survives a crash or restart. See original spec pasted into the conversation on
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (needs input from Alex)
 
 ---
-## Where things stand (updated 2026-07-26, working tree ahead of the last commit
-## `47f6f06` — see note below)
+## Where things stand (updated 2026-08-10)
 
-**Live site:** https://alexkrewson.github.io/art_app/ (auto-deploys on every push to
-`main` via GitHub Actions — no manual deploy step needed anymore)
+**Live site:** https://alexkrewson.github.io/art_app/ (auto-deploys on push to `main`)
 **Repo:** https://github.com/alexkrewson/art_app
 
-**Testing:** see `/home/alex/apps/shared/testing-guidelines.md` for the shared
-rulebook (Smoke / Thorough / Costly tiers) — this project doesn't duplicate it.
-Conditional sections that apply here: "Third-party API integrations without AI
-cost" (all the museum/archive sources — exercise live by hand occasionally, never
-in a tight automated loop) and "Offline / local-only mode" (Phase 6 caching is
-exactly this — mocked IndexedDB/Cache API is the Thorough tier's foundation for it).
-`npm test` runs the automated Thorough-tier suite (Vitest): 99 tests across sources
-(mocked `fetch`, one file per API adapter), the playlist manager (mocked
-registry/cache, covers merge/fallback/offline/failure paths), the settings store,
-and the offline cache (mocked Cache API + real `fake-indexeddb`). **Not yet
-covered:** the DOM/canvas-heavy engine (Ken Burns, touch gestures, transitions) and
-the settings-panel UI itself — those still rely on manual Smoke/Thorough passes via
-Playwright MCP against the live site, per the shared doc's guidance that UI
-click-through is the manual fallback where no automated suite exists yet.
+### The app was substantially rebuilt on 2026-08-08/09. Read this before the phase list below, which describes the older design.
+
+**Playback is download-first.** Ticking a category in Sources downloads it to the
+device; the slideshow only ever plays images already stored locally and never
+fetches while running. Alex's reasoning, and it was right: everything shown has to
+be downloaded anyway, so fetching mid-slideshow only makes timing unpredictable
+and spends someone's mobile data unasked. `src/library/library.js` owns the
+downloaded set; `src/cache/fileStore.js` writes real JPEG files via
+`@capacitor/filesystem`, fetched through `CapacitorHttp` (the native stack, not
+subject to CORS).
+
+**The old Cache-API + service-worker approach is gone.** A service worker cannot
+register inside Capacitor's WebView, so image bytes stored as opaque responses
+could never be served back — "downloaded" meant files the app couldn't display.
+`imageCache.js` is deleted; `sw.js` remains for app-shell caching on the *web*
+build only and registration is gated to non-native.
+
+**The engine was rewritten** (`src/engine/slideshow.js`). One sequential async
+loop — dwell, load, decode, transition, repeat — replacing a setInterval racing
+an async chain reconciled by `inFade`/`loading`/`pendingFinish` booleans. Ken
+Burns and every transition now animate via the Web Animations API on the
+compositor rather than from JS on the main thread. That combination is what fixed
+the choppiness and skipping Alex reported against the kiosk.html-derived design.
+
+**Settings** are full-screen tabs (not accordions), Sources is one collapsible row
+per source with All/None, unticking *hides* while a bin button deletes, and there
+are thumbs up/down controls plus per-category refresh.
+
+**Testing:** `npm test` — 178 Vitest tests. Sources (mocked `fetch`, one file per
+adapter), the library against a real fake-indexeddb, the playlist manager, the
+settings store, the ribbon, every transition's contract, and the engine's advance
+cycle. **Still not covered:** the settings-panel DOM itself. Every bug found on
+2026-08-09 was found by running the app, not by the suite.
+
+### Driving a device directly (this is the good loop)
+
+A debug build exposes a WebView debugging socket. With a tablet plugged in:
+
+```
+adb -s <serial> install -r android/app/build/outputs/apk/debug/app-debug.apk
+adb -s <serial> shell cat /proc/net/unix | grep -o "webview_devtools_remote_[0-9]*"
+adb -s <serial> forward tcp:9222 localabstract:<socket>
+curl -s localhost:9222/json          # -> webSocketDebuggerUrl
+```
+
+Then a Node script (Node 22 has a global `WebSocket`) can `Runtime.evaluate`
+arbitrary JS in the running app: set localStorage, tick real checkboxes through
+their real handlers, read IndexedDB. Install-configure-inspect takes seconds and
+found five bugs in one evening that 190 passing tests did not.
+
+**Two measurement traps, both of which caught me out:**
+- Do not sample the ribbon *title* to check whether the slideshow is advancing.
+  NASA has hundreds of images titled "International Space Station (ISS)" and
+  Openverse hundreds called "Aurora borealis". Sample the visible `<img>`'s src.
+- `adb` serials on these cheap Star8 tablets are not stable across reconnects.
+  The same physical device appeared as both `DJJYHHEU91` and `N3XGBIPCHP`.
+  Identify a device by what is on it, not by its serial.
+
+### Devices currently configured
+
+| Device | Content | Settings |
+|---|---|---|
+| CP80 (Android 14) | all 6 Wikimedia Commons categories | 5s slides, 2000ms crossfade |
+| Star8 (Android 12) | Openverse (725) + NASA (976), bundled set off | 10s slides, random transitions |
+
+Sideloading on the Star8 needed Play Protect's install verifier disabled
+(`settings put global package_verifier_user_consent -1`) — its APK Analysis scan
+took 15s and errored, and the GUI installer blocks on that while `adb install`
+does not. Installing over adb sidesteps it entirely.
+
+### Next up
+
+1. **Nobody has used the settings UI by hand** since it became tabs. Voting has
+   never been used at all — not by Alex, not by me. The logic beneath it is
+   tested; the buttons are not.
+2. Google Photos (Phase 7) — still needs an OAuth client ID.
+3. A release keystore, which would also stop Play Protect treating every build as
+   an unknown stranger.
+4. `rclone`'s shared Google Drive `client_id` retires during 2026; the upload
+   script needs Alex's own before then.
 
 **Done — Phases 0 through 3:** project scaffold (Vite, vanilla JS), the full
 kiosk.html engine ported (Ken Burns, touch gestures, metadata ribbon), GitHub Pages
