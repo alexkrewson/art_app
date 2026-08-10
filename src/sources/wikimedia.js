@@ -106,19 +106,39 @@ export const wikimediaSource = {
   async fetchBatch({ filters = {}, count = 24 } = {}) {
     const checkedCategories = Array.isArray(filters.categories) ? filters.categories.filter(Boolean) : [];
     const query = (filters.query || '').trim() || 'illustration';
-    // 500 is the API's own ceiling for an anonymous caller. This used to be
-    // capped at 50, which was invisible while the app only ever asked for a
-    // playlist's worth — but under the download model a request for 100 images
-    // per category silently returned 49, because the cap bit long before the
-    // requested count did. Caught on 2026-08-09 by driving a real download on
-    // the device and watching the count stop climbing.
-    const limit = String(Math.min(Math.max(count * 2, 50), 500));
+    // 50 per request, and page with continuation — NOT one big request.
+    //
+    // Commons returns `extmetadata` for only the first 50 pages of any
+    // response, whatever gcmlimit says. Measured against the live API:
+    //
+    //   gcmlimit=50  ->  50 pages,  50 with licence metadata (100%)
+    //   gcmlimit=100 -> 100 pages,  50 with licence metadata  (50%)
+    //   gcmlimit=200 -> 198 pages,  50 with licence metadata  (25%)
+    //
+    // Everything past the 50th arrives with no licence at all, and this source
+    // (rightly) refuses anything whose licence it can't confirm — so a single
+    // large request can never yield more than ~50 usable images regardless of
+    // how many it asks for. Raising the limit to 500 on 2026-08-09 therefore
+    // fixed nothing: it fetched four times as much and threw three quarters
+    // away. Paging properly is what actually lifts the ceiling.
+    const PAGE = 50;
 
-    async function fetchPages(params) {
-      const res = await fetch(`${API}?${params.toString()}`);
-      if (!res.ok) throw new Error(`Wikimedia Commons search failed: HTTP ${res.status}`);
-      const data = await res.json();
-      return Object.values(data.query?.pages || {});
+    async function fetchPages(baseParams, contKey) {
+      // Enough candidates to survive the licence filter and de-duplication.
+      const want = Math.max(count * 2, PAGE);
+      const out = [];
+      let cont;
+      for (let guard = 0; out.length < want && guard < 12; guard++) {
+        const params = new URLSearchParams(baseParams);
+        if (cont) params.set(contKey, cont);
+        const res = await fetch(`${API}?${params.toString()}`);
+        if (!res.ok) throw new Error(`Wikimedia Commons search failed: HTTP ${res.status}`);
+        const data = await res.json();
+        out.push(...Object.values(data.query?.pages || {}));
+        cont = data.continue?.[contKey];
+        if (!cont) break; // end of the category
+      }
+      return out;
     }
 
     // "Category:X" isn't valid full-text search syntax — Commons needs the
@@ -151,18 +171,18 @@ export const wikimediaSource = {
 
     let pages;
     if (categoryTitles) {
-      const batches = await Promise.all(categoryTitles.map(gcmtitle => fetchPages(new URLSearchParams({
+      const batches = await Promise.all(categoryTitles.map(gcmtitle => fetchPages({
         action: 'query', format: 'json', origin: '*',
-        generator: 'categorymembers', gcmtitle, gcmtype: 'file', gcmlimit: limit,
+        generator: 'categorymembers', gcmtitle, gcmtype: 'file', gcmlimit: String(PAGE),
         prop: 'imageinfo', iiprop: 'url|extmetadata|mime', iiurlwidth: String(THUMB_WIDTH),
-      }))));
+      }, 'gcmcontinue')));
       pages = batches.flat();
     } else {
-      pages = await fetchPages(new URLSearchParams({
+      pages = await fetchPages({
         action: 'query', format: 'json', origin: '*',
-        generator: 'search', gsrsearch: query, gsrnamespace: '6', gsrlimit: limit,
+        generator: 'search', gsrsearch: query, gsrnamespace: '6', gsrlimit: String(PAGE),
         prop: 'imageinfo', iiprop: 'url|extmetadata|mime', iiurlwidth: String(THUMB_WIDTH),
-      }));
+      }, 'gsroffset');
     }
 
     const results = [];

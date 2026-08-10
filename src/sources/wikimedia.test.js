@@ -98,6 +98,38 @@ describe('wikimediaSource', () => {
     expect(urls.some(u => u.includes('sunflowers'))).toBe(false);
   });
 
+  it('pages 50 at a time, because extmetadata is truncated past that', async () => {
+    // Commons returns licence metadata for only the first 50 pages of any
+    // response, whatever limit is asked for — measured live: gcmlimit=200
+    // returns 198 pages but only 50 carry a licence. Since this source refuses
+    // anything it can't confirm a licence for, one big request can never yield
+    // more than ~50 usable images. Paging is what lifts the ceiling: the same
+    // category went from 49 usable to 100.
+    const page = n => ({
+      ok: true,
+      json: async () => ({
+        query: { pages: Object.fromEntries(Array.from({ length: 50 }, (_, i) => [`${n}${i}`, {
+          title: `File:${n}-${i}.jpg`,
+          imageinfo: [{ url: `https://x/${n}-${i}.jpg`, thumburl: `https://x/t/${n}-${i}.jpg`, mime: 'image/jpeg',
+            extmetadata: { LicenseShortName: { value: 'CC BY-SA 4.0' } } }],
+        }])) },
+        ...(n < 3 ? { continue: { gcmcontinue: `tok${n}` } } : {}),
+      }),
+    });
+    let call = 0;
+    const fetchMock = vi.fn(async () => page(++call));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const records = await wikimediaSource.fetchBatch({ filters: { categories: ['Fantasy art'] }, count: 100 });
+
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+    expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('gcmlimit')).toBe('50');
+    // The second request must carry the continuation token, or it just refetches
+    // the same first 50 forever.
+    expect(new URL(fetchMock.mock.calls[1][0]).searchParams.get('gcmcontinue')).toBe('tok1');
+    expect(records).toHaveLength(100);
+  });
+
   it('asks for a scaled thumbnail and prefers it over the original', async () => {
     const fetchMock = vi.fn(async () => ({
       ok: true,

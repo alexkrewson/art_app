@@ -798,7 +798,10 @@ Anything you've thumbed up is kept.`)) return;
       // deleting images because a number went down would be a nasty surprise.
       const have = lib?.byCat?.[cat] || 0;
       const c = allCategories().find(x => x.cat === cat);
-      if (c && have && count > have) runDownload({ ...specFor(c), count: count - have });
+      // `have &&` used to be in this condition, which meant a category with
+      // nothing downloaded — or one whose stats hadn't loaded yet, making
+      // `have` 0 — silently did nothing when you raised its number.
+      if (c && count > have) runDownload({ ...specFor(c), count: count - have });
       return;
     } else if (el.name.startsWith('src-')) {
       const id = el.name.slice(4);
