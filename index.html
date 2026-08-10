@@ -12,17 +12,18 @@
     <img class="slide" id="slide-b" alt="" referrerpolicy="no-referrer" decoding="async">
     <div id="transition-overlay"></div>
     <div id="pause-icon">&#10074;&#10074;</div>
-    <!-- Faded vote controls, top-right (the gear follows the pointer, the
-         pause icon owns bottom-right, the diagnostic overlay top-left). -->
-    <div id="vote-bar" hidden>
-      <button type="button" class="vote-btn" id="vote-up" aria-label="Keep this image">&#128077;</button>
-      <button type="button" class="vote-btn" id="vote-down" aria-label="Never show this image again">&#128078;</button>
-    </div>
     <button id="settings-gear" class="icon-btn" aria-label="Settings" hidden>&#9881;</button>
   </div>
   <div id="footer">
     <div id="title"></div>
     <div id="meta"></div>
+  </div>
+  <!-- Outside #stage and fixed to the viewport, so it lands at the right-hand
+       end of the info ribbon and stays in exactly that spot when the ribbon is
+       switched off and the artwork takes the full screen. -->
+  <div id="vote-bar" hidden>
+    <button type="button" class="vote-btn" id="vote-up" aria-label="Keep this image">&#128077;</button>
+    <button type="button" class="vote-btn" id="vote-down" aria-label="Never show this image again">&#128078;</button>
   </div>
   <script type="module" src="src/main.js"></script>
 </body>

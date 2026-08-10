@@ -104,8 +104,10 @@ body { display:flex; flex-direction:column; }
   color: var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 
+/* Bottom-LEFT: the vote buttons own the bottom-right corner now, and the pause
+   glyph is a passive indicator so it's the one that moves. */
 #pause-icon {
-  position:absolute; bottom:14px; right:16px;
+  position:absolute; bottom:14px; left:16px;
   font-size:1.6rem; color:rgba(255,255,255,0.45);
   pointer-events:none;
   opacity:0; transition:opacity 0.3s;
@@ -479,7 +481,10 @@ input[type="color"].field, #dipColorInput {
 /* Vote controls — deliberately faint so they don't compete with the artwork,
    coming up to full strength only when touched. */
 #vote-bar {
-  position:absolute; top:14px; right:16px;
+  /* Fixed, not absolute: #stage shrinks when the ribbon is shown, and anchoring
+     to the viewport is what keeps these in the same physical spot whether the
+     ribbon is there or not — which is what Alex asked for. */
+  position:fixed; bottom:14px; right:16px;
   display:flex; gap:0.4rem;
   z-index:800;
 }
