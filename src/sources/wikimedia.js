@@ -106,7 +106,13 @@ export const wikimediaSource = {
   async fetchBatch({ filters = {}, count = 24 } = {}) {
     const checkedCategories = Array.isArray(filters.categories) ? filters.categories.filter(Boolean) : [];
     const query = (filters.query || '').trim() || 'illustration';
-    const limit = String(Math.min(count * 3, 50));
+    // 500 is the API's own ceiling for an anonymous caller. This used to be
+    // capped at 50, which was invisible while the app only ever asked for a
+    // playlist's worth — but under the download model a request for 100 images
+    // per category silently returned 49, because the cap bit long before the
+    // requested count did. Caught on 2026-08-09 by driving a real download on
+    // the device and watching the count stop climbing.
+    const limit = String(Math.min(Math.max(count * 2, 50), 500));
 
     async function fetchPages(params) {
       const res = await fetch(`${API}?${params.toString()}`);
