@@ -59,6 +59,14 @@ function renderDisplaySection(settings) {
       <input type="number" id="transitionMsInput" class="field" name="transitionMs" min="200" max="6000" step="100" value="${settings.transitionMs}">
     </div>
     <div class="field-group">
+      <label class="radio-row">
+        <input type="checkbox" name="showRibbon" ${settings.showRibbon !== false ? 'checked' : ''}>
+        <span>Show the info ribbon <span class="field-hint">— title, artist and
+        credit along the bottom. Switch it off and the artwork takes the whole
+        screen.</span></span>
+      </label>
+    </div>
+    <div class="field-group">
       <label class="field-label" for="kbCycleInput">Ken Burns speed</label>
       <!-- Inverted on purpose: the stored value is a segment DURATION, so a
            bigger number is slower. Dragging right should mean faster, so the
@@ -174,31 +182,39 @@ function renderLocalFilesExtra(source) {
     <span class="field-hint">${folderName ? `Using: ${folderName}` : 'No folder selected yet'}</span>`;
 }
 
-function renderSourceBlock(source, settings, sourceFilters, lib) {
+function renderSourceBlock(source, settings, sourceFilters, lib, expanded) {
   const cfg = settings.sources[source.id] || { enabled: false, filters: {} };
   const filters = sourceFilters[source.id] || [];
   const unsupported = source.supported === false;
   const gatedByKey = source.needsApiKey && !cfg.filters?.apiKey;
+  const open = expanded.has(source.id);
 
-  // The two genuinely-local sources keep the old plain enable checkbox: there
-  // is nothing to download, the images are already on the device.
+  // The two genuinely-local sources have nothing to download, so they stay a
+  // single plain checkbox rather than pretending to be a category list.
   if (source.id === 'local' || source.id === 'localFiles') {
-    let hint = source.description || '';
-    if (unsupported) hint = 'Not supported in this browser (needs Chrome/Edge).';
     return `
-      <label class="radio-row">
-        <input type="checkbox" name="src-${source.id}" ${cfg.enabled ? 'checked' : ''} ${unsupported ? 'disabled' : ''}>
-        <span>${source.label} <span class="field-hint">— ${hint}</span></span>
-      </label>
-      <div class="source-subfields" ${cfg.enabled ? '' : 'hidden'}>
-        ${renderLocalFilesExtra(source)}
+      <div class="source-row">
+        <label class="radio-row source-row-head">
+          <input type="checkbox" name="src-${source.id}" ${cfg.enabled ? 'checked' : ''} ${unsupported ? 'disabled' : ''}>
+          <span>${source.label}</span>
+        </label>
+        ${source.id === 'localFiles' ? `<div class="source-detail">${renderLocalFilesExtra(source)}</div>` : ''}
       </div>`;
   }
 
   const cats = categoriesOf(source.id, source);
-  // Non-subject filters (API key, keyword) still belong here; the curated
-  // subject group is now rendered as the download list below instead.
   const otherFilters = filters.filter(f => f.type !== 'checkboxGroup');
+  const onCount = cats.filter(c => settings.categories?.[c.cat]).length;
+  const saved = cats.reduce((n, c) => n + (lib?.byCat?.[c.cat] || 0), 0);
+  const anyBusy = cats.some(c => lib?.busy?.[c.cat]);
+
+  // Collapsed summary carries the only two numbers worth seeing at a glance:
+  // how many of this source's categories are on, and how many images that is.
+  const summary = gatedByKey
+    ? 'needs an API key'
+    : anyBusy ? 'downloading…'
+    : onCount ? `${onCount}/${cats.length} on · ${saved} image${saved === 1 ? '' : 's'}`
+    : `${cats.length} categor${cats.length === 1 ? 'y' : 'ies'}`;
 
   const rows = cats.map(c => {
     const on = !!settings.categories?.[c.cat];
@@ -209,11 +225,11 @@ function renderSourceBlock(source, settings, sourceFilters, lib) {
       <div class="cat-row">
         <label class="radio-row cat-row-label">
           <input type="checkbox" name="cat::${c.cat}" ${on ? 'checked' : ''} ${gatedByKey || busy ? 'disabled' : ''}>
-          <span>${c.label}${have ? ` <span class="field-hint">(${have} saved)</span>` : ''}</span>
+          <span>${c.label}${have ? ` <span class="field-hint">(${have})</span>` : ''}</span>
         </label>
         <input type="number" class="field field-inline" name="catcount::${c.cat}"
                min="10" max="500" step="10" value="${count}" ${busy ? 'disabled' : ''}
-               aria-label="Images to download for ${c.label}">
+               aria-label="Images to keep for ${c.label}">
       </div>
       <div class="download-progress" data-progress="${c.cat}" ${busy ? '' : 'hidden'}>
         <div class="download-progress-track">
@@ -224,27 +240,31 @@ function renderSourceBlock(source, settings, sourceFilters, lib) {
   }).join('');
 
   return `
-    <div class="source-block">
-      <div class="source-head">
-        <span class="source-title">${source.label}</span>
-        <span>
-          <button type="button" class="btn-secondary btn-tiny" data-select-all="${source.id}" ${gatedByKey ? 'disabled' : ''}>All</button>
-          <button type="button" class="btn-secondary btn-tiny" data-select-none="${source.id}">None</button>
-        </span>
+    <div class="source-row">
+      <div class="source-row-head">
+        <button type="button" class="source-expand" data-expand="${source.id}" aria-expanded="${open}">
+          <span class="settings-section-chevron">&#9656;</span>
+          <span class="source-title">${source.label}</span>
+          <span class="field-hint">${summary}</span>
+        </button>
+        <button type="button" class="btn-secondary btn-tiny" data-select-all="${source.id}" ${gatedByKey ? 'disabled' : ''}>All</button>
+        <button type="button" class="btn-secondary btn-tiny" data-select-none="${source.id}">None</button>
       </div>
-      <div class="field-hint">${gatedByKey ? 'Enter an API key below to enable.' : (source.description || '')}</div>
-      ${otherFilters.map(f => renderFilterField(source.id, f, settings)).join('')}
-      ${rows}
+      <div class="source-detail" ${open ? '' : 'hidden'}>
+        ${source.description ? `<div class="field-hint">${source.description}</div>` : ''}
+        ${otherFilters.map(f => renderFilterField(source.id, f, settings)).join('')}
+        ${rows}
+      </div>
     </div>`;
 }
 
-function renderSourcesSection(settings, sourceFilters, lib) {
+function renderSourcesSection(settings, sourceFilters, lib, expanded = new Set()) {
   return `
     <p class="field-hint">Ticking a category downloads it to this device — the
     slideshow only ever plays images you already have, so it never uses data
     while it's running. Set how many images each category should keep.</p>
     ${lib ? `<div class="field-group"><span class="field-hint">${lib.count} images stored · ${formatBytes(lib.bytes)}${lib.free ? ` · ${formatBytes(lib.free)} free` : ''}</span></div>` : ''}
-    ${Object.values(SOURCES).map(source => renderSourceBlock(source, settings, sourceFilters, lib)).join('')}
+    ${Object.values(SOURCES).map(source => renderSourceBlock(source, settings, sourceFilters, lib, expanded)).join('')}
     <div class="field-group" role="radiogroup" aria-label="Playback order">
       <span class="field-label">Playback order</span>
       <label class="radio-row"><input type="radio" name="order" value="sequential" ${settings.order === 'sequential' ? 'checked' : ''}><span>Sequential</span></label>
@@ -260,7 +280,7 @@ const SECTIONS = [
   {
     id: 'sources',
     label: 'Sources',
-    render: ctx => renderSourcesSection(ctx.settings, ctx.sourceFilters, ctx.lib),
+    render: ctx => renderSourcesSection(ctx.settings, ctx.sourceFilters, ctx.lib, ctx.expanded),
   },
   {
     id: 'display',
@@ -314,7 +334,7 @@ const SECTIONS = [
   },
 ];
 
-export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {} } = {}) {
+export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}, onRibbonChange = () => {} } = {}) {
   let currentTheme = applyTheme(loadTheme());
   let settings = loadSettings();
   let sourceFilters = {}; // sourceId -> FilterSpec[], populated asynchronously below
@@ -324,6 +344,10 @@ export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}
   // appearing to do nothing for a minute.
   let lib = null;
   const busy = {};
+  // Which source rows are open. Collapsed by default so Sources is a short
+  // list of one row per source rather than a wall of every category, key
+  // field and description at once.
+  const expanded = new Set();
 
   const root = document.createElement('div');
   root.className = 'settings-panel';
@@ -334,24 +358,36 @@ export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}
         <h2 class="settings-title">SlowFrame</h2>
         <button type="button" class="icon-btn settings-close" aria-label="Close settings">&#10005;</button>
       </div>
-      <div class="settings-accordion"></div>
+      <div class="settings-tabs" role="tablist"></div>
+      <div class="settings-tabpanel" role="tabpanel"></div>
     </div>
   `;
   document.body.appendChild(root);
 
-  const accordion = root.querySelector('.settings-accordion');
+  // Tabs rather than stacked accordions (Alex, 2026-08-09). With the panel now
+  // full-screen there's room to show one section entirely, and an accordion
+  // made you scroll past five collapsed headers to reach the sixth.
+  let activeTab = SECTIONS[0].id;
+  const tabsEl = root.querySelector('.settings-tabs');
+  const panelEl = root.querySelector('.settings-tabpanel');
+  // `accordion` is still the delegation root for every handler below; it just
+  // points at the tab panel now.
+  const accordion = panelEl;
 
-  function renderSections() {
-    accordion.innerHTML = SECTIONS.map(s => `
-      <section class="settings-section" data-section="${s.id}">
-        <button type="button" class="settings-section-toggle" aria-expanded="false">
-          <span>${s.label}</span>
-          <span class="settings-section-chevron">&#9656;</span>
-        </button>
-        <div class="settings-section-content" hidden>${s.render({ currentTheme, settings, sourceFilters, cacheStats, lib })}</div>
-      </section>
+  function renderTabs() {
+    tabsEl.innerHTML = SECTIONS.map(sec => `
+      <button type="button" class="settings-tab" role="tab"
+              data-tab="${sec.id}" aria-selected="${sec.id === activeTab}">${sec.label}</button>
     `).join('');
   }
+
+  function renderActive() {
+    const sec = SECTIONS.find(x => x.id === activeTab) || SECTIONS[0];
+    panelEl.innerHTML = sec.render({ currentTheme, settings, sourceFilters, cacheStats, lib, expanded });
+    panelEl.scrollTop = 0;
+  }
+
+  function renderSections() { renderTabs(); renderActive(); }
   renderSections();
 
   // Every source's filter list (e.g. Met's department dropdown, which needs
@@ -373,16 +409,17 @@ export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}
     refreshAdvancedSection();
   }).catch(err => console.warn('[SlowFrame] could not load cache stats:', err));
 
+  // Only the visible tab is in the DOM, so a refresh for a hidden one is a
+  // no-op — it'll render current data whenever it's next selected.
   function refreshSection(id, renderFn) {
-    const content = accordion.querySelector(`[data-section="${id}"] .settings-section-content`);
-    const wasExpanded = accordion.querySelector(`[data-section="${id}"] .settings-section-toggle`)
-      .getAttribute('aria-expanded') === 'true';
-    content.innerHTML = renderFn();
-    content.hidden = !wasExpanded;
+    if (id !== activeTab) return;
+    const scroll = panelEl.scrollTop;
+    panelEl.innerHTML = renderFn();
+    panelEl.scrollTop = scroll; // don't jump the user to the top mid-interaction
   }
 
   const refreshDisplaySection = () => refreshSection('display', () => renderDisplaySection(settings));
-  const refreshSourcesSection = () => refreshSection('sources', () => renderSourcesSection(settings, sourceFilters, lib));
+  const refreshSourcesSection = () => refreshSection('sources', () => renderSourcesSection(settings, sourceFilters, lib, expanded));
   const refreshAdvancedSection = () => refreshSection('advanced', () => renderAdvancedSection(settings, cacheStats));
   // Re-reads what's actually on disk. Called after anything that changes it,
   // so the counts and the storage line are never stale after an action the
@@ -477,15 +514,6 @@ You have about ${formatBytes(lib.free)} free.` : ''),
   }
 
   accordion.addEventListener('click', e => {
-    const toggle = e.target.closest('.settings-section-toggle');
-    if (toggle) {
-      const section = toggle.closest('.settings-section');
-      const content = section.querySelector('.settings-section-content');
-      const expanded = toggle.getAttribute('aria-expanded') === 'true';
-      toggle.setAttribute('aria-expanded', String(!expanded));
-      content.hidden = expanded;
-      return;
-    }
     const themeBtn = e.target.closest('.theme-option');
     if (themeBtn) {
       currentTheme = applyTheme(themeBtn.dataset.themeKey);
@@ -507,6 +535,14 @@ You have about ${formatBytes(lib.free)} free.` : ''),
         // and storage bar are both stale until this runs.
         .then(() => refreshLibrary())
         .catch(err => console.warn('[SlowFrame] failed to clear cache:', err));
+      return;
+    }
+
+    const expandBtn = e.target.closest('[data-expand]');
+    if (expandBtn) {
+      const id = expandBtn.dataset.expand;
+      if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+      refreshSourcesSection();
       return;
     }
 
@@ -634,6 +670,9 @@ Images you've given a thumbs up are kept.`)) return;
       if (!slideshow.paused && settings.displayMode === 'kenburns') slideshow.kb.start();
       const out = accordion.querySelector('#kbCycleValue');
       if (out) out.textContent = `${Math.round(ms / 1000)}s per pan`;
+    } else if (el.name === 'showRibbon') {
+      settings.showRibbon = el.checked;
+      onRibbonChange(el.checked);
     } else if (el.name.startsWith('cat::')) {
       // Ticking a category IS downloading it — there's no separate button any
       // more, which is the point of the redesign: everything the slideshow
@@ -714,7 +753,20 @@ Images you've given a thumbs up are kept.`)) return;
 
   // Stop clicks inside the panel from bubbling to the stage (which would
   // toggle pause/resume) or the backdrop click-to-close handler below.
-  root.addEventListener('click', e => e.stopPropagation());
+  tabsEl.addEventListener('click', e => {
+    const tab = e.target.closest('.settings-tab');
+    if (!tab) return;
+    activeTab = tab.dataset.tab;
+    renderSections();
+  });
+
+  // Clicking the backdrop dismisses and resumes, same as the X. Anything
+  // inside the card must not: `e.target === root` is true only for the
+  // backdrop itself, since the card is a child.
+  root.addEventListener('click', e => {
+    if (e.target === root) dismiss();
+    e.stopPropagation();
+  });
 
   const inner = root.querySelector('.settings-panel-inner');
 
@@ -741,9 +793,17 @@ Images you've given a thumbs up are kept.`)) return;
   }
   function close() { root.hidden = true; }
 
-  root.querySelector('.settings-close').addEventListener('click', close);
+  // Closing the panel resumes the slideshow. Kept separate from close() so the
+  // pause-change handler in main.js can hide the panel without recursing back
+  // into togglePause.
+  function dismiss() {
+    close();
+    if (slideshow.paused) slideshow.togglePause();
+  }
+
+  root.querySelector('.settings-close').addEventListener('click', dismiss);
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !root.hidden) close();
+    if (e.key === 'Escape' && !root.hidden) dismiss();
   });
 
   return {

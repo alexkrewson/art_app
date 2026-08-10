@@ -125,7 +125,19 @@ async function main() {
     }
   }
 
-  const settingsPanel = createSettingsPanel(slideshow, { onDebugOverlayChange: setDebugOverlay });
+  // Hiding the ribbon frees the footer's height, and #stage is flex:1 — so the
+  // artwork expands to the whole screen with no extra work. object-fit:cover
+  // then fills the taller frame at the image's own aspect ratio.
+  function setRibbonVisible(on) {
+    ribbon.setVisible(on);
+    slideshow.applyXf(slideshow.active); // re-apply against the new stage size
+  }
+
+  const settingsPanel = createSettingsPanel(slideshow, {
+    onDebugOverlayChange: setDebugOverlay,
+    onRibbonChange: setRibbonVisible,
+  });
+  setRibbonVisible(settings.showRibbon !== false);
   setDebugOverlay(settings.debugOverlay);
   attachTouch(stageEl, slideshow, settingsPanel);
 

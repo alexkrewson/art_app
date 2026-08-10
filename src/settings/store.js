@@ -14,6 +14,9 @@ export const DEFAULTS = {
   // adjustable, so it is now a setting with that value as the default.
   kbCycleMs: 13000,
   order: 'sequential', // 'sequential' | 'shuffle'
+  // Title/artist ribbon along the bottom. On by default; switching it off
+  // gives the artwork the full screen height rather than leaving a gap.
+  showRibbon: true,
   // Temporary on-screen diagnostic. Added 2026-08-08 because two attempts to
   // fix the lagging caption by reading the code both failed, and a jsdom
   // harness of the advance cycle could not reproduce it either — so the next
