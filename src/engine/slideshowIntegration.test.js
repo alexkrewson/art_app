@@ -184,6 +184,26 @@ describe('Slideshow (sequential loop)', () => {
     show.togglePause();
   });
 
+  it('keeps advancing while the playlist is rebuilt repeatedly', async () => {
+    // A download rebuilds the playlist every few images. Holding position was
+    // the right call, but restarting the loop to do it cut the dwell and began
+    // a new one — so with rebuilds arriving faster than the dwell, the slide
+    // never changed. Measured on the device as one image for a minute.
+    const { show, captions } = setup({ slideMs: 60, fadeMs: 10 });
+    const list = n => Array.from({ length: n }, (_, i) => ({ image: `${i}.jpg` }));
+    show.init(list(4));
+    await tick(120);
+    const before = captions.length;
+
+    // Rebuild far faster than the dwell, as eight concurrent downloads would.
+    for (let i = 0; i < 12; i++) {
+      show.setPlaylist(list(4 + i));
+      await tick(25);
+    }
+    show.togglePause();
+    expect(captions.length).toBeGreaterThan(before);
+  });
+
   it('starts over when the image on screen is no longer in the playlist', async () => {
     const { show, slideA, slideB } = setup({ slideMs: 60, fadeMs: 10 });
     show.init([{ image: 'gone.jpg' }, { image: 'also-gone.jpg' }]);

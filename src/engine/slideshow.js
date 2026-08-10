@@ -145,19 +145,22 @@ export class Slideshow {
     const idx = current ? images.findIndex(r => r.image === current.image) : -1;
     this.images = images;
 
-    if (idx < 0) {
-      // The image on screen is gone (a category was unticked, say) — start over.
-      this.index = 0;
-      this.restart();
+    if (idx >= 0 && this.running && !this.paused) {
+      // Still on screen and the loop is already running: update in place and
+      // touch NOTHING else. Restarting the loop here — even without re-showing
+      // the image — cuts the current dwell and begins a new one, and since the
+      // playlist rebuilds every few images during a download, the dwell would
+      // be reset faster than it could ever elapse. Measured on the device:
+      // one image for a minute at a 10-second slide duration, because each
+      // rebuild started the countdown again.
+      this.index = idx;
       return;
     }
 
-    // Still there: keep it on screen, keep its remaining dwell honest, and just
-    // carry on from its new position in the list.
-    this.index = idx;
-    const token = ++this.runToken;
-    this.cutDwell();
-    this.run(token, false);
+    // Either what was playing has gone (a category was hidden), or nothing is
+    // running yet — in both cases start the loop properly.
+    this.index = idx >= 0 ? idx : 0;
+    this.restart();
   }
 
   // Kept for the settings panel, which calls it after changing slide duration.
@@ -286,6 +289,9 @@ export class Slideshow {
    */
   async run(token, showFirst = true) {
     if (!this.images.length) return;
+    // Lets setPlaylist tell the difference between "a loop is already ticking,
+    // leave its dwell alone" and "nothing is running, start one".
+    this.running = true;
 
     // showFirst=false is for a playlist swap that kept the current image:
     // re-showing it would reload the same src and flash for no reason.
@@ -310,26 +316,30 @@ export class Slideshow {
       // never squeeze the dwell to nothing and spin the loop.
       const rest = Math.max(this.slideMs * 0.25, this.slideMs - this.fadeMs);
       await this.dwell(rest);
-      if (token !== this.runToken || this.paused) return;
+      if (token !== this.runToken || this.paused) { this.running = false; return; }
 
       // Skip past unloadable records rather than stopping, but don't spin
       // forever if the whole playlist is broken.
       let shown = false;
       for (let tries = 0; tries < Math.min(5, this.images.length) && !shown; tries++) {
         const ok = await loading;
-        if (token !== this.runToken) return;
+        if (token !== this.runToken) { this.running = false; return; }
         if (ok) {
-          this.index = next;
-          shown = await this.present(this.images[next], false);
+          // `next` may be stale if the playlist was swapped mid-dwell; find the
+          // record's current position so the loop stays in step with the list.
+          const record = this.images[next] ?? this.images[0];
+          this.index = this.images.indexOf(record) >= 0 ? this.images.indexOf(record) : 0;
+          shown = await this.present(record, false);
         } else {
           // Dead URL: line up the one after it and try again straight away,
           // without waiting out another full dwell.
           next = (next + 1) % this.images.length;
           loading = this.load(this.images[next]);
         }
-        if (token !== this.runToken) return;
+        if (token !== this.runToken) { this.running = false; return; }
       }
     }
+    this.running = false;
   }
 
   /**
