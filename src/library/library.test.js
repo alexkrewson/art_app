@@ -82,6 +82,19 @@ describe('downloadCategory', () => {
     expect(playlist[0].image).toMatch(/^file:\/\//); // a local path, not the remote URL
   });
 
+  it('builds the playlist without touching the filesystem', async () => {
+    fetchBatch.mockResolvedValue(recs('a', 'b', 'c'));
+    await lib.downloadCategory({ ...LANDSCAPE, count: 3 });
+    const fs = await import('../cache/fileStore.js');
+    fs.resolveStored.mockClear();
+
+    await lib.playlistFor(['openverse::landscape']);
+    // Verifying each file costs two native round trips per image. At 1,698
+    // images that was 32 seconds to the first picture on a real tablet, so
+    // the playlist must be built from stored metadata alone.
+    expect(fs.resolveStored).not.toHaveBeenCalled();
+  });
+
   it('narrows the fetch to the one subject being downloaded', async () => {
     fetchBatch.mockResolvedValue(recs('a'));
     await lib.downloadCategory({ ...LANDSCAPE, count: 1, filters: { subjects: ['landscape', 'mountain'], apiKey: 'k' } });

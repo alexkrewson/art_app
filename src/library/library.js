@@ -16,7 +16,7 @@
 // leaves disk when its last category does.
 
 import { SOURCES } from '../sources/registry.js';
-import { storeImage, deleteStored, resolveStored, isNative, usageBytes, freeBytes } from '../cache/fileStore.js';
+import { storeImage, deleteStored, isNative, usageBytes, freeBytes } from '../cache/fileStore.js';
 
 const DB_NAME = 'slowframe-library';
 const DB_VERSION = 1;
@@ -141,8 +141,7 @@ export async function allImages() {
 
 /**
  * The playlist: every stored image belonging to at least one active category,
- * skipping anything downvoted. Verifies each file still exists before offering
- * it, so a cleared app storage shows fewer images rather than broken frames.
+ * skipping anything downvoted.
  */
 export async function playlistFor(activeCats) {
   const active = new Set(activeCats);
@@ -151,12 +150,20 @@ export async function playlistFor(activeCats) {
   for (const row of rows) {
     if (row.vote === -1) continue;
     if (!(row.cats || []).some(c => active.has(c))) continue;
-    let src = row.src;
-    if (isNative()) {
-      src = await resolveStored(row.path);
-      if (!src) continue; // file vanished under us
-    }
-    out.push({ ...row.record, image: src, url: row.url, vote: row.vote || 0 });
+
+    // Use the stored src as-is. It was produced by convertFileSrc at download
+    // time and is stable for the life of the install.
+    //
+    // This used to stat() and re-resolve every file first, to avoid ever
+    // offering an image that had vanished. That's two native bridge round
+    // trips per image, and it does not scale: measured on the tablet, a
+    // library of 1,698 took THIRTY-TWO SECONDS to reach the first picture on
+    // a cold start, because ~3,400 native calls had to complete before the
+    // playlist existed. Being slightly wrong about a deleted file costs one
+    // skipped slide — the engine's prepare() already returns false on a load
+    // failure and the loop moves to the next image. Being thirty seconds slow
+    // to start costs the whole experience.
+    out.push({ ...row.record, image: row.src, url: row.url, vote: row.vote || 0 });
   }
   return out;
 }
