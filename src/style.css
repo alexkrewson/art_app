@@ -371,3 +371,31 @@ input[type="color"].field, #dipColorInput {
   background: var(--bg-surface);
   cursor:pointer;
 }
+
+/* Sources: each source is a block of tickable categories, where ticking one
+   downloads it. */
+.source-block {
+  padding:0.6rem 0 0.9rem;
+  border-top:1px solid var(--border);
+}
+.source-block:first-of-type { border-top:none; }
+.source-head {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:0.5rem; margin-bottom:0.25rem;
+}
+.source-title {
+  font-weight:600;
+  color: var(--text-primary);
+}
+.btn-tiny {
+  min-height:34px;
+  padding:0.25rem 0.6rem;
+  font-size:0.85rem;
+}
+.cat-row {
+  display:flex; align-items:center; gap:0.6rem;
+}
+.cat-row-label { flex:1 1 auto; min-width:0; }
+/* The per-category count sits beside its checkbox; narrow, since it only ever
+   holds a 2-3 digit number. */
+.cat-row .field-inline { width:5.5rem; flex:0 0 auto; }

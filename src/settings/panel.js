@@ -10,8 +10,11 @@ import { loadSettings, saveSettings } from './store.js';
 import { TRANSITIONS } from '../engine/transitions/index.js';
 import { SOURCES } from '../sources/registry.js';
 import { buildPlaylist, orderPlaylist } from '../sources/manager.js';
-import { getCacheStats, clearCache, listDownloads, removeDownload } from '../cache/imageCache.js';
-import { downloadableTargets, downloadTarget, storageSummary, formatBytes } from '../cache/downloads.js';
+import { getCacheStats, clearCache } from '../cache/imageCache.js';
+import {
+  categoriesOf, catId, DEFAULT_COUNT, downloadCategory, removeCategory,
+  refreshCategory, stats as libraryStats, estimateBytes, formatBytes,
+} from '../library/library.js';
 
 const DISPLAY_MODES = [
   { id: 'kenburns', label: 'Ken Burns', hint: 'Slow pan & zoom' },
@@ -171,51 +174,81 @@ function renderLocalFilesExtra(source) {
     <span class="field-hint">${folderName ? `Using: ${folderName}` : 'No folder selected yet'}</span>`;
 }
 
-function renderSourceBlock(source, settings, sourceFilters) {
+function renderSourceBlock(source, settings, sourceFilters, lib) {
   const cfg = settings.sources[source.id] || { enabled: false, filters: {} };
   const filters = sourceFilters[source.id] || [];
   const unsupported = source.supported === false;
   const gatedByKey = source.needsApiKey && !cfg.filters?.apiKey;
-  const checkboxDisabled = unsupported || gatedByKey;
 
-  let hint = source.description || '';
-  if (unsupported) hint = 'Not supported in this browser (needs Chrome/Edge).';
-  else if (gatedByKey) hint = `${hint} — enter an API key below to enable.`;
+  // The two genuinely-local sources keep the old plain enable checkbox: there
+  // is nothing to download, the images are already on the device.
+  if (source.id === 'local' || source.id === 'localFiles') {
+    let hint = source.description || '';
+    if (unsupported) hint = 'Not supported in this browser (needs Chrome/Edge).';
+    return `
+      <label class="radio-row">
+        <input type="checkbox" name="src-${source.id}" ${cfg.enabled ? 'checked' : ''} ${unsupported ? 'disabled' : ''}>
+        <span>${source.label} <span class="field-hint">— ${hint}</span></span>
+      </label>
+      <div class="source-subfields" ${cfg.enabled ? '' : 'hidden'}>
+        ${renderLocalFilesExtra(source)}
+      </div>`;
+  }
 
-  // Subfields (including the API-key input itself) must stay reachable
-  // while gatedByKey, not just once enabled — otherwise there's no way to
-  // ever enter the key that would unlock the checkbox in the first place.
-  const showSubfields = cfg.enabled || gatedByKey;
+  const cats = categoriesOf(source.id, source);
+  // Non-subject filters (API key, keyword) still belong here; the curated
+  // subject group is now rendered as the download list below instead.
+  const otherFilters = filters.filter(f => f.type !== 'checkboxGroup');
+
+  const rows = cats.map(c => {
+    const on = !!settings.categories?.[c.cat];
+    const count = settings.categories?.[c.cat]?.count ?? DEFAULT_COUNT;
+    const have = lib?.byCat?.[c.cat] || 0;
+    const busy = lib?.busy?.[c.cat];
+    return `
+      <div class="cat-row">
+        <label class="radio-row cat-row-label">
+          <input type="checkbox" name="cat::${c.cat}" ${on ? 'checked' : ''} ${gatedByKey || busy ? 'disabled' : ''}>
+          <span>${c.label}${have ? ` <span class="field-hint">(${have} saved)</span>` : ''}</span>
+        </label>
+        <input type="number" class="field field-inline" name="catcount::${c.cat}"
+               min="10" max="500" step="10" value="${count}" ${busy ? 'disabled' : ''}
+               aria-label="Images to download for ${c.label}">
+      </div>
+      <div class="download-progress" data-progress="${c.cat}" ${busy ? '' : 'hidden'}>
+        <div class="download-progress-track">
+          <div class="download-progress-fill" style="width:${busy?.percent ?? 0}%"></div>
+        </div>
+        <span class="field-hint" data-progress-label="${c.cat}">${busy?.label ?? ''}</span>
+      </div>`;
+  }).join('');
 
   return `
-    <label class="radio-row">
-      <input type="checkbox" name="src-${source.id}" ${cfg.enabled ? 'checked' : ''} ${checkboxDisabled ? 'disabled' : ''}>
-      <span>${source.label} <span class="field-hint">— ${hint}</span></span>
-    </label>
-    <div class="source-subfields" ${showSubfields ? '' : 'hidden'}>
-      ${filters.map(f => renderFilterField(source.id, f, settings)).join('')}
-      ${renderLocalFilesExtra(source)}
-    </div>
-  `;
+    <div class="source-block">
+      <div class="source-head">
+        <span class="source-title">${source.label}</span>
+        <span>
+          <button type="button" class="btn-secondary btn-tiny" data-select-all="${source.id}" ${gatedByKey ? 'disabled' : ''}>All</button>
+          <button type="button" class="btn-secondary btn-tiny" data-select-none="${source.id}">None</button>
+        </span>
+      </div>
+      <div class="field-hint">${gatedByKey ? 'Enter an API key below to enable.' : (source.description || '')}</div>
+      ${otherFilters.map(f => renderFilterField(source.id, f, settings)).join('')}
+      ${rows}
+    </div>`;
 }
 
-function renderSourcesSection(settings, sourceFilters) {
+function renderSourcesSection(settings, sourceFilters, lib) {
   return `
-    ${Object.values(SOURCES).map(source => renderSourceBlock(source, settings, sourceFilters)).join('')}
+    <p class="field-hint">Ticking a category downloads it to this device — the
+    slideshow only ever plays images you already have, so it never uses data
+    while it's running. Set how many images each category should keep.</p>
+    ${lib ? `<div class="field-group"><span class="field-hint">${lib.count} images stored · ${formatBytes(lib.bytes)}${lib.free ? ` · ${formatBytes(lib.free)} free` : ''}</span></div>` : ''}
+    ${Object.values(SOURCES).map(source => renderSourceBlock(source, settings, sourceFilters, lib)).join('')}
     <div class="field-group" role="radiogroup" aria-label="Playback order">
       <span class="field-label">Playback order</span>
       <label class="radio-row"><input type="radio" name="order" value="sequential" ${settings.order === 'sequential' ? 'checked' : ''}><span>Sequential</span></label>
       <label class="radio-row"><input type="radio" name="order" value="shuffle" ${settings.order === 'shuffle' ? 'checked' : ''}><span>Shuffle</span></label>
-    </div>
-    <div class="field-group">
-      <span class="field-label">Offline</span>
-      <label class="radio-row">
-        <input type="checkbox" name="cacheEnabled" ${settings.cacheEnabled ? 'checked' : ''}>
-        <span>Cache images as they're shown <span class="field-hint">— once an
-        image has been displayed it keeps playing with no internet connection.
-        To choose what's available offline in advance, use
-        <strong>Offline downloads</strong>.</span></span>
-      </label>
     </div>
   `;
 }
@@ -223,110 +256,11 @@ function renderSourcesSection(settings, sourceFilters) {
 // "Download this category so it's there without a connection" — the Spotify
 // shape Alex asked for. Only enabled sources are listed: downloading from a
 // source you've switched off would be storing images the playlist won't use.
-const DOWNLOAD_COUNTS = [25, 50, 100, 250, 500];
-
-// Says what actually happened, including the awkward outcomes. A download that
-// asked for 250 and saved 60 must not look identical to one that saved 250 —
-// this whole feature exists so the user knows what they'll have offline.
-function downloadOutcome(result) {
-  if (!result) return '';
-  const REASONS = {
-    'budget-full': 'the storage budget is full — remove a download to make room',
-    'source-returned-fewer': 'that\'s all the source had for these filters',
-    'no-results': 'the source returned nothing — check its filters or API key',
-    'fetch-failed': 'the source could not be reached',
-    'unknown-source': 'that source is no longer available',
-  };
-  const why = REASONS[result.reason];
-  if (!result.stoppedEarly) return `<p class="field-hint">Saved ${result.added} images.</p>`;
-  return `<p class="field-hint">Saved ${result.added} of ${result.requested}${why ? ` — ${why}` : ''}.</p>`;
-}
-
-function renderDownloadsSection(settings, downloads, storage, busy, lastResult) {
-  // Every live source, not only the enabled ones. Requiring a source to be
-  // switched on first was a hidden precondition: Alex opened this section and
-  // reported "I don't see anything clickable", which is exactly what it shows
-  // when nothing live happens to be ticked. Wanting a category offline is
-  // itself the intent to use it, so the button is always offered and enabling
-  // the source is handled for you when a download succeeds.
-  const live = Object.entries(SOURCES).filter(([id]) => id !== 'local' && id !== 'localFiles');
-
-  const bar = storage ? `
-    <div class="field-group">
-      <span class="field-label">Storage used by offline images</span>
-      <div class="storage-bar" role="img"
-           aria-label="${storage.percent}% of the offline storage budget used">
-        <div class="storage-bar-fill" style="width:${storage.percent}%"></div>
-      </div>
-      <span class="field-hint">${formatBytes(storage.usage)} of ${formatBytes(storage.budget)} used
-        &middot; budget is a share of what this device offers</span>
-    </div>` : '<span class="field-hint">Checking available storage&hellip;</span>';
-
-  const existing = downloads?.length ? `
-    <div class="field-group">
-      <span class="field-label">Downloaded</span>
-      ${downloads.map(d => `
-        <div class="download-row">
-          <span class="download-row-label">${d.label}</span>
-          <span class="field-hint">${d.count} image${d.count === 1 ? '' : 's'}</span>
-          <button type="button" class="btn-secondary" data-remove-download="${d.collection}">Remove</button>
-        </div>`).join('')}
-    </div>` : '';
-
-  const targets = live.flatMap(([id, source]) => downloadableTargets(id, source));
-
-  const available = `
-    <div class="field-group">
-      <span class="field-label">Available to download</span>
-      ${targets.map(t => {
-        const have = downloads?.find(d => d.collection === t.collection);
-        const state = busy?.[t.collection];
-        // A keyed source with no key can't fetch anything, so say that on the
-        // row rather than letting the download fail with an empty result.
-        const source = SOURCES[t.sourceId];
-        const needsKey = source.needsApiKey && !settings.sources[t.sourceId]?.filters?.apiKey;
-        return `
-        <div class="download-row">
-          <span class="download-row-label">${t.label}${have ? ` <span class="field-hint">(${have.count} saved)</span>` : ''}${needsKey ? ' <span class="field-hint">— needs an API key in Sources</span>' : ''}</span>
-          <select class="field field-inline" data-download-count="${t.collection}" ${state || needsKey ? 'disabled' : ''}>
-            ${DOWNLOAD_COUNTS.map(n => `<option value="${n}" ${n === 100 ? 'selected' : ''}>${n}</option>`).join('')}
-          </select>
-          <button type="button" class="btn-secondary" data-download="${t.collection}" ${state || needsKey ? 'disabled' : ''}>
-            ${state ? 'Saving…' : (have ? 'Add more' : 'Download')}
-          </button>
-        </div>
-        <!-- Its own row beneath, so a long category name can't squash the bar.
-             Hidden until a download starts; updated in place while it runs so
-             the section isn't re-rendered under the user's finger. -->
-        <div class="download-progress" data-progress="${t.collection}" ${state ? '' : 'hidden'}>
-          <div class="download-progress-track">
-            <div class="download-progress-fill" style="width:${state?.percent ?? 0}%"></div>
-          </div>
-          <span class="field-hint" data-progress-label="${t.collection}">${state?.label ?? ''}</span>
-        </div>`;
-      }).join('')}
-    </div>`;
-
-  return `
-    <p class="field-hint">Save a category to this device so the slideshow keeps
-    working with no connection. Downloads are kept until you remove them — the
-    automatic cache can't evict them.</p>
-    ${bar}
-    ${downloadOutcome(lastResult)}
-    ${existing}
-    ${available}`;
-}
-
 const SECTIONS = [
   {
     id: 'sources',
     label: 'Sources',
-    render: ctx => renderSourcesSection(ctx.settings, ctx.sourceFilters),
-  },
-  {
-    id: 'downloads',
-    label: 'Offline downloads',
-    render: ctx => renderDownloadsSection(ctx.settings, ctx.downloads, ctx.storage, ctx.downloadBusy, ctx.lastDownloadResult),
+    render: ctx => renderSourcesSection(ctx.settings, ctx.sourceFilters, ctx.lib),
   },
   {
     id: 'display',
@@ -385,10 +319,11 @@ export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}
   let settings = loadSettings();
   let sourceFilters = {}; // sourceId -> FilterSpec[], populated asynchronously below
   let cacheStats = null;
-  let downloads = null;     // grouped pinned collections, loaded asynchronously
-  let storage = null;       // {usage, budget, percent}
-  const downloadBusy = {};  // collection -> progress label, e.g. "42/100"
-  let lastDownloadResult = null; // so a short-fall is reported, not silently absorbed
+  // What's on disk: counts per category, total bytes, free space. `busy` holds
+  // in-flight downloads so a ticked category shows progress rather than
+  // appearing to do nothing for a minute.
+  let lib = null;
+  const busy = {};
 
   const root = document.createElement('div');
   root.className = 'settings-panel';
@@ -413,7 +348,7 @@ export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}
           <span>${s.label}</span>
           <span class="settings-section-chevron">&#9656;</span>
         </button>
-        <div class="settings-section-content" hidden>${s.render({ currentTheme, settings, sourceFilters, cacheStats, downloads, storage, downloadBusy, lastDownloadResult })}</div>
+        <div class="settings-section-content" hidden>${s.render({ currentTheme, settings, sourceFilters, cacheStats, lib })}</div>
       </section>
     `).join('');
   }
@@ -447,28 +382,98 @@ export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}
   }
 
   const refreshDisplaySection = () => refreshSection('display', () => renderDisplaySection(settings));
-  const refreshSourcesSection = () => refreshSection('sources', () => renderSourcesSection(settings, sourceFilters));
+  const refreshSourcesSection = () => refreshSection('sources', () => renderSourcesSection(settings, sourceFilters, lib));
   const refreshAdvancedSection = () => refreshSection('advanced', () => renderAdvancedSection(settings, cacheStats));
-  const refreshDownloadsSection = () =>
-    refreshSection('downloads', () => renderDownloadsSection(settings, downloads, storage, downloadBusy, lastDownloadResult));
-
-  // Re-reads both the download list and the storage bar. Called after anything
-  // that changes either, so the numbers on screen are never stale after an
-  // action the user just took.
-  async function refreshDownloadState() {
+  // Re-reads what's actually on disk. Called after anything that changes it,
+  // so the counts and the storage line are never stale after an action the
+  // user just took.
+  async function refreshLibrary(rerender = true) {
     try {
-      [downloads, storage] = await Promise.all([listDownloads(), storageSummary()]);
+      lib = { ...(await libraryStats()), busy };
     } catch (err) {
-      console.warn('[SlowFrame] could not read offline downloads:', err);
-      downloads = downloads || [];
+      console.warn('[SlowFrame] could not read the library:', err);
+      lib = lib || { count: 0, bytes: 0, byCat: {}, busy };
     }
-    refreshDownloadsSection();
+    if (rerender) refreshSourcesSection();
   }
-  refreshDownloadState();
+  refreshLibrary();
 
   async function rebuildPlaylist() {
-    const playlist = await buildPlaylist(settings.sources, { cacheEnabled: settings.cacheEnabled });
+    const playlist = await buildPlaylist(settings.sources, { categories: settings.categories || {} });
     slideshow.setPlaylist(orderPlaylist(playlist, settings.order));
+  }
+
+  // Writes progress straight into the one row rather than re-rendering the
+  // section under the user's finger while they're still tapping other
+  // categories.
+  function showProgress(cat, done, total) {
+    const percent = total ? Math.round((done / total) * 100) : 0;
+    busy[cat] = { percent, label: `${done} of ${total} downloaded` };
+    const fill = accordion.querySelector(`[data-progress="${CSS.escape(cat)}"] .download-progress-fill`);
+    const label = accordion.querySelector(`[data-progress-label="${CSS.escape(cat)}"]`);
+    if (fill) fill.style.width = `${percent}%`;
+    if (label) label.textContent = busy[cat].label;
+  }
+
+  // Runs one category's download, refreshing the playlist as images land so a
+  // freshly-ticked category starts showing results within seconds rather than
+  // when the whole batch finishes.
+  async function runDownload(spec) {
+    const cat = spec.cat;
+    if (busy[cat]) return;
+    busy[cat] = { percent: 0, label: `0 of ${spec.count} downloaded` };
+    refreshSourcesSection();
+
+    let lastRebuild = 0;
+    const result = await downloadCategory(spec, ({ done, total }) => {
+      showProgress(cat, done, total);
+      // Throttled: rebuilding on every single image would thrash the engine.
+      if (done - lastRebuild >= 5) { lastRebuild = done; rebuildPlaylist(); }
+    });
+
+    delete busy[cat];
+    await refreshLibrary();
+    rebuildPlaylist();
+    if (!result.added) {
+      console.warn(`[SlowFrame] ${cat} downloaded nothing:`, result.reason);
+    }
+    return result;
+  }
+
+  // Everything tickable, flattened, so a handler can find a category by id.
+  function allCategories() {
+    return Object.entries(SOURCES)
+      .filter(([id]) => id !== 'local' && id !== 'localFiles')
+      .flatMap(([id, source]) => categoriesOf(id, source).map(c => ({ ...c, source })));
+  }
+
+  function specFor(c) {
+    return {
+      sourceId: c.sourceId,
+      subjectKey: c.subjectKey,
+      subject: c.subject,
+      cat: c.cat,
+      count: settings.categories?.[c.cat]?.count ?? DEFAULT_COUNT,
+      filters: settings.sources[c.sourceId]?.filters || {},
+    };
+  }
+
+  // Asks before a large download. The estimate uses per-source measured
+  // averages (they differ by 55x), so this quotes something real rather than
+  // one hand-waved number — and a wrong estimate here means a nasty surprise
+  // on someone's data plan.
+  function confirmSize(specs) {
+    const total = specs.reduce((n, s) => n + estimateBytes(s.sourceId, s.count), 0);
+    const images = specs.reduce((n, s) => n + s.count, 0);
+    if (total < 40 * 1024 * 1024) return true;
+    return window.confirm(
+      `Download ${images} image${images === 1 ? '' : 's'}?
+
+` +
+      `That's roughly ${formatBytes(total)} on this device.` +
+      (lib?.free ? `
+You have about ${formatBytes(lib.free)} free.` : ''),
+    );
   }
 
   accordion.addEventListener('click', e => {
@@ -500,78 +505,47 @@ export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}
         })
         // Clearing the cache removes pinned rows too, so the downloads list
         // and storage bar are both stale until this runs.
-        .then(() => refreshDownloadState())
+        .then(() => refreshLibrary())
         .catch(err => console.warn('[SlowFrame] failed to clear cache:', err));
       return;
     }
 
-    const downloadBtn = e.target.closest('[data-download]');
-    if (downloadBtn) {
-      const collection = downloadBtn.dataset.download;
-      if (downloadBusy[collection]) return; // already running; the button is disabled anyway
-      const countEl = accordion.querySelector(`[data-download-count="${CSS.escape(collection)}"]`);
-      const count = Number(countEl?.value) || 100;
-
-      const target = Object.entries(SOURCES)
-        .flatMap(([id, source]) => downloadableTargets(id, source))
-        .find(t => t.collection === collection);
-      if (!target) return;
-
-      downloadBusy[collection] = { percent: 0, label: `0 of ${count}…` };
-      refreshDownloadsSection();
-
-      downloadTarget(
-        target,
-        settings.sources[target.sourceId]?.filters || {},
-        count,
-        // Re-rendering the whole section per image would fight the user's
-        // scroll position, so the bar and its label are written in place.
-        ({ done, total, added }) => {
-          const percent = total ? Math.round((done / total) * 100) : 0;
-          downloadBusy[collection] = { percent, label: `${done} of ${total} — ${added} saved` };
-          const fill = accordion.querySelector(`[data-progress="${CSS.escape(collection)}"] .download-progress-fill`);
-          const label = accordion.querySelector(`[data-progress-label="${CSS.escape(collection)}"]`);
-          if (fill) fill.style.width = `${percent}%`;
-          if (label) label.textContent = downloadBusy[collection].label;
-        },
-      )
-        .then(result => {
-          delete downloadBusy[collection];
-          if (result.added === 0) {
-            console.warn(`[SlowFrame] download of ${collection} added nothing:`, result.reason);
-          }
-          lastDownloadResult = result;
-          // Downloading a category is a clear statement that you want to see
-          // it, so switch the source on rather than saving images the playlist
-          // will then ignore. Only on success — enabling a source that just
-          // failed would be worse than doing nothing.
-          if (result.added > 0 && !settings.sources[target.sourceId]?.enabled) {
-            settings.sources[target.sourceId] = {
-              ...(settings.sources[target.sourceId] || { filters: {} }),
-              enabled: true,
-            };
-            saveSettings(settings);
-            refreshSourcesSection();
-            rebuildPlaylist();
-          }
-          return refreshDownloadState();
-        })
-        // A download that half-finished still saved something, so the list has
-        // to refresh on the failure path too.
-        .catch(err => {
-          delete downloadBusy[collection];
-          console.warn('[SlowFrame] download failed:', err);
-          return refreshDownloadState();
-        });
+    // Select all / None for one source. Ticking many categories at once is
+    // the most expensive thing in this panel, so it confirms as a batch rather
+    // than asking once per category.
+    const allBtn = e.target.closest('[data-select-all]');
+    if (allBtn) {
+      const id = allBtn.dataset.selectAll;
+      const pending = categoriesOf(id, SOURCES[id])
+        .filter(c => !settings.categories?.[c.cat])
+        .map(specFor);
+      if (!pending.length || !confirmSize(pending)) return;
+      settings.categories = settings.categories || {};
+      pending.forEach(sp => { settings.categories[sp.cat] = { count: sp.count }; });
+      saveSettings(settings);
+      refreshSourcesSection();
+      // Sequential on purpose: several parallel batches would compete for the
+      // connection and make every one of them slower to first image.
+      (async () => { for (const sp of pending) await runDownload(sp); })();
       return;
     }
 
-    const removeBtn = e.target.closest('[data-remove-download]');
-    if (removeBtn) {
-      removeBtn.disabled = true;
-      removeDownload(removeBtn.dataset.removeDownload)
-        .catch(err => console.warn('[SlowFrame] failed to remove download:', err))
-        .then(() => refreshDownloadState());
+    const noneBtn = e.target.closest('[data-select-none]');
+    if (noneBtn) {
+      const id = noneBtn.dataset.selectNone;
+      const on = categoriesOf(id, SOURCES[id]).filter(c => settings.categories?.[c.cat]);
+      if (!on.length) return;
+      if (!window.confirm(`Remove ${on.length} downloaded categor${on.length === 1 ? 'y' : 'ies'} from this device?
+
+Images you've given a thumbs up are kept.`)) return;
+      on.forEach(c => { delete settings.categories[c.cat]; });
+      saveSettings(settings);
+      refreshSourcesSection();
+      (async () => {
+        for (const c of on) await removeCategory(c.cat);
+        await refreshLibrary();
+        rebuildPlaylist();
+      })();
       return;
     }
 
@@ -660,6 +634,45 @@ export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}
       if (!slideshow.paused && settings.displayMode === 'kenburns') slideshow.kb.start();
       const out = accordion.querySelector('#kbCycleValue');
       if (out) out.textContent = `${Math.round(ms / 1000)}s per pan`;
+    } else if (el.name.startsWith('cat::')) {
+      // Ticking a category IS downloading it — there's no separate button any
+      // more, which is the point of the redesign: everything the slideshow
+      // shows is already on the device.
+      const cat = el.name.slice(5);
+      const c = allCategories().find(x => x.cat === cat);
+      if (!c) return;
+      settings.categories = settings.categories || {};
+
+      if (el.checked) {
+        const spec = specFor(c);
+        if (!confirmSize([spec])) { el.checked = false; return; }
+        settings.categories[cat] = { count: spec.count };
+        saveSettings(settings);
+        runDownload(spec);
+      } else {
+        delete settings.categories[cat];
+        saveSettings(settings);
+        refreshSourcesSection();
+        removeCategory(cat).then(async () => {
+          await refreshLibrary();
+          rebuildPlaylist();
+        });
+      }
+      return;
+    } else if (el.name.startsWith('catcount::')) {
+      const cat = el.name.slice(10);
+      const count = Math.max(10, Math.min(500, Number(el.value) || DEFAULT_COUNT));
+      settings.categories = settings.categories || {};
+      settings.categories[cat] = { ...(settings.categories[cat] || {}), count };
+      saveSettings(settings);
+
+      // Only act if the category is already on: raising the number tops it up,
+      // lowering it just changes what a future refresh will aim for. Silently
+      // deleting images because a number went down would be a nasty surprise.
+      const have = lib?.byCat?.[cat] || 0;
+      const c = allCategories().find(x => x.cat === cat);
+      if (c && have && count > have) runDownload({ ...specFor(c), count: count - have });
+      return;
     } else if (el.name.startsWith('src-')) {
       const id = el.name.slice(4);
       settings.sources[id].enabled = el.checked;
@@ -685,8 +698,6 @@ export function createSettingsPanel(slideshow, { onDebugOverlayChange = () => {}
       // downloads, which show "needs an API key in Sources" without one.
       if (key === 'apiKey') { refreshSourcesSection(); refreshDownloadsSection(); }
       rebuildPlaylist();
-    } else if (el.name === 'cacheEnabled') {
-      settings.cacheEnabled = el.checked;
     } else if (el.name === 'debugOverlay') {
       settings.debugOverlay = el.checked;
       onDebugOverlayChange(el.checked);

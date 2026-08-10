@@ -1,140 +1,106 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Rewritten 2026-08-09 for the download-first model. The old suite covered
+// merging live fetchBatch() results from every enabled source — behaviour that
+// no longer exists, because the slideshow now plays only what's on disk.
 
 vi.mock('./registry.js', () => ({
   SOURCES: {
-    fake: { id: 'fake', fetchBatch: vi.fn() },
-    other: { id: 'other', fetchBatch: vi.fn() },
-    local: { id: 'local', fetchBatch: vi.fn() },
-    localFiles: { id: 'localFiles', fetchBatch: vi.fn() },
+    local: { id: 'local', label: 'Local', fetchBatch: vi.fn(async () => []) },
+    localFiles: { id: 'localFiles', label: 'Folder', fetchBatch: vi.fn(async () => []) },
+    openverse: { id: 'openverse', label: 'Openverse', fetchBatch: vi.fn(async () => []) },
   },
 }));
+
 vi.mock('./localManifest.js', () => ({
-  localManifestSource: { id: 'local', fetchBatch: vi.fn() },
-}));
-vi.mock('../cache/imageCache.js', () => ({
-  getCachedRecords: vi.fn(),
-  cacheRecord: vi.fn(),
+  localManifestSource: { fetchBatch: vi.fn(async () => [{ image: 'bundled.jpg', source: 'local' }]) },
 }));
 
-import { buildPlaylist, orderPlaylist } from './manager.js';
-import { SOURCES } from './registry.js';
-import { localManifestSource } from './localManifest.js';
-import { getCachedRecords, cacheRecord } from '../cache/imageCache.js';
+vi.mock('../library/library.js', () => ({ playlistFor: vi.fn(async () => []) }));
 
-function setOnline(value) {
-  Object.defineProperty(navigator, 'onLine', { value, configurable: true });
-}
+const { SOURCES } = await import('./registry.js');
+const { localManifestSource } = await import('./localManifest.js');
+const { playlistFor } = await import('../library/library.js');
+const { buildPlaylist, orderPlaylist } = await import('./manager.js');
+
+const rec = (n, source = 'openverse') => ({ image: `${n}.jpg`, title: n, source });
 
 describe('buildPlaylist', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
-    setOnline(true);
+    vi.clearAllMocks();
+    playlistFor.mockResolvedValue([]);
+    SOURCES.local.fetchBatch.mockResolvedValue([]);
+    SOURCES.localFiles.fetchBatch.mockResolvedValue([]);
+    localManifestSource.fetchBatch.mockResolvedValue([{ image: 'bundled.jpg', source: 'local' }]);
   });
-  afterEach(() => setOnline(true));
 
-  it('merges every enabled source and skips disabled ones', async () => {
-    SOURCES.fake.fetchBatch.mockResolvedValue([{ title: 'F1' }]);
-    SOURCES.other.fetchBatch.mockResolvedValue([{ title: 'O1' }]);
+  it('plays the downloaded library for the ticked categories', async () => {
+    playlistFor.mockResolvedValue([rec('a'), rec('b')]);
+    const playlist = await buildPlaylist({}, { categories: { 'openverse::landscape': { count: 100 } } });
+
+    expect(playlistFor).toHaveBeenCalledWith(['openverse::landscape']);
+    expect(playlist.map(r => r.image)).toEqual(['a.jpg', 'b.jpg']);
+  });
+
+  it('never calls a remote source at playback time', async () => {
+    playlistFor.mockResolvedValue([rec('a')]);
+    await buildPlaylist({ openverse: { enabled: true, filters: {} } }, { categories: {} });
+    // The whole point of the redesign: playback must not spend data or block
+    // on an API. Only the library and the two local sources are consulted.
+    expect(SOURCES.openverse.fetchBatch).not.toHaveBeenCalled();
+  });
+
+  it('adds the bundled set and a local folder when those are enabled', async () => {
+    playlistFor.mockResolvedValue([rec('downloaded')]);
+    SOURCES.local.fetchBatch.mockResolvedValue([rec('starter', 'local')]);
+    SOURCES.localFiles.fetchBatch.mockResolvedValue([rec('folder', 'localFiles')]);
 
     const playlist = await buildPlaylist(
-      { fake: { enabled: true, filters: {} }, other: { enabled: false, filters: {} } },
-      { cacheEnabled: false },
+      { local: { enabled: true }, localFiles: { enabled: true } },
+      { categories: { 'x::y': {} } },
     );
-
-    expect(playlist).toEqual([{ title: 'F1' }]);
-    expect(SOURCES.other.fetchBatch).not.toHaveBeenCalled();
+    expect(playlist.map(r => r.image).sort()).toEqual(['downloaded.jpg', 'folder.jpg', 'starter.jpg']);
   });
 
-  it('ignores source ids with no config entry or that are not enabled', async () => {
-    const playlist = await buildPlaylist({ nonexistent: { enabled: true, filters: {} } }, { cacheEnabled: false });
-    // falls through to the absolute fallback since nothing contributed
-    expect(localManifestSource.fetchBatch).toHaveBeenCalled();
-    void playlist;
+  it('leaves out local sources that are switched off', async () => {
+    playlistFor.mockResolvedValue([rec('a')]);
+    await buildPlaylist({ local: { enabled: false } }, { categories: {} });
+    expect(SOURCES.local.fetchBatch).not.toHaveBeenCalled();
   });
 
-  it('a single failing source is logged and treated as empty, not thrown', async () => {
-    SOURCES.fake.fetchBatch.mockRejectedValue(new Error('network down'));
-    SOURCES.other.fetchBatch.mockResolvedValue([{ title: 'O1' }]);
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    const playlist = await buildPlaylist(
-      { fake: { enabled: true, filters: {} }, other: { enabled: true, filters: {} } },
-      { cacheEnabled: false },
-    );
-
-    expect(playlist).toEqual([{ title: 'O1' }]);
-    expect(warnSpy).toHaveBeenCalled();
+  it('falls back to the bundled set rather than handing over nothing', async () => {
+    playlistFor.mockResolvedValue([]);
+    const playlist = await buildPlaylist({}, { categories: {} });
+    // A first run with nothing ticked must still show something.
+    expect(playlist.map(r => r.image)).toEqual(['bundled.jpg']);
   });
 
-  it('a failing cacheable source falls back to its cached records when cacheEnabled', async () => {
-    SOURCES.fake.fetchBatch.mockRejectedValue(new Error('network down'));
-    getCachedRecords.mockResolvedValue([{ title: 'cached-fake' }]);
+  it('survives a library read failing', async () => {
+    playlistFor.mockRejectedValue(new Error('idb exploded'));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    SOURCES.local.fetchBatch.mockResolvedValue([rec('starter', 'local')]);
+
+    const playlist = await buildPlaylist({ local: { enabled: true } }, { categories: { a: {} } });
+    expect(playlist.map(r => r.image)).toEqual(['starter.jpg']);
+  });
+
+  it('survives a local source throwing', async () => {
+    playlistFor.mockResolvedValue([rec('a')]);
+    SOURCES.local.fetchBatch.mockRejectedValue(new Error('no manifest'));
     vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const playlist = await buildPlaylist({ fake: { enabled: true, filters: {} } }, { cacheEnabled: true });
-
-    expect(getCachedRecords).toHaveBeenCalledWith('fake');
-    expect(playlist).toEqual([{ title: 'cached-fake' }]);
-  });
-
-  it('falls back to the local starter set when every enabled source is empty', async () => {
-    SOURCES.fake.fetchBatch.mockResolvedValue([]);
-    localManifestSource.fetchBatch.mockResolvedValue([{ title: 'Starter' }]);
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    const playlist = await buildPlaylist({ fake: { enabled: true, filters: {} } }, { cacheEnabled: false });
-
-    expect(playlist).toEqual([{ title: 'Starter' }]);
-  });
-
-  it('falls back to the local starter set when no sources are enabled at all', async () => {
-    localManifestSource.fetchBatch.mockResolvedValue([{ title: 'Starter' }]);
-    const playlist = await buildPlaylist({}, { cacheEnabled: false });
-    expect(playlist).toEqual([{ title: 'Starter' }]);
-  });
-
-  it('serves cached records instead of fetching live when offline and caching is enabled', async () => {
-    setOnline(false);
-    getCachedRecords.mockResolvedValue([{ title: 'offline-cached' }]);
-
-    const playlist = await buildPlaylist({ fake: { enabled: true, filters: {} } }, { cacheEnabled: true });
-
-    expect(SOURCES.fake.fetchBatch).not.toHaveBeenCalled();
-    expect(getCachedRecords).toHaveBeenCalledWith('fake');
-    expect(playlist).toEqual([{ title: 'offline-cached' }]);
-  });
-
-  it('fetches live and fires off background cache writes when online and caching is enabled', async () => {
-    const records = [{ title: 'Live', image: 'https://x/live.jpg', source: 'fake' }];
-    SOURCES.fake.fetchBatch.mockResolvedValue(records);
-
-    const playlist = await buildPlaylist({ fake: { enabled: true, filters: {} } }, { cacheEnabled: true });
-
-    expect(playlist).toEqual(records);
-    expect(cacheRecord).toHaveBeenCalledWith(records[0]);
-  });
-
-  it('never routes the local/localFiles sources through the cache wrapper', async () => {
-    setOnline(false);
-    SOURCES.local.fetchBatch.mockResolvedValue([{ title: 'Local' }]);
-
-    const playlist = await buildPlaylist({ local: { enabled: true, filters: {} } }, { cacheEnabled: true });
-
-    expect(SOURCES.local.fetchBatch).toHaveBeenCalled();
-    expect(getCachedRecords).not.toHaveBeenCalled();
-    expect(playlist).toEqual([{ title: 'Local' }]);
+    const playlist = await buildPlaylist({ local: { enabled: true } }, { categories: { a: {} } });
+    expect(playlist.map(r => r.image)).toEqual(['a.jpg']);
   });
 });
 
 describe('orderPlaylist', () => {
-  it('leaves the playlist untouched in sequential mode', () => {
-    const playlist = [{ id: 1 }, { id: 2 }, { id: 3 }];
-    expect(orderPlaylist(playlist, 'sequential')).toEqual(playlist);
-  });
+  it('leaves order alone for sequential and permutes for shuffle', () => {
+    const list = Array.from({ length: 30 }, (_, i) => rec(String(i)));
+    expect(orderPlaylist(list, 'sequential')).toEqual(list);
 
-  it('returns every item, possibly reordered, in shuffle mode', () => {
-    const playlist = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }];
-    const result = orderPlaylist(playlist, 'shuffle');
-    expect([...result].sort((a, b) => a.id - b.id)).toEqual(playlist);
+    const shuffled = orderPlaylist(list, 'shuffle');
+    expect(shuffled).toHaveLength(list.length);
+    expect(new Set(shuffled.map(r => r.image))).toEqual(new Set(list.map(r => r.image)));
   });
 });

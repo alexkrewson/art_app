@@ -19,7 +19,11 @@ export const DEFAULTS = {
   // harness of the advance cycle could not reproduce it either — so the next
   // step is measuring the real thing rather than guessing a third time.
   debugOverlay: false,
-  cacheEnabled: true, // cache live-source images (Cache API + IndexedDB) so the app keeps working offline
+  // Ticked categories, keyed by the ids from library.js's catId(). Each is
+  // { count } — how many images that category should keep on the device.
+  // Replaces the old cacheEnabled/streaming model entirely: if it isn't in
+  // here and downloaded, the slideshow never shows it.
+  categories: {},
   sources: {
     local: { enabled: true, filters: {} },
     met: { enabled: false, filters: {} },
@@ -47,7 +51,11 @@ export function loadSettings() {
     // to DEFAULTS after the settings were last saved — confirmed live, an
     // existing localStorage predating Phase 4 hid all six new sources from
     // the Settings panel until this was fixed.
-    return { ...DEFAULTS, ...stored, sources: { ...DEFAULTS.sources, ...stored.sources } };
+    return {
+      ...DEFAULTS, ...stored,
+      sources: { ...DEFAULTS.sources, ...stored.sources },
+      categories: { ...(stored.categories || {}) },
+    };
   } catch {
     return { ...DEFAULTS };
   }
