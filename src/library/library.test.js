@@ -139,6 +139,18 @@ describe('downloadCategory', () => {
     expect(await lib.playlistFor(['openverse::mountain'])).toHaveLength(1);
   });
 
+  it('flags exhaustion when the source runs dry, distinctly from failure', async () => {
+    fetchBatch.mockResolvedValue(recs('a', 'b'));
+    const short = await lib.downloadCategory({ ...LANDSCAPE, count: 100 });
+    // Ran out, but nothing went wrong — the UI shows "all available" for this
+    // rather than a count that looks like a stalled download.
+    expect(short).toMatchObject({ added: 2, exhausted: true, reason: 'source-returned-fewer' });
+
+    fetchBatch.mockResolvedValue(recs('c', 'd'));
+    const full = await lib.downloadCategory({ ...MOUNTAIN, count: 2 });
+    expect(full.exhausted).toBe(false);
+  });
+
   it('reports a fetch failure rather than throwing', async () => {
     fetchBatch.mockRejectedValue(new Error('offline'));
     vi.spyOn(console, 'warn').mockImplementation(() => {});

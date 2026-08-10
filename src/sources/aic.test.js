@@ -48,4 +48,29 @@ describe('aicSource', () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 })));
     await expect(aicSource.fetchBatch({ filters: {}, count: 24 })).rejects.toThrow('HTTP 500');
   });
+
+  it('pages, but never past the offset cap AIC enforces', async () => {
+    // total_pages reports 1,327 and that number is a trap: anything past page
+    // 10 returns "You have requested too many results". Asking for a page
+    // beyond it silently yielded nothing, which is how the cap hid itself.
+    const mk = n => ({
+      pagination: { total_pages: 1327 },
+      data: Array.from({ length: 100 }, (_, i) => ({
+        id: `${n}-${i}`, image_id: `img${n}-${i}`, title: `t${n}-${i}`,
+        is_public_domain: true,
+      })),
+    });
+    const seen = [];
+    const fetchMock = vi.fn(async url => {
+      const page = Number(new URL(url).searchParams.get('page') || 1);
+      seen.push(page);
+      return { ok: true, json: async () => mk(page) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const records = await aicSource.fetchBatch({ filters: {}, count: 250 });
+    expect(records).toHaveLength(250);
+    expect(seen.length).toBeGreaterThan(1);
+    expect(Math.max(...seen)).toBeLessThanOrEqual(10);
+  });
 });

@@ -73,15 +73,23 @@ export const openverseSource = {
     return [
       {
         key: 'subjects', label: 'Curated subjects', type: 'checkboxGroup',
+        // Each subject is several narrower queries joined by `~`, not one
+        // broad one. Openverse caps an anonymous caller at 240 results deep
+        // PER QUERY and repeats heavily inside that window, so one broad term
+        // tops out around 40-80 unique images however many are requested —
+        // measured, and the reason "wildlife" sat at 60 of 100 on the tablet.
+        // Several narrower terms each get their own 240-result window, which
+        // multiplies the reachable set without an API key, and gives more
+        // varied results into the bargain.
         options: [
-          { value: 'landscape', label: 'Landscapes' },
-          { value: 'mountain', label: 'Mountains' },
-          { value: 'forest', label: 'Forests' },
-          { value: 'coast ocean', label: 'Coast & ocean' },
-          { value: 'aurora night sky', label: 'Night sky & aurora' },
-          { value: 'desert canyon', label: 'Deserts & canyons' },
-          { value: 'waterfall river', label: 'Rivers & waterfalls' },
-          { value: 'wildlife', label: 'Wildlife' },
+          { value: 'landscape~valley~meadow~countryside', label: 'Landscapes' },
+          { value: 'mountain~alps~summit~glacier peak', label: 'Mountains' },
+          { value: 'forest~woodland~redwood~jungle canopy', label: 'Forests' },
+          { value: 'coast~ocean waves~beach cliffs~fjord', label: 'Coast & ocean' },
+          { value: 'aurora borealis~milky way~starry night sky~moonrise', label: 'Night sky & aurora' },
+          { value: 'desert dunes~canyon~badlands~mesa', label: 'Deserts & canyons' },
+          { value: 'waterfall~river rapids~lake reflection~stream', label: 'Rivers & waterfalls' },
+          { value: 'wildlife~bird in flight~deer~big cat~whale', label: 'Wildlife' },
         ],
       },
       {
@@ -98,7 +106,10 @@ export const openverseSource = {
     const freeText = (filters.query || '').trim();
     // Ticked subjects win over the free-text field, same precedence as
     // wikimedia.js' curated categories — the checkboxes are the friendly path.
-    const queries = subjects.length ? subjects : [freeText || 'landscape'];
+    // `~` splits one ticked subject into its constituent queries.
+    const queries = subjects.length
+      ? subjects.flatMap(v => String(v).split('~').map(t => t.trim()).filter(Boolean))
+      : [freeText || 'landscape'];
     const photosOnly = filters.photosOnly !== false;
 
     // Over-sample by half again, so the filtering below has slack.
@@ -129,20 +140,39 @@ export const openverseSource = {
       });
       if (photosOnly) params.set('category', 'photograph');
       const res = await fetch(`${API}?${params.toString()}`);
-      if (!res.ok) throw new Error(`Openverse search failed: HTTP ${res.status}`);
+      if (!res.ok) {
+        // One bad page must not sink the batch. Narrow queries have fewer
+        // pages than broad ones, and asking past the end returns a 500 rather
+        // than an empty list — which took down every query in the request when
+        // this threw. Logged, not swallowed silently.
+        console.warn(`[SlowFrame] Openverse page ${page} for "${q}" failed: HTTP ${res.status}`);
+        return { results: [], pageCount: 0 };
+      }
       const data = await res.json();
-      return data.results || [];
+      return { results: data.results || [], pageCount: Math.min(data.page_count || 1, MAX_PAGE) };
     }
 
-    // Always starting at page 1 would show the same top-ranked images every
-    // session. Anonymous callers can reach 240 results deep, so pick a random
-    // window inside that instead — the pool the user actually sees over time
-    // is 240 per subject, not 20.
-    const start = 1 + Math.floor(Math.random() * (MAX_PAGE - pagesEach + 1));
+    // Ask page 1 first and read how many pages this particular query actually
+    // has, rather than assuming every query fills the 12-page window. Then take
+    // a random slice of what's really there, so repeat downloads of the same
+    // subject reach different images.
+    async function fetchQuery(q, pagesWanted) {
+      const first = await fetchPage(q, 1);
+      const out = [...first.results];
+      const available = first.pageCount;
+      if (pagesWanted <= 1 || available <= 1) return out;
 
-    const batches = await Promise.all(queries.flatMap(q =>
-      Array.from({ length: pagesEach }, (_, i) => fetchPage(q, start + i))
-    ));
+      const take = Math.min(pagesWanted, available);
+      const start = 1 + Math.floor(Math.random() * Math.max(1, available - take + 1));
+      const rest = await Promise.all(
+        Array.from({ length: take }, (_, i) => start + i)
+          .filter(n => n !== 1 && n <= available)
+          .map(n => fetchPage(q, n).then(r => r.results)),
+      );
+      return out.concat(rest.flat());
+    }
+
+    const batches = await Promise.all(queries.map(q => fetchQuery(q, pagesEach)));
 
     const results = [];
     const seen = new Set();

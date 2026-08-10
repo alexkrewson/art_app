@@ -133,8 +133,48 @@ describe('openverseSource', () => {
     }
   });
 
-  it('throws when the request fails', async () => {
+  it('splits one subject into its narrower queries', async () => {
+    // Openverse caps an anonymous caller at 240 results PER QUERY and repeats
+    // heavily inside that window, so one broad term tops out near 40-80 unique.
+    // Several narrower terms each get their own window.
+    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ results: [], page_count: 1 }) }));
+    vi.stubGlobal('fetch', fetchMock);
+    await openverseSource.fetchBatch({ filters: { subjects: ['wildlife~deer~whale'] }, count: 30 });
+    const qs = fetchMock.mock.calls.map(c => new URL(c[0]).searchParams.get('q'));
+    expect(new Set(qs)).toEqual(new Set(['wildlife', 'deer', 'whale']));
+  });
+
+  it('never asks for a page the query does not have', async () => {
+    // A narrow query has fewer pages than a broad one, and asking past the end
+    // returns a 500 — which used to reject the whole batch.
+    const fetchMock = vi.fn(async url => {
+      const page = Number(new URL(url).searchParams.get('page'));
+      if (page > 3) return { ok: false, status: 500 };
+      return { ok: true, json: async () => ({ page_count: 3, results: [image({ url: `https://x/${page}.jpg`, id: `i${page}` })] }) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const records = await openverseSource.fetchBatch({ filters: { subjects: ['deer'] }, count: 100 });
+    const pages = fetchMock.mock.calls.map(c => Number(new URL(c[0]).searchParams.get('page')));
+    expect(Math.max(...pages)).toBeLessThanOrEqual(3);
+    expect(records.length).toBeGreaterThan(0);
+  });
+
+  it('survives one page failing instead of losing the whole batch', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let n = 0;
+    const fetchMock = vi.fn(async () => {
+      n++;
+      if (n === 2) return { ok: false, status: 500 };
+      return { ok: true, json: async () => ({ page_count: 4, results: [image({ url: `https://x/${n}.jpg`, id: `i${n}` })] }) };
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const records = await openverseSource.fetchBatch({ filters: { subjects: ['deer'] }, count: 50 });
+    expect(records.length).toBeGreaterThan(0);
+  });
+
+  it('reports a first-page failure as empty rather than throwing', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 429 })));
-    await expect(openverseSource.fetchBatch({ filters: {}, count: 24 })).rejects.toThrow('HTTP 429');
+    await expect(openverseSource.fetchBatch({ filters: {}, count: 24 })).resolves.toEqual([]);
   });
 });

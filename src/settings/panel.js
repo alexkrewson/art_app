@@ -240,7 +240,12 @@ function renderSourceBlock(source, settings, sourceFilters, lib, expanded) {
     const busy = lib?.busy?.[c.cat];
     // Downloaded-but-unticked is a real state now: the images stay on the
     // device and are simply out of the rotation.
-    const note = busy ? '' : have ? (on ? `(${have})` : `(${have} saved, hidden)`) : '';
+    // "all available" is the honest label when the source has no more to give:
+    // 60 of a requested 100 isn't a stalled download if 60 is everything there is.
+    const dry = lib?.exhausted?.has(c.cat);
+    const note = busy ? ''
+      : have ? (on ? `(${have}${dry ? ' — all available' : ''})` : `(${have} saved, hidden)`)
+      : '';
     return `
       <div class="cat-row">
         <label class="radio-row cat-row-label">
@@ -374,6 +379,9 @@ export function createSettingsPanel(slideshow, {
   // appearing to do nothing for a minute.
   let lib = null;
   const busy = {};
+  // Categories whose source ran dry before reaching their target, so the row
+  // can say "all there is" rather than showing a number that looks unfinished.
+  const exhausted = new Set();
   // Which source rows are open. Collapsed by default so Sources is a short
   // list of one row per source rather than a wall of every category, key
   // field and description at once.
@@ -451,7 +459,7 @@ export function createSettingsPanel(slideshow, {
   // user just took.
   async function refreshLibrary(rerender = true) {
     try {
-      lib = { ...(await libraryStats()), busy };
+      lib = { ...(await libraryStats()), busy, exhausted };
       refreshAdvancedSection();
     } catch (err) {
       console.warn('[SlowFrame] could not read the library:', err);
@@ -495,6 +503,7 @@ export function createSettingsPanel(slideshow, {
     });
 
     delete busy[cat];
+    if (result.exhausted) exhausted.add(cat); else exhausted.delete(cat);
     await refreshLibrary();
     rebuildPlaylist();
     if (!result.added) {

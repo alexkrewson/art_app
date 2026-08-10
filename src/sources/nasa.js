@@ -69,10 +69,41 @@ export const nasaSource = {
     const keyword = subjects.length ? subjects.join(' ') : (filters.keyword || '').trim();
     if (keyword) params.set('q', keyword);
 
-    const res = await fetch(`${API}?${params.toString()}`);
-    if (!res.ok) throw new Error(`NASA image search failed: HTTP ${res.status}`);
-    const data = await res.json();
-    const items = shuffle(data.collection?.items || []);
+    // Page until we have enough candidates. One request returns 100 items, but
+    // a query typically has far more behind it — "nebula" reports 316 total
+    // hits. A single page was fine when this only ever filled a 60-image
+    // playlist; under the download model a category asks for 100+ and the
+    // single page became the ceiling. Start at a random page so repeat
+    // downloads of the same subject reach different parts of the collection.
+    const PER_PAGE = 100;
+    const want = Math.ceil(count * 1.5);
+
+    async function page(n) {
+      const p = new URLSearchParams(params);
+      if (n > 1) p.set('page', String(n));
+      const res = await fetch(`${API}?${p.toString()}`);
+      if (!res.ok) throw new Error(`NASA image search failed: HTTP ${res.status}`);
+      return res.json();
+    }
+
+    const first = await page(1);
+    const total = Number(first.collection?.metadata?.total_hits) || PER_PAGE;
+    const lastPage = Math.max(1, Math.ceil(total / PER_PAGE));
+    const needed = Math.max(1, Math.ceil(want / PER_PAGE));
+
+    let items = first.collection?.items || [];
+    if (needed > 1 && lastPage > 1) {
+      // Random window inside what's available, clamped so it can't run past
+      // the end and come back empty.
+      const start = 1 + Math.floor(Math.random() * Math.max(1, lastPage - needed + 1));
+      const rest = await Promise.all(
+        Array.from({ length: needed }, (_, i) => start + i)
+          .filter(n => n !== 1 && n <= lastPage)
+          .map(n => page(n).then(d => d.collection?.items || []).catch(() => [])),
+      );
+      items = items.concat(rest.flat());
+    }
+    items = shuffle(items);
 
     const results = [];
     for (const item of items) {

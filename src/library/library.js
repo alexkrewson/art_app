@@ -308,6 +308,12 @@ export async function downloadCategory({ sourceId, subjectKey, subject, cat, cou
   return {
     added,
     requested: count,
+    // `exhausted` means the source had nothing more to give, not that
+    // something failed. The UI needs the difference: a category stuck at 60 of
+    // 100 because Openverse only holds 60 should say so, rather than sitting
+    // there looking like a download that never finished. Three non-bugs were
+    // chased on 2026-08-10 for exactly this reason.
+    exhausted: reason === null && added < count,
     reason: reason || (added < count ? 'source-returned-fewer' : null),
   };
 }

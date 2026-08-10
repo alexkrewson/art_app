@@ -63,6 +63,28 @@ describe('nasaSource', () => {
     expect(fetchMock.mock.calls[1][0]).toContain('q=apollo');
   });
 
+  it('pages beyond the first 100 when more are asked for', async () => {
+    // One request returns 100 items; "nebula" has 316 behind it. A single page
+    // was the ceiling under the download model.
+    const mk = n => collection(Array.from({ length: 100 }, (_, i) => ({
+      data: [{ title: `p${n}-${i}` }], links: [{ href: `https://x/${n}-${i}.jpg` }],
+    })));
+    const fetchMock = vi.fn(async url => ({
+      ok: true,
+      json: async () => {
+        const page = new URL(url).searchParams.get('page') || '1';
+        const body = mk(page);
+        body.collection.metadata = { total_hits: 316 };
+        return body;
+      },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const records = await nasaSource.fetchBatch({ filters: { subjects: ['nebula'] }, count: 150 });
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+    expect(records).toHaveLength(150);
+  });
+
   it('throws when the request fails', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 })));
     await expect(nasaSource.fetchBatch({ filters: {}, count: 24 })).rejects.toThrow('HTTP 500');
