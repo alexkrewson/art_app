@@ -159,11 +159,26 @@ async function main() {
   async function vote(value) {
     const rec = lastMeta;
     if (!rec?.url) return;
-    const { setVote } = await import('./library/library.js');
-    await setVote(rec.url, value);
+
+    // Mark and repaint BEFORE awaiting anything. setVote writes to IndexedDB
+    // and, for a downvote, deletes a file — easily long enough for the slide to
+    // advance underneath. The old code awaited first and then called
+    // syncVoteBar(), which reads `lastMeta`; if the image had changed in the
+    // meantime that read the NEW record (vote 0) and the button never latched
+    // at all, even though the vote had been recorded correctly against the
+    // right image.
     if (value === 1) {
       rec.vote = 1;
-      syncVoteBar();
+      if (rec === lastMeta) syncVoteBar();
+    }
+
+    const { setVote } = await import('./library/library.js');
+    await setVote(rec.url, value);
+
+    if (value === 1) {
+      // Only repaint if that image is still the one on screen; otherwise
+      // onMeta has already synced the bar for whatever replaced it.
+      if (rec === lastMeta) syncVoteBar();
     } else {
       // The image is gone from disk; drop it from the running playlist too
       // rather than leaving an entry that would fail to load next time round.

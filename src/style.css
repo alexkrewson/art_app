@@ -500,7 +500,14 @@ input[type="color"].field, #dipColorInput {
   opacity:0.35;
   transition: opacity 0.2s, transform 0.1s;
 }
-.vote-btn:hover, .vote-btn:focus-visible { opacity:1; }
+/* `hover: hover` guard: on a touch screen the :hover state STICKS after a tap
+   until you touch something else, so an un-guarded rule leaves the button
+   looking permanently lit — which reads exactly like a thumbs-up that hasn't
+   let go, and is what Alex reported as "hanging on thumbs up". */
+@media (hover: hover) {
+  .vote-btn:hover { opacity:1; }
+}
+.vote-btn:focus-visible { opacity:1; }
 .vote-btn:active { transform: scale(0.92); }
 /* Latched state for an image already kept. */
 .vote-btn[aria-pressed="true"] {
