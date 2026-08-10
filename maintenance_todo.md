@@ -63,13 +63,27 @@ arbitrary JS in the running app: set localStorage, tick real checkboxes through
 their real handlers, read IndexedDB. Install-configure-inspect takes seconds and
 found five bugs in one evening that 190 passing tests did not.
 
-**Two measurement traps, both of which caught me out:**
-- Do not sample the ribbon *title* to check whether the slideshow is advancing.
-  NASA has hundreds of images titled "International Space Station (ISS)" and
-  Openverse hundreds called "Aurora borealis". Sample the visible `<img>`'s src.
-- `adb` serials on these cheap Star8 tablets are not stable across reconnects.
-  The same physical device appeared as both `DJJYHHEU91` and `N3XGBIPCHP`.
-  Identify a device by what is on it, not by its serial.
+**A measurement trap that caught me out:** do not sample the ribbon *title* to
+check whether the slideshow is advancing. NASA has hundreds of images titled
+"International Space Station (ISS)" and Openverse hundreds called "Aurora
+borealis", so the caption can sit unchanged for minutes while the picture
+changes every slide. Sample the visible `<img>`'s `src` instead.
+
+**A wrong conclusion, recorded so it isn't repeated.** An earlier version of
+this file claimed adb serials on these Star8 tablets were unstable, and that
+`DJJYHHEU91` and `N3XGBIPCHP` were one device reporting two serials. That is
+false. They are two physically different tablets: on 2026-08-10 `N3XGBIPCHP`
+held 722 images (Openverse only) while `DJJYHHEU91` held 1,698 (Openverse plus
+NASA), and one device cannot hold two different libraries.
+
+The actual explanation is duller: Alex had been clicking around in the new
+settings UI and had ticked Openverse categories on the second tablet himself.
+The reasoning error is the part worth keeping — an unexpected library turned up,
+a plausible technical story was invented to explain it, and Alex was asked to
+make a decision resting on that story. The disconfirming check ("does the
+library follow the serial?") was a single command and wasn't run. Two Star8
+tablets with the same model string and build fingerprint is not evidence of a
+serial collision.
 
 ### Devices currently configured
 
