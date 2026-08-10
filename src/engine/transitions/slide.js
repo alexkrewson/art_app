@@ -1,3 +1,5 @@
+import { playAll } from './animate.js';
+
 const START = {
   left:  'translate3d(-100%,0,0)',
   right: 'translate3d(100%,0,0)',
@@ -19,22 +21,14 @@ export function slide({ activeEl, waitingEl, durationMs, options }) {
     ? options.direction
     : DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)];
 
-  return new Promise(resolve => {
-    waitingEl.style.transition = 'none';
-    waitingEl.style.opacity = '1';
-    waitingEl.style.transform = START[dir];
-    activeEl.style.transition = 'none';
+  // Both slides are visible for the whole move; it's the travel that reads as
+  // the transition, not a fade. Set before animating so there's no flash.
+  waitingEl.style.opacity = '1';
 
-    requestAnimationFrame(() => {
-      waitingEl.style.transition = `transform ${durationMs}ms ease-in-out`;
-      activeEl.style.transition = `transform ${durationMs}ms ease-in-out`;
-      waitingEl.style.transform = 'translate3d(0,0,0)';
-      activeEl.style.transform = EXIT[dir];
-    });
-
-    setTimeout(() => {
-      activeEl.style.opacity = '0';
-      resolve();
-    }, durationMs);
+  return playAll([
+    [waitingEl, [{ transform: START[dir] }, { transform: 'translate3d(0,0,0)' }]],
+    [activeEl, [{ transform: 'translate3d(0,0,0)' }, { transform: EXIT[dir] }]],
+  ], { durationMs }).then(() => {
+    activeEl.style.opacity = '0';
   });
 }

@@ -1,29 +1,24 @@
+import { play } from './animate.js';
+
 // Shared implementation for "Fade to black", "Fade to white", and "Dip to
 // color": the outgoing image fades into a solid color overlay, then the
 // overlay fades away to reveal the incoming image already in place.
-function fadeThroughColor({ activeEl, waitingEl, overlayEl, durationMs }, color) {
-  return new Promise(resolve => {
-    const half = durationMs / 2;
+//
+// The swap happens at the midpoint, while the overlay is fully opaque and
+// hiding both slides — that's what makes it a dip rather than a cross-fade.
+async function fadeThroughColor({ activeEl, waitingEl, overlayEl, durationMs }, color) {
+  const half = durationMs / 2;
 
-    overlayEl.style.background = color;
-    overlayEl.style.transition = 'none';
-    overlayEl.style.opacity = '0';
-    waitingEl.style.transition = 'none';
-    waitingEl.style.opacity = '1'; // ready underneath the overlay
-    activeEl.style.transition = 'none';
+  overlayEl.style.background = color;
+  overlayEl.style.opacity = '0';
+  waitingEl.style.opacity = '1'; // ready underneath the overlay
 
-    requestAnimationFrame(() => {
-      overlayEl.style.transition = `opacity ${half}ms ease-in`;
-      overlayEl.style.opacity = '1';
-    });
+  await play(overlayEl, [{ opacity: 0 }, { opacity: 1 }], { durationMs: half, easing: 'ease-in' });
 
-    setTimeout(() => {
-      activeEl.style.opacity = '0'; // swap happens fully hidden behind the overlay
-      overlayEl.style.transition = `opacity ${half}ms ease-out`;
-      requestAnimationFrame(() => { overlayEl.style.opacity = '0'; });
-      setTimeout(resolve, half);
-    }, half);
-  });
+  // Fully hidden now, so this cut is invisible.
+  activeEl.style.opacity = '0';
+
+  await play(overlayEl, [{ opacity: 1 }, { opacity: 0 }], { durationMs: half, easing: 'ease-out' });
 }
 
 export function fadeToBlack(ctx) { return fadeThroughColor(ctx, '#000'); }
