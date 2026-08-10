@@ -494,7 +494,9 @@ input[type="color"].field, #dipColorInput {
    the vote bar and ribbon are shown or not. Fainter than the vote buttons —
    it is a development aid, not part of the frame. */
 #build-tag {
-  position:fixed; bottom:64px; right:16px;
+  /* `bottom` is set from main.js against the ribbon's measured height; this
+     is only the value used before the first measurement. */
+  position:fixed; bottom:66px; right:16px;
   z-index:800;
   pointer-events:none;            /* never steals a tap meant for the artwork */
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

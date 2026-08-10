@@ -128,9 +128,12 @@ async function main() {
   // Hiding the ribbon frees the footer's height, and #stage is flex:1 — so the
   // artwork expands to the whole screen with no extra work. object-fit:cover
   // then fills the taller frame at the image's own aspect ratio.
+  let stampLift = () => {};
+
   function setRibbonVisible(on) {
     ribbon.setVisible(on);
     slideshow.applyXf(slideshow.active); // re-apply against the new stage size
+    stampLift();                         // ribbon gone: drop the stamp to the vote row
   }
 
   // ── Voting ────────────────────────────────────────────────────────────
@@ -199,6 +202,24 @@ async function main() {
   const buildTag = document.getElementById('build-tag');
   if (buildTag) {
     buildTag.textContent = typeof __BUILD_STAMP__ === 'string' ? __BUILD_STAMP__ : 'v0.dev';
+
+    // Keep the stamp clear of whatever is below it. A fixed offset was tried
+    // and measured wrong on the Star8: the ribbon is 88px there, not the 64px
+    // assumed, so the stamp landed on top of the title. The ribbon is not a
+    // fixed height either — it grows when a long title wraps — so this
+    // observes it rather than guessing. The 58px floor is the vote buttons
+    // (14px bottom + 44px tall), which is what the stamp must clear when the
+    // ribbon is switched off entirely.
+    const footerEl = document.getElementById('footer');
+    const liftStamp = () => {
+      const ribbonH = footerEl && !footerEl.hidden ? footerEl.getBoundingClientRect().height : 0;
+      buildTag.style.bottom = `${Math.max(ribbonH, 58) + 8}px`;
+    };
+    liftStamp();
+    if (footerEl && typeof ResizeObserver === 'function') {
+      new ResizeObserver(liftStamp).observe(footerEl);
+    }
+    stampLift = liftStamp;
   }
 
   setRibbonVisible(settings.showRibbon !== false);
