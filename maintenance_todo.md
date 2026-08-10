@@ -13,6 +13,28 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 **Live site:** https://alexkrewson.github.io/art_app/ (auto-deploys on push to `main`)
 **Repo:** https://github.com/alexkrewson/art_app
 
+### The three tablets, and what is outstanding on each
+
+All three are on **versionCode 75** (`v75.87928f7`) as of 2026-08-10, with
+30s dwell, crossfade, bundled starter pack off, ribbon on and voting on.
+Identify by serial, not by model — two of them report model `Star8`.
+
+| Serial | Alex calls it | Library | Outstanding |
+| --- | --- | --- | --- |
+| `DJJYHHEU91` | the NASA tablet | 1698 images, 8 Openverse + 10 NASA | nothing |
+| `N3XGBIPCHP` | the Openverse tablet | 721 images, 8 Openverse | **top-up owed** |
+| `CP80A142320800171` | CP80 | 620 images, 6 Wikimedia | nothing |
+
+**Standing instruction from Alex (2026-08-10): next time `N3XGBIPCHP` is
+plugged in, bump it AND run the Openverse top-up.** It holds 721 against a
+target of 800. The shortfall is the old per-query ceiling — Openverse caps an
+anonymous caller 240 results deep *per query* and repeats heavily inside that
+window, so one broad term topped out near 40-80 unique. Splitting each subject
+into narrower `~`-separated queries fixed it, but only for new downloads;
+existing libraries do not benefit retroactively. Re-downloading each category
+de-duplicates against what is held and keeps upvotes, so a top-up accumulates
+rather than churning.
+
 ### The app was substantially rebuilt on 2026-08-08/09. Read this before the phase list below, which describes the older design.
 
 **Playback is download-first.** Ticking a category in Sources downloads it to the
