@@ -133,7 +133,7 @@ async function main() {
   function setRibbonVisible(on) {
     ribbon.setVisible(on);
     slideshow.applyXf(slideshow.active); // re-apply against the new stage size
-    stampLift();                         // ribbon gone: drop the stamp to the vote row
+    stampLift();                         // ribbon height changed under the stamp
   }
 
   // ── Voting ────────────────────────────────────────────────────────────
@@ -157,6 +157,7 @@ async function main() {
   function setVotingVisible(on) {
     settings.showVoting = on;
     syncVoteBar();
+    stampLift();          // bar appeared or vanished: retake the corner
   }
 
   async function vote(value) {
@@ -203,23 +204,33 @@ async function main() {
   if (buildTag) {
     buildTag.textContent = typeof __BUILD_STAMP__ === 'string' ? __BUILD_STAMP__ : 'v0.dev';
 
-    // Keep the stamp clear of whatever is below it. A fixed offset was tried
-    // and measured wrong on the Star8: the ribbon is 88px there, not the 64px
-    // assumed, so the stamp landed on top of the title. The ribbon is not a
-    // fixed height either — it grows when a long title wraps — so this
-    // observes it rather than guessing. The 58px floor is the vote buttons
-    // (14px bottom + 44px tall), which is what the stamp must clear when the
-    // ribbon is switched off entirely.
-    const footerEl = document.getElementById('footer');
-    const liftStamp = () => {
-      const ribbonH = footerEl && !footerEl.hidden ? footerEl.getBoundingClientRect().height : 0;
-      buildTag.style.bottom = `${Math.max(ribbonH, 58) + 8}px`;
+    // Sit on the ribbon, immediately left of the thumbs, sharing their row —
+    // Alex asked for it over the ribbon rather than over the artwork, which
+    // is also where it stops competing with the picture. Measured rather than
+    // hard-coded because the vote bar is not always there: with voting off it
+    // has no width, and the stamp slides right to take the corner itself.
+    const barEl = document.getElementById('vote-bar');
+    const GAP = 10;
+    const EDGE = 16;          // matches #vote-bar's own right offset
+    const placeStamp = () => {
+      const barVisible = barEl && !barEl.hidden;
+      const bar = barVisible ? barEl.getBoundingClientRect() : null;
+      buildTag.style.right = `${EDGE + (bar ? bar.width + GAP : 0)}px`;
+      // Centre on the buttons' row so the two read as one strip; with no
+      // buttons to centre against, fall back to their nominal geometry.
+      const h = buildTag.getBoundingClientRect().height || 17;
+      const rowH = bar ? bar.height : 44;
+      buildTag.style.bottom = `${Math.round(14 + (rowH - h) / 2)}px`;
     };
-    liftStamp();
-    if (footerEl && typeof ResizeObserver === 'function') {
-      new ResizeObserver(liftStamp).observe(footerEl);
+    placeStamp();
+    // The bar changes size when the thumbs are toggled, and the stamp's own
+    // box settles a frame late on first paint.
+    if (typeof ResizeObserver === 'function') {
+      const ro = new ResizeObserver(placeStamp);
+      if (barEl) ro.observe(barEl);
+      ro.observe(buildTag);
     }
-    stampLift = liftStamp;
+    stampLift = placeStamp;
   }
 
   setRibbonVisible(settings.showRibbon !== false);
