@@ -91,7 +91,9 @@ describe('Slideshow (sequential loop)', () => {
   it('keeps caption and picture in step over many advances', async () => {
     const { show, slideA, slideB, captions } = setup({ slideMs: 40, fadeMs: 10 });
     show.init([{ image: '1.jpg' }, { image: '2.jpg' }, { image: '3.jpg' }, { image: '4.jpg' }]);
-    await tick(400);
+    // Generous: this asserts a property, not a rate. A tight window turns it
+    // into a load test of whatever else the machine happens to be doing.
+    await tick(800);
     show.togglePause();
 
     // The invariant that two previous fixes failed to hold: whatever is on
@@ -154,6 +156,43 @@ describe('Slideshow (sequential loop)', () => {
     show.togglePause();
     await tick(150);
     expect(captions.length).toBeGreaterThan(atPause);
+    show.togglePause();
+  });
+
+  it('holds position when the playlist grows under it', async () => {
+    // The download model rebuilds the playlist every few images as they land.
+    // Restarting from the top each time meant the first image sat on screen
+    // indefinitely while everything else was downloading — seen on the device
+    // as one photo for two minutes at a 10-second slide duration.
+    const { show, slideA, slideB, captions } = setup({ slideMs: 60, fadeMs: 10 });
+    show.init([{ image: '1.jpg' }, { image: '2.jpg' }, { image: '3.jpg' }]);
+    await tick(200);
+
+    const onScreen = visible(slideA, slideB)?.src;
+    const before = captions.length;
+
+    // Same three, plus more — as a download landing would produce.
+    show.setPlaylist([
+      { image: '1.jpg' }, { image: '2.jpg' }, { image: '3.jpg' },
+      { image: '4.jpg' }, { image: '5.jpg' },
+    ]);
+    await tick(30);
+
+    // The picture must not jump back to the start, and must not be re-shown.
+    expect(visible(slideA, slideB)?.src).toBe(onScreen);
+    expect(captions.length).toBe(before);
+    show.togglePause();
+  });
+
+  it('starts over when the image on screen is no longer in the playlist', async () => {
+    const { show, slideA, slideB } = setup({ slideMs: 60, fadeMs: 10 });
+    show.init([{ image: 'gone.jpg' }, { image: 'also-gone.jpg' }]);
+    await tick(120);
+
+    show.setPlaylist([{ image: 'new1.jpg' }, { image: 'new2.jpg' }]);
+    await tick(120);
+    // Unticking a category removes what was playing; it has to move on.
+    expect(visible(slideA, slideB)?.src).toMatch(/^new/);
     show.togglePause();
   });
 

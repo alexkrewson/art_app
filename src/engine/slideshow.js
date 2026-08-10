@@ -128,9 +128,36 @@ export class Slideshow {
     this.restart();
   }
 
-  // Replaces the playlist in place (e.g. the Sources settings changed).
+  /**
+   * Replaces the playlist, holding position if the image on screen is still in
+   * it.
+   *
+   * This used to call init(), which restarts from index 0. Harmless when the
+   * playlist changed once, on a settings edit — but the download model rebuilds
+   * it every few images as they land, and with eight categories downloading at
+   * once that meant playback was thrown back to the first image every couple of
+   * seconds. Observed on the device: the same photo sat on screen for two
+   * minutes at a 10-second slide duration.
+   */
   setPlaylist(images) {
-    this.init(images);
+    if (!images?.length) return;
+    const current = this.images[this.index];
+    const idx = current ? images.findIndex(r => r.image === current.image) : -1;
+    this.images = images;
+
+    if (idx < 0) {
+      // The image on screen is gone (a category was unticked, say) — start over.
+      this.index = 0;
+      this.restart();
+      return;
+    }
+
+    // Still there: keep it on screen, keep its remaining dwell honest, and just
+    // carry on from its new position in the list.
+    this.index = idx;
+    const token = ++this.runToken;
+    this.cutDwell();
+    this.run(token, false);
   }
 
   // Kept for the settings panel, which calls it after changing slide duration.
@@ -257,11 +284,15 @@ export class Slideshow {
    * Every step awaits the one before it, so there is no second timer to fall
    * out of step with and nothing to guard.
    */
-  async run(token) {
+  async run(token, showFirst = true) {
     if (!this.images.length) return;
 
-    await this.show(this.images[this.index], true);
-    if (token !== this.runToken) return;
+    // showFirst=false is for a playlist swap that kept the current image:
+    // re-showing it would reload the same src and flash for no reason.
+    if (showFirst) {
+      await this.show(this.images[this.index], true);
+      if (token !== this.runToken) return;
+    }
 
     while (token === this.runToken) {
       // Start fetching the next image immediately, then dwell. The download
