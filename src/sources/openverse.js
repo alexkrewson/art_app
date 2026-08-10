@@ -101,9 +101,21 @@ export const openverseSource = {
     const queries = subjects.length ? subjects : [freeText || 'landscape'];
     const photosOnly = filters.photosOnly !== false;
 
-    // Spread the target across however many subjects are ticked, then
-    // over-sample by half again so the has-image/licence filtering below has
-    // slack before it runs short.
+    // Over-sample by half again, so the filtering below has slack.
+    //
+    // Worth knowing before trying to raise this: Openverse repeats results
+    // heavily across pages. Measured against the live API, 8 pages (160 raw
+    // results) for "landscape" yielded 60 unique images — a ~62% duplicate
+    // rate — so a single fetch tops out around 40-80 unique per subject
+    // whatever you ask for. Raising the multiplier to 3x (using all 12 pages
+    // of the anonymous window) was tried on 2026-08-10 and measured: landscape
+    // stayed at 60 and aurora came back lower, within run-to-run variance. It
+    // was reverted because it spends 50% more of a 200/day quota for no
+    // demonstrated gain.
+    //
+    // The way to get more of a subject is repeated downloads, not a bigger
+    // one: each pass starts at a random page and de-duplicates against what's
+    // already held, so topping a category up several times does accumulate.
     const perQuery = Math.ceil((count * 1.5) / queries.length);
     const pagesEach = Math.max(1, Math.min(Math.ceil(perQuery / PAGE_SIZE), MAX_PAGE));
 
