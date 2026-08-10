@@ -63,6 +63,17 @@ arbitrary JS in the running app: set localStorage, tick real checkboxes through
 their real handlers, read IndexedDB. Install-configure-inspect takes seconds and
 found five bugs in one evening that 190 passing tests did not.
 
+**A second measurement trap, same family.** Do not put a long `await sleep(...)`
+*inside* a single `Runtime.evaluate` to watch the slideshow advance. A 36s
+in-page wait reported the image as unchanged on N3XGBIPCHP and looked exactly
+like a stall -- but polling the same tablet once a second from Node showed
+crossfades at t=4s, 33.6s and 64.2s, a clean 30s cadence. A long-running
+awaited promise inside an evaluate suspends the page's own timers, so the
+slideshow really does freeze, but only for the duration of the measurement.
+It is not deterministic -- the identical probe on DJJYHHEU91 advanced fine --
+which makes it worse, not better. Keep the waiting in Node and ask the page
+only short synchronous questions. `scratchpad/poll.mjs` does this.
+
 **A measurement trap that caught me out:** do not sample the ribbon *title* to
 check whether the slideshow is advancing. NASA has hundreds of images titled
 "International Space Station (ISS)" and Openverse hundreds called "Aurora
