@@ -3,16 +3,27 @@
 // than merged in, to avoid an unrelated refactor).
 const KEY = 'slowframe.settings';
 
+// Ken Burns pan bounds, as segment DURATIONS in ms — bigger is slower.
+// Exported because these numbers were previously repeated as literals in the
+// slider markup and both of its handlers, which is three places to forget.
+//
+// Narrowed on 2026-08-11 at Alex's request: the slow end used to reach 40s per
+// pan and the default sat at 13s. The old default is now the slowest setting
+// available, the fast end is unchanged, and the default sits midway between
+// them. Anything slower than a 13s pan is gone.
+export const KB_SLOWEST_MS = 13000;
+export const KB_FASTEST_MS = 4000;
+export const KB_DEFAULT_MS = (KB_SLOWEST_MS + KB_FASTEST_MS) / 2;   // 8500
+
 export const DEFAULTS = {
   displayMode: 'kenburns',  // 'kenburns' | 'static' | 'fade'
   transitionId: 'crossfade', // or 'random', or any TRANSITIONS key
   dipColor: '#8a5a3b',
   slideMs: 12000,
   transitionMs: 1500,
-  // Ken Burns pan/zoom segment length in ms — lower is faster drift. 13s was
-  // the hardcoded value inherited from kiosk.html; Alex asked for it to be
-  // adjustable, so it is now a setting with that value as the default.
-  kbCycleMs: 13000,
+  // Ken Burns pan/zoom segment length in ms — lower is faster drift. See
+  // KB_SLOWEST_MS/KB_FASTEST_MS above for the range and why it narrowed.
+  kbCycleMs: KB_DEFAULT_MS,
   order: 'sequential', // 'sequential' | 'shuffle'
   // Title/artist ribbon along the bottom. On by default; switching it off
   // gives the artwork the full screen height rather than leaving a gap.
@@ -49,6 +60,12 @@ export const DEFAULTS = {
   },
 };
 
+export function clampKbCycle(ms) {
+  const n = Number(ms);
+  if (!Number.isFinite(n)) return KB_DEFAULT_MS;
+  return Math.min(KB_SLOWEST_MS, Math.max(KB_FASTEST_MS, n));
+}
+
 export function loadSettings() {
   try {
     const raw = localStorage.getItem(KEY);
@@ -60,11 +77,15 @@ export function loadSettings() {
     // to DEFAULTS after the settings were last saved — confirmed live, an
     // existing localStorage predating Phase 4 hid all six new sources from
     // the Settings panel until this was fixed.
-    return {
+    const merged = {
       ...DEFAULTS, ...stored,
       sources: { ...DEFAULTS.sources, ...stored.sources },
       categories: { ...(stored.categories || {}) },
     };
+    // A value saved before the range narrowed would otherwise leave the slider
+    // pinned at one end while the engine ran a speed the slider cannot express.
+    merged.kbCycleMs = clampKbCycle(merged.kbCycleMs);
+    return merged;
   } catch {
     return { ...DEFAULTS };
   }

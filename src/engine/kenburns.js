@@ -42,7 +42,7 @@ export class KenBurns {
    * @param {() => HTMLElement} opts.getEl - the element currently on screen
    * @param {number} [opts.cycleMs] - ms per pan segment
    */
-  constructor({ stageSize, getXf, setXf, getEl, cycleMs = 13000 }) {
+  constructor({ stageSize, getXf, setXf, getEl, cycleMs = 8500 }) {
     this.stageSize = stageSize;
     this.getXf = getXf;
     this.setXf = setXf;

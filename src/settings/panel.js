@@ -6,7 +6,7 @@
 // there's no persistent chrome over the artwork during normal playback.
 
 import { THEMES, loadTheme, applyTheme } from './themes.js';
-import { loadSettings, saveSettings } from './store.js';
+import { loadSettings, saveSettings, clampKbCycle, KB_SLOWEST_MS, KB_FASTEST_MS } from './store.js';
 import { TRANSITIONS } from '../engine/transitions/index.js';
 import { SOURCES } from '../sources/registry.js';
 import { buildPlaylist, orderPlaylist } from '../sources/manager.js';
@@ -77,7 +77,7 @@ function renderDisplaySection(settings) {
            bigger number is slower. Dragging right should mean faster, so the
            slider runs on the negated value and the handler flips it back. -->
       <input type="range" id="kbCycleInput" class="field-range" name="kbCycle"
-             min="-40000" max="-4000" step="1000" value="${-settings.kbCycleMs}"
+             min="${-KB_SLOWEST_MS}" max="${-KB_FASTEST_MS}" step="500" value="${-settings.kbCycleMs}"
              ${settings.displayMode === 'kenburns' ? '' : 'disabled'}>
       <div class="field-hint">
         <span>Slower</span>
@@ -679,7 +679,7 @@ Anything you've thumbed up is kept.`)) return;
   // a "how fast should the pan be" control is the whole feedback loop.
   accordion.addEventListener('input', e => {
     if (e.target.name !== 'kbCycle') return;
-    const ms = Math.max(4000, Math.min(40000, -Number(e.target.value) || 13000));
+    const ms = clampKbCycle(-Number(e.target.value));
     settings.kbCycleMs = ms;
     slideshow.kb.cycleMs = ms;
     const out = accordion.querySelector('#kbCycleValue');
@@ -736,11 +736,11 @@ Anything you've thumbed up is kept.`)) return;
     } else if (el.name === 'kbCycle') {
       // The slider carries the negated duration so that dragging right reads
       // as "faster"; flip it back to the real segment length here.
-      const ms = Math.max(4000, Math.min(40000, -Number(el.value) || 13000));
+      const ms = clampKbCycle(-Number(el.value));
       settings.kbCycleMs = ms;
       slideshow.kb.cycleMs = ms;
       // Restart the current segment so the new speed is felt immediately
-      // rather than after the current 13-second pan finishes.
+      // rather than after the current pan finishes.
       if (!slideshow.paused && settings.displayMode === 'kenburns') slideshow.kb.start();
       const out = accordion.querySelector('#kbCycleValue');
       if (out) out.textContent = `${Math.round(ms / 1000)}s per pan`;

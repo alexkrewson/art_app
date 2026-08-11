@@ -56,7 +56,7 @@ export class Slideshow {
   constructor({
     stageEl, slideA, slideB, overlayEl, pauseIcon, onMeta, onPauseChange,
     displayMode = 'kenburns', transitionId = 'crossfade', transitionOptions = {},
-    slideMs = 12000, fadeMs = 1500, kbCycleMs = 13000,
+    slideMs = 12000, fadeMs = 1500, kbCycleMs = 8500,
   }) {
     this.stageEl = stageEl;
     this.overlayEl = overlayEl;

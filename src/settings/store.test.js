@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { DEFAULTS, loadSettings, saveSettings } from './store.js';
+import { DEFAULTS, loadSettings, saveSettings, clampKbCycle, KB_SLOWEST_MS, KB_FASTEST_MS } from './store.js';
 
 const KEY = 'slowframe.settings';
 
@@ -45,5 +45,44 @@ describe('settings store', () => {
     saveSettings(settings);
     expect(JSON.parse(localStorage.getItem(KEY)).slideMs).toBe(9000);
     expect(loadSettings().slideMs).toBe(9000);
+  });
+
+  // Ken Burns range narrowed 2026-08-11: the old 13s default became the
+  // slowest available setting, the fast end stayed, the default moved to the
+  // midpoint. Every tablet in the field has a value saved from the old range.
+  describe('Ken Burns bounds', () => {
+    it('defaults to the midpoint of the range', () => {
+      expect(DEFAULTS.kbCycleMs).toBe((KB_SLOWEST_MS + KB_FASTEST_MS) / 2);
+      expect(DEFAULTS.kbCycleMs).toBe(8500);
+    });
+
+    it('no longer allows anything slower than the old default', () => {
+      expect(KB_SLOWEST_MS).toBe(13000);
+      expect(clampKbCycle(40000)).toBe(13000);
+      expect(clampKbCycle(20000)).toBe(13000);
+    });
+
+    it('leaves the fast end where it was', () => {
+      expect(KB_FASTEST_MS).toBe(4000);
+      expect(clampKbCycle(4000)).toBe(4000);
+      expect(clampKbCycle(1000)).toBe(4000);
+    });
+
+    it('clamps a value saved before the range narrowed', () => {
+      // Without this a tablet holding 25000 would render the slider pinned at
+      // its slow end while the engine kept panning at the old, wider speed.
+      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 25000 }));
+      expect(loadSettings().kbCycleMs).toBe(KB_SLOWEST_MS);
+    });
+
+    it('leaves an in-range saved value alone', () => {
+      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 10000 }));
+      expect(loadSettings().kbCycleMs).toBe(10000);
+    });
+
+    it('falls back to the default for a junk value', () => {
+      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 'fast' }));
+      expect(loadSettings().kbCycleMs).toBe(DEFAULTS.kbCycleMs);
+    });
   });
 });
