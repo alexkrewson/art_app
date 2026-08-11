@@ -19,6 +19,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, not the default shallow clone. vite.config.js stamps
+          # the build with `git rev-list --count HEAD`, which returns 1 on a
+          # depth-1 checkout -- the deployed site would have called itself v1
+          # while the same commit built locally as v76.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
