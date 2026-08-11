@@ -522,7 +522,13 @@ input[type="color"].field, #dipColorInput {
    looking permanently lit — which reads exactly like a thumbs-up that hasn't
    let go, and is what Alex reported as "hanging on thumbs up". */
 @media (hover: hover) {
-  .vote-btn:hover { opacity:1; }
+  /* Deliberately NOT opacity:1 — that is the latched look. With a mouse the
+     pointer stays on the button after a click, so a full-strength hover is
+     indistinguishable from "this image is kept" and persists across every
+     image change. Only the tablets escaped it, because `hover: hover` is
+     false on a touch screen. Hover now reads as reachable, not as pressed. */
+  .vote-btn:hover { opacity:0.7; }
+  .vote-btn[aria-pressed="true"]:hover { opacity:1; }
 }
 .vote-btn:focus-visible { opacity:1; }
 .vote-btn:active { transform: scale(0.92); }

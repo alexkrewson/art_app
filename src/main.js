@@ -3,6 +3,7 @@
 import { Slideshow } from './engine/slideshow.js';
 import { attachTouch } from './engine/touch.js';
 import { createMetadataRibbon } from './ui/metadataRibbon.js';
+import { voteBarState } from './ui/voteBar.js';
 import { createSettingsPanel } from './settings/panel.js';
 import { loadSettings } from './settings/store.js';
 import { buildPlaylist, orderPlaylist } from './sources/manager.js';
@@ -149,9 +150,12 @@ async function main() {
     const rec = lastMeta;
     // Bundled and local-folder images aren't in the library, so there's nothing
     // to vote on — hide rather than offer a button that can't do anything.
-    const votable = settings.showVoting && !!rec?.url;
-    voteBar.hidden = !votable;
-    if (votable) voteUp.setAttribute('aria-pressed', String(rec.vote === 1));
+    const { hidden, pressed } = voteBarState(settings, rec);
+    voteBar.hidden = hidden;
+    // Written unconditionally. Guarding this on votability left a stale
+    // aria-pressed="true" sitting on a hidden button, so the next unvoted
+    // image that happened to be votable could show up already latched.
+    voteUp.setAttribute('aria-pressed', String(pressed));
   }
 
   function setVotingVisible(on) {
