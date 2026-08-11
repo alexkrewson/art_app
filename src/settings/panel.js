@@ -681,6 +681,7 @@ Anything you've thumbed up is kept.`)) return;
     if (e.target.name !== 'kbCycle') return;
     const ms = clampKbCycle(-Number(e.target.value));
     settings.kbCycleMs = ms;
+    settings.kbCycleUserSet = true;   // chosen, so stop tracking the default
     slideshow.kb.cycleMs = ms;
     const out = accordion.querySelector('#kbCycleValue');
     if (out) out.textContent = `${Math.round(ms / 1000)}s per pan`;
@@ -738,6 +739,7 @@ Anything you've thumbed up is kept.`)) return;
       // as "faster"; flip it back to the real segment length here.
       const ms = clampKbCycle(-Number(el.value));
       settings.kbCycleMs = ms;
+      settings.kbCycleUserSet = true;   // chosen, so stop tracking the default
       slideshow.kb.cycleMs = ms;
       // Restart the current segment so the new speed is felt immediately
       // rather than after the current pan finishes.

@@ -71,13 +71,43 @@ describe('settings store', () => {
     it('clamps a value saved before the range narrowed', () => {
       // Without this a tablet holding 25000 would render the slider pinned at
       // its slow end while the engine kept panning at the old, wider speed.
-      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 25000 }));
+      // kbCycleUserSet:true so the clamp is what's under test here, rather
+      // than the untouched-value reset that would otherwise fire first.
+      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 25000, kbCycleUserSet: true }));
       expect(loadSettings().kbCycleMs).toBe(KB_SLOWEST_MS);
     });
 
     it('leaves an in-range saved value alone', () => {
-      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 10000 }));
+      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 10000, kbCycleUserSet: true }));
       expect(loadSettings().kbCycleMs).toBe(10000);
+    });
+
+    it('moves a never-touched old default onto the new one', () => {
+      // Alex's exact case: the web app had 13000 saved from before the range
+      // narrowed, so the handle sat on the slider's minimum after reload.
+      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 13000, kbCycleUserSet: undefined }));
+      const s = loadSettings();
+      expect(s.kbCycleMs).toBe(DEFAULTS.kbCycleMs);
+      expect(-s.kbCycleMs).toBe((-KB_SLOWEST_MS + -KB_FASTEST_MS) / 2);  // dead centre of the slider
+    });
+
+    it('keeps a deliberately chosen old value', () => {
+      // 10000 is not the old default, so someone picked it. The tablets hold
+      // exactly this and must not be quietly reset.
+      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 10000, kbCycleUserSet: undefined }));
+      expect(loadSettings().kbCycleMs).toBe(10000);
+    });
+
+    it('respects a deliberate choice that happens to equal the slowest setting', () => {
+      // Without the flag the migration would fight the user: drag to 13s, and
+      // the next load would yank it back to the midpoint forever.
+      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 13000, kbCycleUserSet: true }));
+      expect(loadSettings().kbCycleMs).toBe(13000);
+    });
+
+    it('lets a future default reach anyone who never chose a speed', () => {
+      localStorage.setItem(KEY, JSON.stringify({ ...DEFAULTS, kbCycleMs: 5000, kbCycleUserSet: false }));
+      expect(loadSettings().kbCycleMs).toBe(DEFAULTS.kbCycleMs);
     });
 
     it('falls back to the default for a junk value', () => {

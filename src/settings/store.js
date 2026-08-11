@@ -15,6 +15,13 @@ export const KB_SLOWEST_MS = 13000;
 export const KB_FASTEST_MS = 4000;
 export const KB_DEFAULT_MS = (KB_SLOWEST_MS + KB_FASTEST_MS) / 2;   // 8500
 
+// The default in force before the range narrowed. Needed only to recognise
+// settings saved back then: a stored 13000 almost certainly means "never
+// touched the slider" rather than "chose 13 seconds", and after the change
+// that value lands on the slider's minimum. Alex hit exactly this — reloaded
+// the web app and found the handle pinned left instead of centred.
+const LEGACY_KB_DEFAULT_MS = 13000;
+
 export const DEFAULTS = {
   displayMode: 'kenburns',  // 'kenburns' | 'static' | 'fade'
   transitionId: 'crossfade', // or 'random', or any TRANSITIONS key
@@ -24,6 +31,11 @@ export const DEFAULTS = {
   // Ken Burns pan/zoom segment length in ms — lower is faster drift. See
   // KB_SLOWEST_MS/KB_FASTEST_MS above for the range and why it narrowed.
   kbCycleMs: KB_DEFAULT_MS,
+  // Whether the Ken Burns speed was chosen deliberately. Without this, a saved
+  // value is indistinguishable from an untouched default, so any future change
+  // to KB_DEFAULT_MS would silently fail to reach anyone who had ever opened
+  // Settings — the stored copy of the OLD default would win forever.
+  kbCycleUserSet: false,
   order: 'sequential', // 'sequential' | 'shuffle'
   // Title/artist ribbon along the bottom. On by default; switching it off
   // gives the artwork the full screen height rather than leaving a gap.
@@ -82,6 +94,16 @@ export function loadSettings() {
       sources: { ...DEFAULTS.sources, ...stored.sources },
       categories: { ...(stored.categories || {}) },
     };
+    // Settings saved before kbCycleUserSet existed: infer it. A value equal to
+    // the old default means the slider was never touched, so the new default
+    // should win; anything else was a deliberate choice and is kept.
+    if (stored.kbCycleUserSet === undefined) {
+      merged.kbCycleUserSet =
+        stored.kbCycleMs !== undefined && stored.kbCycleMs !== LEGACY_KB_DEFAULT_MS;
+    }
+    // An untouched speed always tracks the current default rather than a stale
+    // copy of an old one.
+    if (!merged.kbCycleUserSet) merged.kbCycleMs = DEFAULTS.kbCycleMs;
     // A value saved before the range narrowed would otherwise leave the slider
     // pinned at one end while the engine ran a speed the slider cannot express.
     merged.kbCycleMs = clampKbCycle(merged.kbCycleMs);
