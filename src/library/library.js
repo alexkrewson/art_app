@@ -163,7 +163,9 @@ export async function playlistFor(activeCats) {
     // skipped slide — the engine's prepare() already returns false on a load
     // failure and the loop moves to the next image. Being thirty seconds slow
     // to start costs the whole experience.
-    out.push({ ...row.record, image: row.src, url: row.url, vote: row.vote || 0 });
+    // `cats` rides along so the ribbon can say where an image came from.
+    // It lives on the row, not inside row.record, so it has to be named here.
+    out.push({ ...row.record, image: row.src, url: row.url, vote: row.vote || 0, cats: row.cats || [] });
   }
   return out;
 }

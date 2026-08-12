@@ -53,4 +53,29 @@ describe('metadataRibbon', () => {
     // would look like from the sofa.
     expect(metaEl.textContent).toBe('Second');
   });
+
+  it('names the category the image was downloaded under', () => {
+    // Alex's request: the ribbon should say where an image came from, e.g.
+    // "Openverse, Mountains".
+    const { ribbon, metaEl } = setup();
+    ribbon.update(rec({
+      artist: 'someone', department: 'flickr',
+      cats: ['openverse::mountain~alps~summit~glacier%20peak'],
+    }));
+    expect(metaEl.textContent).toBe('someone  —  flickr  —  Openverse, Mountains');
+  });
+
+  it('leaves the category out for an image that has none', () => {
+    // Bundled and local-folder images are not in the library, so there is no
+    // category to name and the line must not gain a dangling separator.
+    const { ribbon, metaEl } = setup();
+    ribbon.update(rec({ artist: 'someone', cats: [] }));
+    expect(metaEl.textContent).toBe('someone');
+  });
+
+  it('survives a record from before cats was carried through', () => {
+    const { ribbon, metaEl } = setup();
+    ribbon.update(rec({ artist: 'someone' }));   // no cats key at all
+    expect(metaEl.textContent).toBe('someone');
+  });
 });
