@@ -56,7 +56,7 @@ export class Slideshow {
   constructor({
     stageEl, slideA, slideB, overlayEl, pauseIcon, onMeta, onPauseChange,
     displayMode = 'kenburns', transitionId = 'crossfade', transitionOptions = {},
-    slideMs = 12000, fadeMs = 1500, kbCycleMs = 8500,
+    slideMs = 12000, fadeMs = 1500, kbCycleMs = 8500, kbSmooth = false,
   }) {
     this.stageEl = stageEl;
     this.overlayEl = overlayEl;
@@ -66,7 +66,7 @@ export class Slideshow {
     this.displayMode = displayMode;
     this.transitionId = transitionId;
     this.transitionOptions = transitionOptions;
-    this.slideMs = slideMs;
+    this._slideMs = slideMs;
     this.fadeMs = fadeMs;
 
     this.images = [];
@@ -95,6 +95,10 @@ export class Slideshow {
       setXf: xf => { this.xf = xf; },
       getEl: () => this.active,
       cycleMs: kbCycleMs,
+      smooth: kbSmooth,
+      // The smooth profile is gated on the slide duration, so Ken Burns needs
+      // to know it. Kept in step by the slideMs setter below.
+      slideMs,
     });
   }
 
@@ -119,6 +123,16 @@ export class Slideshow {
 
   get minScale() { return MIN_SCALE; }
   get maxScale() { return MAX_SCALE; }
+
+  // An accessor rather than a plain field: panel.js assigns slideshow.slideMs
+  // directly when the slide duration changes, and the smooth Ken Burns profile
+  // is gated on that duration. As a field the two would silently disagree.
+  get slideMs() { return this._slideMs; }
+
+  set slideMs(ms) {
+    this._slideMs = ms;
+    if (this.kb) this.kb.slideMs = ms;
+  }
 
   // ── Playback ────────────────────────────────────────────────────────
   init(images) {

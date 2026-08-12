@@ -33,6 +33,34 @@ function toTransform({ scale, tx, ty }) {
   return `translate3d(${tx}px, ${ty}px, 0) scale3d(${scale}, ${scale}, 1)`;
 }
 
+// Below this slide duration the smooth profile is ignored and the pan stays
+// linear. Alex's call: an ease-in/ease-out over a short slide spends most of
+// its time barely moving.
+export const SMOOTH_MIN_SLIDE_MS = 5000;
+
+// How far through the pan we are at time `t` (0..1) under a sine-squared
+// VELOCITY profile: stationary at both ends, fastest in the middle, smooth
+// through the inflections — what Alex described as a bell curve rather than a
+// jagged ramp.
+//
+//   v(t) = 2·sin²(πt)   ->   p(t) = t − sin(2πt) / 2π
+//
+// v peaks at 2 and averages 1, which is the whole reason a smooth segment runs
+// at twice the slider's duration: the slider sets the MAXIMUM speed, so the
+// same pan extent necessarily takes twice as long to cover.
+export function smoothProgress(t) {
+  const x = Math.max(0, Math.min(1, t));
+  return x - Math.sin(2 * Math.PI * x) / (2 * Math.PI);
+}
+
+// The curve is sampled into keyframes rather than expressed as an easing
+// function. `linear(...)` easing would be exact but needs Chrome 113+, and
+// these run on budget tablets and an e-reader; a cubic-bezier cannot represent
+// this curve at all. Sampled keyframes with linear interpolation between them
+// work anywhere element.animate() does, and at this many samples the
+// difference is far below one pixel per frame.
+const SMOOTH_SAMPLES = 32;
+
 export class KenBurns {
   /**
    * @param {object} opts
@@ -40,15 +68,33 @@ export class KenBurns {
    * @param {() => {scale:number, tx:number, ty:number}} opts.getXf
    * @param {(xf: {scale:number, tx:number, ty:number}) => void} opts.setXf
    * @param {() => HTMLElement} opts.getEl - the element currently on screen
-   * @param {number} [opts.cycleMs] - ms per pan segment
+   * @param {number} [opts.cycleMs] - ms per pan segment at full speed
+   * @param {boolean} [opts.smooth] - ease the pan in and out instead of a constant rate
+   * @param {number} [opts.slideMs] - how long an image is shown; gates `smooth`
    */
-  constructor({ stageSize, getXf, setXf, getEl, cycleMs = 8500 }) {
+  constructor({ stageSize, getXf, setXf, getEl, cycleMs = 8500, smooth = false, slideMs = 12000 }) {
     this.stageSize = stageSize;
     this.getXf = getXf;
     this.setXf = setXf;
     this.getEl = getEl;
     this.cycleMs = cycleMs;
+    this.smooth = smooth;
+    this.slideMs = slideMs;
     this.animation = null;
+  }
+
+  /** Smooth is requested AND the slide is long enough to be worth easing. */
+  get smoothing() {
+    return !!this.smooth && this.slideMs >= SMOOTH_MIN_SLIDE_MS;
+  }
+
+  /**
+   * A smooth segment takes twice as long as the slider says, because the
+   * slider sets peak speed and this profile averages half its peak. Same pan
+   * extent, calmer motion.
+   */
+  get segmentMs() {
+    return this.smoothing ? this.cycleMs * 2 : this.cycleMs;
   }
 
   toPixels(t) {
@@ -83,17 +129,36 @@ export class KenBurns {
     this.from = from;
     this.to = to;
 
-    const anim = el.animate(
-      [{ transform: toTransform(from) }, { transform: toTransform(to) }],
-      {
-        duration: this.cycleMs,
-        // Linear, not an ease: an ease curve hits zero velocity at both ends of
-        // every segment, which reads as a periodic "decelerate to a stop, then
-        // re-accelerate" pulse rather than continuous ambient drift.
-        easing: 'linear',
-        fill: 'forwards',
-      },
-    );
+    // Held for stop(), which has to know which curve was in flight even if the
+    // setting changes mid-segment.
+    const smoothing = this.smoothing;
+    const duration = this.segmentMs;
+    this.smoothingNow = smoothing;
+    this.durationMs = duration;
+
+    const lerpXf = f => ({
+      scale: from.scale + (to.scale - from.scale) * f,
+      tx: from.tx + (to.tx - from.tx) * f,
+      ty: from.ty + (to.ty - from.ty) * f,
+    });
+
+    // Constant rate stays the default. Its own justification still holds when
+    // smooth is off: an ease hits zero velocity at both ends of every segment,
+    // which without the doubled duration reads as a periodic "stop and
+    // restart" pulse rather than continuous ambient drift. Alex asked for the
+    // eased profile as an option, so it is one.
+    const keyframes = smoothing
+      ? Array.from({ length: SMOOTH_SAMPLES + 1 }, (_, i) => {
+        const at = i / SMOOTH_SAMPLES;
+        return { offset: at, transform: toTransform(lerpXf(smoothProgress(at))) };
+      })
+      : [{ transform: toTransform(from) }, { transform: toTransform(to) }];
+
+    const anim = el.animate(keyframes, {
+      duration,
+      easing: 'linear',   // the curve lives in the keyframe offsets, not here
+      fill: 'forwards',
+    });
     this.animation = anim;
 
     anim.finished
@@ -121,7 +186,13 @@ export class KenBurns {
     // drift began. The animation's own clock is the source of truth here —
     // the composited transform isn't readable from JS.
     if (this.from && this.to) {
-      const t = Math.max(0, Math.min(1, (Number(anim.currentTime) || 0) / this.cycleMs));
+      // Against the segment's OWN duration and curve. Using this.cycleMs and a
+      // straight ratio would be wrong twice over under the smooth profile: the
+      // segment runs at twice cycleMs, and elapsed time is not proportional to
+      // distance covered. Getting this wrong makes the image jump the moment
+      // you pause.
+      const raw = Math.max(0, Math.min(1, (Number(anim.currentTime) || 0) / (this.durationMs || this.cycleMs)));
+      const t = this.smoothingNow ? smoothProgress(raw) : raw;
       const lerp = (a, b) => a + (b - a) * t;
       this.setXf({
         scale: lerp(this.from.scale, this.to.scale),

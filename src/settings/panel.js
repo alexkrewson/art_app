@@ -84,6 +84,15 @@ function renderDisplaySection(settings) {
         <span id="kbCycleValue">${(settings.kbCycleMs / 1000).toFixed(0)}s per pan</span>
         <span>Faster</span>
       </div>
+      <label class="radio-row">
+        <input type="checkbox" name="kbSmooth" ${settings.kbSmooth ? 'checked' : ''}
+               ${settings.displayMode === 'kenburns' ? '' : 'disabled'}>
+        <span>Smooth speed profile <span class="field-hint">— the pan starts and
+        ends stationary and is fastest in the middle, instead of moving at one
+        constant rate. The slider above then sets the <em>peak</em> speed, so a
+        pan covers the same ground in about twice the time. Ignored on slides
+        shorter than 5 seconds.</span></span>
+      </label>
       ${settings.displayMode === 'kenburns' ? '' : '<div class="field-hint">Only applies in Ken Burns display mode.</div>'}
     </div>
   `;
@@ -746,6 +755,12 @@ Anything you've thumbed up is kept.`)) return;
       if (!slideshow.paused && settings.displayMode === 'kenburns') slideshow.kb.start();
       const out = accordion.querySelector('#kbCycleValue');
       if (out) out.textContent = `${Math.round(ms / 1000)}s per pan`;
+    } else if (el.name === 'kbSmooth') {
+      settings.kbSmooth = el.checked;
+      slideshow.kb.smooth = el.checked;
+      // Restart the segment so the change is visible now rather than after the
+      // current pan finishes — the same reasoning as the speed slider.
+      if (!slideshow.paused && settings.displayMode === 'kenburns') slideshow.kb.start();
     } else if (el.name === 'showVoting') {
       settings.showVoting = el.checked;
       onVotingChange(el.checked);

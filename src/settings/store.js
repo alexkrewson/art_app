@@ -31,6 +31,11 @@ export const DEFAULTS = {
   // Ken Burns pan/zoom segment length in ms — lower is faster drift. See
   // KB_SLOWEST_MS/KB_FASTEST_MS above for the range and why it narrowed.
   kbCycleMs: KB_DEFAULT_MS,
+  // Ease the Ken Burns pan in and out instead of drifting at a constant rate:
+  // stationary at each end, fastest in the middle. Off by default, because the
+  // default has to stay what it has always been. Only takes effect when the
+  // slide is at least SMOOTH_MIN_SLIDE_MS long — see kenburns.js.
+  kbSmooth: false,
   // Whether the Ken Burns speed was chosen deliberately. Without this, a saved
   // value is indistinguishable from an untouched default, so any future change
   // to KB_DEFAULT_MS would silently fail to reach anyone who had ever opened

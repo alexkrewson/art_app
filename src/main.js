@@ -52,6 +52,7 @@ async function main() {
     slideMs: settings.slideMs,
     fadeMs: settings.transitionMs,
     kbCycleMs: settings.kbCycleMs,
+    kbSmooth: settings.kbSmooth,
     // lastMeta is what the ribbon was last told to show; the overlay compares
     // it against the src of whichever element is actually visible.
     onMeta: img => { lastMeta = img; ribbon.update(img); updateDebug(); syncVoteBar?.(); },
