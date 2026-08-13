@@ -8,10 +8,21 @@ survives a crash or restart. See original spec pasted into the conversation on
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (needs input from Alex)
 
 ---
-## Where things stand (updated 2026-08-10)
+## Where things stand (updated 2026-08-13)
 
 **Live site:** https://alexkrewson.github.io/art_app/ (auto-deploys on push to `main`)
 **Repo:** https://github.com/alexkrewson/art_app
+
+### Session log
+
+Alex tracks time spent on this project through the commit history, so each
+working session starts with a dated marker commit.
+
+- **2026-08-13** — start. On-device testing of the two remaining keyless
+  sources, Met and AIC. Everything else keyless (Wikimedia, Openverse, NASA)
+  is already verified on hardware; NPS, Flickr, Smithsonian, Europeana and
+  Rijksmuseum all set `needsApiKey: true` and cannot be tested without
+  credentials. Local Folder needs a folder picked on the device itself.
 
 ### The three tablets, and what is outstanding on each
 
