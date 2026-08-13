@@ -131,10 +131,14 @@ export const metSource = {
     }
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
-    if (throttled) {
-      // Loud, and distinguishable from "the source had nothing left". Partial
-      // results are still returned — they are perfectly good images.
-      console.warn(`[SlowFrame] Met is rate-limiting; stopped at ${results.length} of ${count}. Try again in a few minutes.`);
+    // Only complain if the throttle actually cost us something. A live run hit
+    // the limit near the end and still filled its quota, yet warned "stopped
+    // at 71 of 70" — alarming, self-contradictory, and wrong twice over: it
+    // had not stopped short, and the count exceeded the target because
+    // concurrent workers each push before re-checking.
+    const got = Math.min(results.length, count);
+    if (throttled && got < count) {
+      console.warn(`[SlowFrame] Met is rate-limiting; stopped at ${got} of ${count}. Try again in a few minutes.`);
     }
     return results.slice(0, count);
   },

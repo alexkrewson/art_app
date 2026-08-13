@@ -86,7 +86,10 @@ describe('metSource', () => {
 // minutes. The old code could not tell a throttle from a missing object, so it
 // silently returned 8 of 38 and reported success.
 describe('metSource rate limiting', () => {
-  beforeEach(() => vi.unstubAllGlobals());
+  // restoreAllMocks as well as unstubAllGlobals: vi.spyOn on an already-spied
+  // method hands back the SAME mock, history included, so without this a test
+  // reads warnings emitted by the one before it.
+  beforeEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
   const search = ids => ({ ok: true, status: 200, json: async () => ({ objectIDs: ids }) });
   const object = id => ({
@@ -108,6 +111,21 @@ describe('metSource rate limiting', () => {
     expect(recs.length).toBeLessThan(50);
     // The point: it gives up quickly instead of grinding through 200 refusals.
     expect(calls).toBeLessThan(30);
+  });
+
+  it('stays quiet when the throttle cost nothing', async () => {
+    // A live run hit the limit after filling its quota and still warned
+    // "stopped at 71 of 70". A warning that fires on success is noise.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let calls = 0;
+    vi.stubGlobal('fetch', vi.fn(async url => {
+      if (url.includes('/search?')) return search(Array.from({ length: 60 }, (_, i) => i + 1));
+      calls++;
+      if (calls > 5) return { ok: false, status: 429 };
+      return object(calls);
+    }));
+    await metSource.fetchBatch({ filters: {}, count: 3 });
+    expect(warn.mock.calls.flat().join(' ')).not.toMatch(/rate-limiting/i);
   });
 
   it('says so, rather than looking like an exhausted source', async () => {
