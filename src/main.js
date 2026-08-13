@@ -2,6 +2,8 @@
 
 import { Slideshow } from './engine/slideshow.js';
 import { attachTouch } from './engine/touch.js';
+import { Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { createMetadataRibbon } from './ui/metadataRibbon.js';
 import { voteBarState } from './ui/voteBar.js';
 import { createSettingsPanel } from './settings/panel.js';
@@ -238,6 +240,27 @@ async function main() {
     stampLift = placeStamp;
   }
 
+  // Android hardware/gesture back. Without a listener Capacitor's default is
+  // to walk WebView history and then finish the activity, so back while
+  // Settings was open dropped the user out of the app entirely rather than
+  // returning to the picture — which is what Alex asked to fix.
+  //
+  // dismiss(), not close(): close() only hides the panel and would leave the
+  // slideshow paused behind it, so back would appear to do nothing.
+  if (Capacitor.isNativePlatform()) {
+    CapacitorApp.addListener('backButton', () => {
+      if (settingsPanel.isOpen()) {
+        settingsPanel.dismiss();
+        return;
+      }
+      // Nothing open: behave like back on any root activity and leave, but
+      // minimize rather than exit. This runs unattended on a wall for weeks;
+      // backgrounding it means an accidental swipe is undone by tapping the
+      // icon, with the library still warm, instead of a cold start.
+      CapacitorApp.minimizeApp();
+    });
+  }
+
   setRibbonVisible(settings.showRibbon !== false);
   setDebugOverlay(settings.debugOverlay);
   attachTouch(stageEl, slideshow, settingsPanel);
@@ -296,7 +319,7 @@ async function main() {
 // PROD-gated as well: a cache-first worker registered against `vite dev`'s
 // unbundled modules serves stale code across reloads — confirmed directly, it
 // masked an unrelated settings bug during manual testing.
-if (import.meta.env.PROD && !window.Capacitor?.isNativePlatform?.() && 'serviceWorker' in navigator) {
+if (import.meta.env.PROD && !Capacitor.isNativePlatform() && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`)

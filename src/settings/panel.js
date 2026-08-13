@@ -923,6 +923,10 @@ Anything you've thumbed up is kept.`)) return;
   return {
     open,
     close,
+    // Exported for the Android back button: hardware back should do what the
+    // X button does — close AND resume — not merely hide the panel and leave
+    // the slideshow paused behind it.
+    dismiss,
     toggle(cursorPos) { root.hidden ? open(cursorPos) : close(); },
     isOpen() { return !root.hidden; },
   };
