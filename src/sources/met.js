@@ -28,10 +28,35 @@ function buildSearchParams(filters) {
   return p;
 }
 
+// Met needs one request per object, so a large download makes hundreds of
+// calls and their CDN starts refusing. Measured on the CP80 on 2026-08-13:
+// asking for 100 images (up to ~420 object calls) got the whole API blocked
+// for several minutes, including the search endpoint, while the same requests
+// from Node kept returning 200 — a throttle response without CORS headers
+// reads in a WebView as an opaque "Failed to fetch" with no status at all.
+//
+// `null` used to mean both "no such object" and "we are being throttled",
+// which is why a rate-limited batch looked exactly like a source that had run
+// out of images: it quietly returned 8 of 38 and reported no error.
+const MISSING = null;
+const THROTTLED = Symbol('throttled');
+
 async function fetchObject(id) {
-  const res = await fetch(`${API}/objects/${id}`);
-  if (!res.ok) return null;
-  return res.json();
+  let res;
+  try {
+    res = await fetch(`${API}/objects/${id}`);
+  } catch {
+    // An opaque network failure here is overwhelmingly a throttle, not a dead
+    // object — a single missing id does not break the connection.
+    return THROTTLED;
+  }
+  if (res.status === 429 || res.status === 403) return THROTTLED;
+  if (!res.ok) return MISSING;
+  try {
+    return await res.json();
+  } catch {
+    return MISSING;
+  }
 }
 
 function toRecord(obj) {
@@ -75,23 +100,42 @@ export const metSource = {
     const ids = data.objectIDs || [];
     if (!ids.length) return [];
 
-    // Over-sample: some objectIDs won't have a usable image or won't pass
-    // the public-domain filter, so fetch more candidates than we need.
-    const candidates = shuffle(ids).slice(0, Math.min(count * 3, ids.length));
+    // Over-sample, because some objectIDs have no usable image or fail the
+    // public-domain filter. 3x was the original figure; at count=100 that is
+    // 420 object requests, which is what got us blocked. 2x still leaves
+    // plenty of slack — the measured hit rate is well above half — and nearly
+    // halves the traffic.
+    const candidates = shuffle(ids).slice(0, Math.min(count * 2, ids.length));
     const publicDomainOnly = filters.publicDomainOnly !== false;
 
     const results = [];
     const CONCURRENCY = 5;
+    const PACE_MS = 120;        // per worker, so ~40 requests/second at most
     let cursor = 0;
+    let throttled = false;
+
     async function worker() {
-      while (cursor < candidates.length && results.length < count) {
+      while (cursor < candidates.length && results.length < count && !throttled) {
         const obj = await fetchObject(candidates[cursor++]);
+        if (obj === THROTTLED) {
+          // Stop the whole batch rather than grinding through hundreds more
+          // refusals: once they start saying no, continuing only deepens it.
+          throttled = true;
+          break;
+        }
         if (!obj || !(obj.primaryImageSmall || obj.primaryImage)) continue;
         if (publicDomainOnly && !obj.isPublicDomain) continue;
         results.push(toRecord(obj));
+        if (PACE_MS) await new Promise(r => setTimeout(r, PACE_MS));
       }
     }
     await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+
+    if (throttled) {
+      // Loud, and distinguishable from "the source had nothing left". Partial
+      // results are still returned — they are perfectly good images.
+      console.warn(`[SlowFrame] Met is rate-limiting; stopped at ${results.length} of ${count}. Try again in a few minutes.`);
+    }
     return results.slice(0, count);
   },
 };
