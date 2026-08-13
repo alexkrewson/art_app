@@ -37,13 +37,42 @@ export function fileNameFor(url) {
   return `${Math.abs(hash).toString(36)}-${url.length.toString(36)}.${ext}`;
 }
 
+// Once per session, not once per image. mkdir throws when the folder already
+// exists, and the native plugin logs that rejection as an error before we get
+// to catch it — so a 100-image download printed 100 "Directory exists" errors
+// into logcat. Caching the promise removes both the noise and 99 bridge calls.
+let folderReady = null;
 async function ensureFolder() {
-  try {
-    await Filesystem.mkdir({ path: FOLDER, directory: DIR, recursive: true });
-  } catch {
-    // Already exists — mkdir throws rather than no-oping, which is not an error
-    // condition for us.
+  if (!folderReady) {
+    folderReady = Filesystem.mkdir({ path: FOLDER, directory: DIR, recursive: true })
+      .catch(() => { /* already exists — not an error condition for us */ });
   }
+  return folderReady;
+}
+
+// Hosts that refuse an unidentified client.
+//
+// The Art Institute of Chicago's terms ask API users to identify themselves
+// with an AIC-User-Agent header, and their CDN enforces it on IIIF image
+// requests too. Measured on the CP80 on 2026-08-13, against one image URL:
+//
+//   no headers .................. 403
+//   generic User-Agent .......... 403
+//   WebView User-Agent+Referer .. 403
+//   AIC-User-Agent .............. 200
+//
+// Only that header works, and its value is not checked — so this identifies
+// the project rather than embedding a personal email in a public repo. Node
+// gets a 200 without it, which is why this only ever showed up on-device:
+// every AIC download silently stored nothing.
+const HOST_HEADERS = [
+  [/(^|\.)artic\.edu$/i, { 'AIC-User-Agent': 'SlowFrame (https://github.com/alexkrewson/art_app)' }],
+];
+
+export function headersFor(url) {
+  let host;
+  try { host = new URL(url).hostname; } catch { return {}; }
+  return HOST_HEADERS.reduce((acc, [re, h]) => (re.test(host) ? { ...acc, ...h } : acc), {});
 }
 
 // Roughly how many bytes a base64 payload decodes to. Used for size accounting
@@ -72,7 +101,7 @@ export async function storeImage(url) {
     //
     // responseType 'blob' hands back base64 on native, which is exactly the
     // format Filesystem.writeFile wants — no intermediate decode.
-    const res = await CapacitorHttp.get({ url, responseType: 'blob' });
+    const res = await CapacitorHttp.get({ url, responseType: 'blob', headers: headersFor(url) });
     if (res.status < 200 || res.status >= 300) {
       return { ok: false, reason: `http-${res.status}`, bytes: 0 };
     }

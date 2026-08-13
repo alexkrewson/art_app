@@ -68,7 +68,14 @@ export const aicSource = {
 
     async function page(n) {
       const params = new URLSearchParams({ q, fields: FIELDS, limit: String(PER_PAGE), page: String(n) });
-      const res = await fetch(`${API}/artworks/search?${params.toString()}`);
+      // AIC's terms ask API clients to identify themselves with this header,
+      // and their CDN enforces it on IIIF image requests — on-device those
+      // returned 403 without it while Node got 200, so every AIC download
+      // silently stored nothing. The search endpoint tolerates its absence,
+      // but sending it here too keeps us on the right side of their terms.
+      const res = await fetch(`${API}/artworks/search?${params.toString()}`, {
+        headers: { 'AIC-User-Agent': 'SlowFrame (https://github.com/alexkrewson/art_app)' },
+      });
       if (!res.ok) throw new Error(`AIC search failed: HTTP ${res.status}`);
       return res.json();
     }
