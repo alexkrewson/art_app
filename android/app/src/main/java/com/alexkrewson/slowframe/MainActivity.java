@@ -22,6 +22,10 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Must precede super.onCreate() — the Bridge reads the registered
+        // plugin list while it builds, so anything registered afterwards is
+        // invisible to the WebView.
+        registerPlugin(FolderPickerPlugin.class);
         super.onCreate(savedInstanceState);
         enterImmersiveMode();
     }

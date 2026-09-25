@@ -18,6 +18,18 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 Alex tracks time spent on this project through the commit history, so each
 working session starts with a dated marker commit.
 
+- **2026-09-24** — Local Folder now works on Android. It never had: the
+  source was gated on `showDirectoryPicker`, which Chrome on Android has never
+  shipped, so the WebView reported `supported: false` and rendered the "Choose
+  folder…" button permanently disabled — Alex clicked it on a tablet and
+  nothing happened. Added a Storage Access Framework plugin
+  (`android/.../FolderPickerPlugin.java`, `ACTION_OPEN_DOCUMENT_TREE` +
+  `takePersistableUriPermission`), and `localFiles.js` now picks a half by
+  platform. Verified on `CP80A142320800171` (Android 14): plugin registers, the
+  button is enabled where it used to render disabled, the SAF intent launches
+  DocumentsUI, and Alex picked a folder successfully. Subfolder walking was
+  added after that and has NOT been on a device — the tablet was unplugged by
+  then, so only the flat listing is hardware-confirmed.
 - **2026-08-13** — start. On-device testing of the two remaining keyless
   sources, Met and AIC. Everything else keyless (Wikimedia, Openverse, NASA)
   is already verified on hardware; NPS, Flickr, Smithsonian, Europeana and
@@ -375,11 +387,25 @@ note above), so don't trust the checkboxes blindly.
       `public/images/` as its own source (id `local`, enabled by default) — this IS
       the backward-compatible local file structure the spec asks for, and the
       zero-network fallback if every live source is disabled/offline.
-- [x] Local folder source (`src/sources/localFiles.js`): File System Access API
-      (`showDirectoryPicker`), Chrome/Edge only — feature-detected (`.supported`),
-      settings UI disables the picker with an explanatory note on unsupported browsers
-      (Firefox/Safari) rather than showing a button that would throw. No metadata,
+- [x] Local folder source (`src/sources/localFiles.js`): two implementations behind
+      one source, chosen by platform. Web uses the File System Access API
+      (`showDirectoryPicker`), Chromium desktop only; Android uses the Storage Access
+      Framework through our own `FolderPicker` plugin. Feature-detected (`.supported`,
+      a getter — on Android it has to wait for the native bridge). No metadata,
       filename fallback per spec.
+      - The Android half persists the grant, so a picked folder survives a reboot,
+        and re-lists on every playlist rebuild, so photos dropped into the folder
+        later appear without re-picking. The web half cannot do either — file
+        handles die with the tab.
+      - Both halves walk subfolders (breadth-first, depth cap 8, image cap 10,000)
+        and sort by relative path. The sort matters: providers return children in
+        no defined order, so without it sequential mode picked a different order
+        on every reboot. An unreadable subfolder is skipped rather than failing
+        the whole tree — an empty SD-card mount point inside Pictures is enough
+        to throw, and the photos either side of it are still good.
+      - The "explanatory note on unsupported browsers" this line used to claim was
+        never actually rendered — the hint said "No folder selected yet" next to a
+        greyed button, which is why the tablet just looked broken. Now real.
 - [x] Sources settings section is now fully functional: enable/disable checkboxes for
       all 3 sources, Met filter fields (department select, keyword, medium, date
       range, public-domain-only), "Choose folder…" button, sequential/shuffle radio.

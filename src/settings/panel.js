@@ -197,12 +197,26 @@ function renderFilterField(sourceId, spec, settings) {
 
 // The one remaining special case: a folder picker is a browser-permission
 // action, not a settings field, so it can't come from listFilters().
+function escapeHtml(text) {
+  return String(text).replace(/[&<>"]/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
+  ));
+}
+
 function renderLocalFilesExtra(source) {
   if (source.id !== 'localFiles') return '';
   const folderName = source.getPickedFolderName?.();
+
+  // When the picker can't run, say so. This used to render a disabled button
+  // beside "No folder selected yet", which reads as an ordinary empty state —
+  // so on a device where it could never work the UI just looked broken.
+  const hint = source.supported === false
+    ? 'Not available in this browser — needs Chrome or Edge on desktop, or the Android app'
+    : folderName ? `Using: ${escapeHtml(folderName)}` : 'No folder selected yet';
+
   return `
     <button type="button" class="btn-secondary" id="pickFolderBtn" ${source.supported ? '' : 'disabled'}>Choose folder&hellip;</button>
-    <span class="field-hint">${folderName ? `Using: ${folderName}` : 'No folder selected yet'}</span>`;
+    <span class="field-hint">${hint}</span>`;
 }
 
 function renderSourceBlock(source, settings, sourceFilters, lib, expanded) {
@@ -679,7 +693,12 @@ Anything you've thumbed up is kept.`)) return;
           refreshSourcesSection();
           if (count > 0) rebuildPlaylist();
         })
-        .catch(err => console.warn('[SlowFrame] folder picker cancelled or failed:', err));
+        .catch(err => {
+          // Backing out of the system picker is a normal thing to do, so it
+          // shouldn't look like a failure in the log.
+          if (SOURCES.localFiles.isCancellation?.(err)) return;
+          console.warn('[SlowFrame] folder picker failed:', err);
+        });
     }
   });
 
