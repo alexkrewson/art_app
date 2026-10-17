@@ -19,7 +19,8 @@ page, then:
 
 Only images the model is confident about are shown (outside the band score.py
 checked itself on); the unsure middle is left for review.py. The pages come in
-score order, so the surest guesses are first and it gets less certain as you
+score order within each category (a category always starts a new page), so
+the surest guesses are first and it gets less certain as you
 go — slow down when the page starts looking mixed.
 
 Decisions go to decisions.jsonl exactly as the reviewer writes them, plus
@@ -45,7 +46,8 @@ MARK = {"reject": "#c0392b", "keep": "#2e9e4f"}
 class Grid:
     def __init__(self, root, items, scores, verdict, current=None):
         self.root = root
-        self.items = items          # in the order pages are cut from
+        self.items = items          # grouped by category, in the order pages are cut from
+        self.pages = self._paginate()
         self.scores = scores
         self.verdict = verdict      # "reject", "keep", or "mixed": each image its own guess
         # --recheck: url -> decision already recorded. Images start marked with
@@ -79,8 +81,17 @@ class Grid:
 
     # ── pages ────────────────────────────────────────────────────────────
     def _slice(self, page):
-        n = COLS * ROWS
-        return self.items[page * n:(page + 1) * n]
+        return self.pages[page] if page < len(self.pages) else []
+
+    def _paginate(self):
+        """Pages of up to COLS*ROWS that never straddle two categories: items
+        arrive grouped by category, and each category starts a fresh page."""
+        n, pages = COLS * ROWS, []
+        for k, rec in enumerate(self.items):
+            if not pages or len(pages[-1]) == n or rec.get("cat") != self.items[k - 1].get("cat"):
+                pages.append([])
+            pages[-1].append(rec)
+        return pages
 
     def _decode(self, recs):
         side = self.cell - 2 * GAP
@@ -159,7 +170,8 @@ class Grid:
         self.canvas.itemconfig(f"pct{i}", fill="white" if m else "#777777")
 
     def _draw_status(self):
-        pages = (len(self.items) + COLS * ROWS - 1) // (COLS * ROWS)
+        pages = len(self.pages)
+        cat = R.short_cat(self.recs[0].get("cat", "")) if self.recs else ""
         keep = sum(m == "keep" for m in self.marks.values())
         reject = sum(m == "reject" for m in self.marks.values())
         spared = len(self.recs) - keep - reject
@@ -167,7 +179,7 @@ class Grid:
                  "click  cycle approve / reject / spare" if self.verdict == "mixed"
                  else "click  spare / re-mark")
         self.canvas.itemconfig(self.status, text=(
-            f"page {self.page + 1} / {pages}     approve {keep}   reject {reject}   spare {spared}"
+            f"{cat}     page {self.page + 1} / {pages}     approve {keep}   reject {reject}   spare {spared}"
             f"     {self.done:,} recorded this session     |     {click}"
             f"   hold right button  enlarge   Enter  record + next page   Esc  quit"))
 
@@ -300,9 +312,11 @@ def main():
     # in that order turns from mostly red to mostly green as you page.
     # A recheck shows the decisions the model doubts most first: approvals it
     # scores lowest, rejections it scores highest.
-    items.sort(key=lambda c: scores[c["url"]],
-               reverse=(args.recheck == "reject") if args.recheck else
-                       (args.keep and not args.unsure))
+    # Grouped by category throughout (Alex finds mixed pages harder to
+    # judge), score order within each.
+    flip = (args.recheck == "reject") if args.recheck else (args.keep and not args.unsure)
+    items.sort(key=lambda c: (c.get("source", ""), c.get("cat", ""),
+                              -scores[c["url"]] if flip else scores[c["url"]]))
 
     verdict = args.recheck or ("mixed" if args.unsure else "keep" if args.keep else "reject")
     what = {"mixed": "unsure images", "keep": "confident keeps", "reject": "confident rejects"}

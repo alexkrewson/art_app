@@ -66,6 +66,7 @@ POOL = HERE / "pool"
 FOLDERS = {"keep": HERE / "approved", "reject": HERE / "rejected"}
 PREFS = HERE / "review-prefs.json"
 SCORES = HERE / "scores.json"
+SAMPLE_BLOCK = 25           # --sample: images from one category before moving to the next
 GUESS_BAND = (0.15, 0.85)   # fallback; scores.json carries the band it was checked with
 
 LOOKAHEAD = 6
@@ -573,18 +574,23 @@ def main():
         # by at the speed of one key. Images scored before they were
         # downloaded, which score.py has not seen, go last.
         sign = 1 if args.triage == "reject" else -1
-        items.sort(key=lambda c: (c["url"] not in scores, sign * scores.get(c["url"], 0)))
+        # Still grouped by category, score order within each.
+        items.sort(key=lambda c: (c.get("source", ""), c.get("cat", ""),
+                                  c["url"] not in scores, sign * scores.get(c["url"], 0)))
     elif args.sample:
-        # Round-robin over categories. The shuffle is seeded so the order is
-        # the same every run and a session picks up where the last one ended.
+        # Blocks of SAMPLE_BLOCK from each category in turn: any stretch you
+        # review covers them all, without switching category every image.
+        # The shuffle is seeded so the order is the same every run and a
+        # session picks up where the last one ended.
         rng = random.Random(0)
         by_cat = {}
         for c in items:
             by_cat.setdefault(c.get("cat", ""), []).append(c)
         for group in by_cat.values():
             rng.shuffle(group)
-        items = [g[k] for k in range(max(map(len, by_cat.values())))
-                 for g in by_cat.values() if k < len(g)]
+        longest = max(map(len, by_cat.values()))
+        items = [c for k in range(0, longest, SAMPLE_BLOCK)
+                 for g in by_cat.values() for c in g[k:k + SAMPLE_BLOCK]]
 
     if not items:
         missing = [c for c in candidates if not path_for(c["url"]).exists()]
