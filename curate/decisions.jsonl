@@ -2184,3 +2184,4 @@
 {"url": "https://images-assets.nasa.gov/image/PIA12854/PIA12854~thumb.jpg", "decision": "keep", "source": "nasa", "cat": "nasa::moon craters", "at": 1792257717}
 {"url": "https://images-assets.nasa.gov/image/PIA00040/PIA00040~thumb.jpg", "decision": "keep", "source": "nasa", "cat": "nasa::moon craters", "at": 1792257718}
 {"url": "https://images-assets.nasa.gov/image/PIA13596/PIA13596~small.jpg", "decision": "keep", "source": "nasa", "cat": "nasa::moon craters", "at": 1792257718}
+{"url": "https://images-assets.nasa.gov/image/KSC-2011-4528/KSC-2011-4528~medium.jpg", "decision": "reject", "source": "nasa", "cat": "nasa::supernova remnant", "at": 1792259718}
