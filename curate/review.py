@@ -17,6 +17,12 @@ coloured frame; press ↑ or ↓ on it again to change your mind. That replaces 
 old undo key: at one image per second the images you most want back are the
 ones you rejected by accident, and now you just go back and flip them.
 
+The previous and next images sit either side of the current one, smaller, with
+their badges, so a decision you just made stays visible on the left after you
+have moved past it. Pressing ↑ or ↓ also stamps the verdict large across the
+image for FLASH_MS before moving on. Any key pressed during the stamp finishes
+it at once, so it confirms what happened without setting the pace.
+
 Every decision is appended to curate/decisions.jsonl before the next image is
 shown, so closing the lid mid-session loses nothing. Changing your mind appends
 a second line rather than editing the first; apply.py takes the last line per
@@ -56,6 +62,10 @@ FOLDERS = {"keep": HERE / "approved", "reject": HERE / "rejected"}
 LOOKAHEAD = 6
 LOOKBEHIND = 2
 FOOTER = 60
+FLASH_MS = 450          # how long the verdict stamp shows before moving on
+MAIN_FRAC = 0.62        # share of the screen width the current image gets
+PREVIEW_H_FRAC = 0.55   # preview height as a share of the main image's
+SIDE_GAP = 20           # space around the previews
 
 # What a decided image looks like on screen: badge text, colour.
 BADGES = {
@@ -154,23 +164,32 @@ class Reviewer:
         self.i = start
         self.dir = 1                 # last direction of travel, for stepping over bad files
         self.bad = set()             # indices whose file would not decode
-        self.cache = {}              # index -> PIL.Image, filled by the loader thread
-        self.photo = None            # a reference Tk will not keep for us
+        self.cache = {}              # index -> PIL.Image at main size, filled by the loader thread
+        self.small = {}              # index -> PIL.Image at preview size, made on demand
+        self.pending = None          # Tk `after` id while a verdict stamp is showing
         self.want = queue.Queue()
         self.lock = threading.Lock()
 
         self.sw = root.winfo_screenwidth()
         self.sh = root.winfo_screenheight()
-        cx, cy = self.sw // 2, (self.sh - FOOTER) // 2
+        self.main_size = (int(self.sw * MAIN_FRAC), self.sh - FOOTER)
+        side_w = (self.sw - self.main_size[0]) // 2 - 2 * SIDE_GAP
+        self.small_size = (max(side_w, 40), int(self.main_size[1] * PREVIEW_H_FRAC))
+        cx, cy = self.sw // 2, self.main_size[1] // 2
+        side_cx = (self.sw - self.main_size[0]) // 4
 
         self.canvas = tk.Canvas(root, bg="black", highlightthickness=0,
                                 width=self.sw, height=self.sh)
         self.canvas.pack(fill="both", expand=True)
-        self.img_id = self.canvas.create_image(cx, cy, anchor="center")
-        self.frame = self.canvas.create_rectangle(0, 0, 0, 0, width=6, outline="", state="hidden")
-        self.badge_bg = self.canvas.create_rectangle(0, 0, 0, 0, width=0, state="hidden")
-        self.badge = self.canvas.create_text(0, 0, anchor="nw", fill="white",
-                                             font=("Segoe UI", 20, "bold"), state="hidden")
+        self.slots = {
+            "prev": self._make_slot(side_cx, cy, font=11, frame=3),
+            "main": self._make_slot(cx, cy, font=20, frame=6),
+            "next": self._make_slot(self.sw - side_cx, cy, font=11, frame=3),
+        }
+        # The big verdict stamp shown for FLASH_MS after a keypress.
+        self.stamp_bg = self.canvas.create_rectangle(0, 0, 0, 0, width=0, state="hidden")
+        self.stamp = self.canvas.create_text(cx, cy, anchor="center", fill="white",
+                                             font=("Segoe UI", 54, "bold"), state="hidden")
         self.status = self.canvas.create_text(
             24, self.sh - 42, anchor="w", fill="#cccccc",
             font=("Segoe UI", 13), text="")
@@ -183,12 +202,18 @@ class Reviewer:
 
         threading.Thread(target=self._loader, daemon=True).start()
 
-        root.bind("<Up>", lambda e: self.decide("keep"))
-        root.bind("<Down>", lambda e: self.decide("reject"))
-        root.bind("<Right>", lambda e: self.go(self.i + 1))
-        root.bind("<Left>", lambda e: self.go(self.i - 1))
-        root.bind("<Home>", lambda e: self.go(0))
-        root.bind("<End>", lambda e: self.go(self.first_undecided(), 1))
+        # Every key first finishes a stamp in progress, so a fast reviewer is
+        # never held up by it. Indices are read inside the lambdas, after that.
+        keys = {
+            "<Up>": lambda: self.decide("keep"),
+            "<Down>": lambda: self.decide("reject"),
+            "<Right>": lambda: self.go(self.i + 1),
+            "<Left>": lambda: self.go(self.i - 1),
+            "<Home>": lambda: self.go(0),
+            "<End>": lambda: self.go(self.first_undecided(), 1),
+        }
+        for key, action in keys.items():
+            root.bind(key, lambda e, a=action: (self._finish_stamp(), a()))
         root.bind("<Escape>", lambda e: self.quit())
         root.bind("q", lambda e: self.quit())
 
@@ -221,7 +246,7 @@ class Reviewer:
     def _load(self, idx):
         try:
             img = Image.open(path_for(self.items[idx]["url"]))
-            img.thumbnail((self.sw, self.sh - FOOTER), Image.LANCZOS)
+            img.thumbnail(self.main_size, Image.LANCZOS)
             return img.convert("RGB")
         except Exception:  # noqa: BLE001 — a corrupt file is stepped over, not a crash
             return None
@@ -234,6 +259,30 @@ class Reviewer:
             with self.lock:
                 self.cache[idx] = img
         return img
+
+    def _get_small(self, idx):
+        if idx not in self.small:
+            img = self._get(idx).copy()
+            img.thumbnail(self.small_size, Image.LANCZOS)
+            self.small[idx] = img
+        return self.small[idx]
+
+    def _usable(self, idx):
+        """Whether this index has a decodable image, remembering ones that don't."""
+        if idx in self.bad:
+            return False
+        if self._get(idx) is None:
+            self.bad.add(idx)
+            return False
+        return True
+
+    def _neighbour(self, idx, step):
+        j = idx + step
+        while 0 <= j < len(self.items):
+            if self._usable(j):
+                return j
+            j += step
+        return None
 
     # ── navigation ───────────────────────────────────────────────────────
     def go(self, idx, direction=None):
@@ -251,15 +300,58 @@ class Reviewer:
         return len(self.items)
 
     # ── display ──────────────────────────────────────────────────────────
+    def _make_slot(self, cx, cy, font, frame):
+        c = self.canvas
+        return {
+            "cx": cx, "cy": cy, "photo": None,   # photo: a reference Tk will not keep for us
+            "img": c.create_image(cx, cy, anchor="center"),
+            "frame": c.create_rectangle(0, 0, 0, 0, width=frame, outline="", state="hidden"),
+            "badge_bg": c.create_rectangle(0, 0, 0, 0, width=0, state="hidden"),
+            "badge": c.create_text(0, 0, anchor="nw", fill="white",
+                                   font=("Segoe UI", font, "bold"), state="hidden"),
+            "inset": frame // 2,
+            "pad": (font * 7 // 10, font * 3 // 10),
+        }
+
+    def _hide_slot(self, slot):
+        self.canvas.itemconfig(slot["img"], image="")
+        slot["photo"] = None
+        for item in ("frame", "badge_bg", "badge"):
+            self.canvas.itemconfig(slot[item], state="hidden")
+
+    def _draw_slot(self, name, idx):
+        slot = self.slots[name]
+        if idx is None:
+            return self._hide_slot(slot)
+        img = self._get(idx) if name == "main" else self._get_small(idx)
+        slot["photo"] = ImageTk.PhotoImage(img)
+        self.canvas.itemconfig(slot["img"], image=slot["photo"])
+        self._draw_badge(slot, img.width, img.height, self.latest.get(self.items[idx]["url"]))
+
+    def _draw_badge(self, slot, w, h, decision):
+        c = self.canvas
+        if decision not in BADGES:
+            for item in ("frame", "badge_bg", "badge"):
+                c.itemconfig(slot[item], state="hidden")
+            return
+        text, colour = BADGES[decision]
+        x0, y0 = slot["cx"] - w // 2, slot["cy"] - h // 2
+        inset, (px, py) = slot["inset"], slot["pad"]
+        c.coords(slot["frame"], x0 + inset, y0 + inset, x0 + w - inset, y0 + h - inset)
+        c.itemconfig(slot["frame"], outline=colour, state="normal")
+        c.coords(slot["badge"], x0 + inset * 2 + px * 2, y0 + inset * 2 + py * 3)
+        c.itemconfig(slot["badge"], text=text, state="normal")
+        bx0, by0, bx1, by1 = c.bbox(slot["badge"])
+        c.coords(slot["badge_bg"], bx0 - px * 2, by0 - py * 2, bx1 + px * 2, by1 + py * 2)
+        c.itemconfig(slot["badge_bg"], fill=colour, state="normal")
+        c.tag_raise(slot["badge"])
+
     def show(self):
         # Step over files that will not decode, in whichever direction we were
         # going. Turn round at the start rather than getting stuck there.
         while self.i < len(self.items):
-            if self.i not in self.bad:
-                img = self._get(self.i)
-                if img is not None:
-                    break
-                self.bad.add(self.i)
+            if self._usable(self.i):
+                break
             if self.dir < 0 and self.i == 0:
                 self.dir = 1
             self.i += self.dir
@@ -267,39 +359,28 @@ class Reviewer:
             return self.finish()
 
         self.want.put(self.i)
-        self.photo = ImageTk.PhotoImage(img)
-        self.canvas.itemconfig(self.img_id, image=self.photo)
+        self._hide_stamp()
         self.canvas.itemconfig(self.notice, text="")
-        self._draw_badge(img.width, img.height)
+        self._draw_slot("main", self.i)
+        self._draw_slot("prev", self._neighbour(self.i, -1))
+        self._draw_slot("next", self._neighbour(self.i, 1))
+        for k in list(self.small):
+            if abs(k - self.i) > 3:
+                del self.small[k]
 
+        self._draw_status()
         rec = self.items[self.i]
-        n = len(self.items)
-        self.canvas.itemconfig(self.status, text=(
-            f"{self.i + 1:,} / {n:,}     {self._tally()}"
-            f"     |     {short_cat(rec.get('cat', ''))}"
-            f"     |     ↑ approve   ↓ reject   ← →  move   End  next undecided   Esc  quit"
-        ))
         title = rec.get("title", "") or "Untitled"
         artist = rec.get("artist", "")
         self.canvas.itemconfig(self.title_txt, text=f"{title}{'  —  ' + artist if artist else ''}"[:180])
 
-    def _draw_badge(self, w, h):
-        decision = self.latest.get(self.items[self.i]["url"])
-        if decision not in BADGES:
-            for item in (self.frame, self.badge_bg, self.badge):
-                self.canvas.itemconfig(item, state="hidden")
-            return
-        text, colour = BADGES[decision]
-        cx, cy = self.sw // 2, (self.sh - FOOTER) // 2
-        x0, y0 = cx - w // 2, cy - h // 2
-        self.canvas.coords(self.frame, x0 + 3, y0 + 3, x0 + w - 3, y0 + h - 3)
-        self.canvas.itemconfig(self.frame, outline=colour, state="normal")
-        self.canvas.coords(self.badge, x0 + 28, y0 + 22)
-        self.canvas.itemconfig(self.badge, text=text, state="normal")
-        bx0, by0, bx1, by1 = self.canvas.bbox(self.badge)
-        self.canvas.coords(self.badge_bg, bx0 - 14, by0 - 6, bx1 + 14, by1 + 6)
-        self.canvas.itemconfig(self.badge_bg, fill=colour, state="normal")
-        self.canvas.tag_raise(self.badge)
+    def _draw_status(self):
+        rec = self.items[self.i]
+        self.canvas.itemconfig(self.status, text=(
+            f"{self.i + 1:,} / {len(self.items):,}     {self._tally()}"
+            f"     |     {short_cat(rec.get('cat', ''))}"
+            f"     |     ↑ approve   ↓ reject   ← →  move   End  next undecided   Esc  quit"
+        ))
 
     def _tally(self):
         keep = reject = 0
@@ -310,14 +391,39 @@ class Reviewer:
         left = len(self.items) - keep - reject
         return f"approved {keep:,}   rejected {reject:,}   undecided {left:,}"
 
+    # ── the verdict stamp ────────────────────────────────────────────────
+    def _show_stamp(self, decision):
+        text, colour = BADGES[decision]
+        c = self.canvas
+        c.itemconfig(self.stamp, text=text, state="normal")
+        x0, y0, x1, y1 = c.bbox(self.stamp)
+        c.coords(self.stamp_bg, x0 - 36, y0 - 14, x1 + 36, y1 + 14)
+        c.itemconfig(self.stamp_bg, fill=colour, state="normal")
+        c.tag_raise(self.stamp_bg)
+        c.tag_raise(self.stamp)
+
+    def _hide_stamp(self):
+        self.canvas.itemconfig(self.stamp, state="hidden")
+        self.canvas.itemconfig(self.stamp_bg, state="hidden")
+
+    def _finish_stamp(self):
+        """Ends a stamp early and moves on, as if its timer had just fired."""
+        if self.pending is not None:
+            self.root.after_cancel(self.pending)
+            self._advance()
+
+    def _advance(self):
+        self.pending = None
+        self.go(self.i + 1)
+
     # ── decisions ────────────────────────────────────────────────────────
     def decide(self, what):
         if self.i >= len(self.items):
             return
         rec = self.items[self.i]
         if self.latest.get(rec["url"]) != what:
-            # Appended before the next image is shown, not batched at the end:
-            # a session that ends by closing the window must not lose its work.
+            # Written before the stamp shows, not when it ends: a session that
+            # ends by closing the window must not lose its work.
             with DECISIONS.open("a", encoding="utf-8") as f:
                 f.write(json.dumps({
                     "url": rec["url"],
@@ -328,12 +434,15 @@ class Reviewer:
                 }) + "\n")
             self.latest[rec["url"]] = what
             place(rec["url"], what)
-        self.go(self.i + 1)
+        self._draw_slot("main", self.i)
+        self._draw_status()
+        self._show_stamp(what)
+        self.pending = self.root.after(FLASH_MS, self._advance)
 
     def finish(self):
-        for item in (self.frame, self.badge_bg, self.badge):
-            self.canvas.itemconfig(item, state="hidden")
-        self.canvas.itemconfig(self.img_id, image="")
+        for slot in self.slots.values():
+            self._hide_slot(slot)
+        self._hide_stamp()
         self.canvas.itemconfig(self.status, text=self._tally())
         self.canvas.itemconfig(self.title_txt, text="")
         left = sum(1 for r in self.items if r["url"] not in self.latest)
