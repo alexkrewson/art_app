@@ -43,6 +43,7 @@ python curate/review.py --triage     # undecided only, likely rejects first
 python curate/review.py --triage keep   # ...or likely keeps first
 python curate/grid.py --source nasa     # confirm confident rejects 40 at a time
 python curate/grid.py --source nasa --unsure   # the unsure band, each image marked with its own guess
+python curate/grid.py --source nasa --recheck keep   # look over your approvals again, most doubtful first
 ```
 
 `grid.py` is the fast way through the confident end. It shows a page of

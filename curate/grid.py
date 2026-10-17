@@ -5,6 +5,7 @@
     python curate/grid.py --source nasa --keep   # likely keeps instead
     python curate/grid.py --source nasa --below 50   # into the unsure band, up to 50% keep
     python curate/grid.py --source nasa --unsure     # the unsure band, each image its own guess
+    python curate/grid.py --source nasa --recheck keep   # look over your approvals again
 
 Every image on the page starts marked with the model's guess. Look over the
 page, then:
@@ -42,11 +43,14 @@ MARK = {"reject": "#c0392b", "keep": "#2e9e4f"}
 
 
 class Grid:
-    def __init__(self, root, items, scores, verdict):
+    def __init__(self, root, items, scores, verdict, current=None):
         self.root = root
         self.items = items          # in the order pages are cut from
         self.scores = scores
         self.verdict = verdict      # "reject", "keep", or "mixed": each image its own guess
+        # --recheck: url -> decision already recorded. Images start marked with
+        # it, a click flips it, and Enter records only the ones that changed.
+        self.current = current or {}
         self.page = 0
         self.marks = {}             # index on page -> what Enter records for it; None = spared
         self.done = 0
@@ -142,6 +146,8 @@ class Grid:
         return {i for i, m in self.marks.items() if m}
 
     def _guess(self, i):
+        if self.recs[i]["url"] in self.current:
+            return self.current[self.recs[i]["url"]]
         if self.verdict != "mixed":
             return self.verdict
         return "keep" if self.scores[self.recs[i]["url"]] >= 0.5 else "reject"
@@ -157,7 +163,8 @@ class Grid:
         keep = sum(m == "keep" for m in self.marks.values())
         reject = sum(m == "reject" for m in self.marks.values())
         spared = len(self.recs) - keep - reject
-        click = ("click  cycle approve / reject / spare" if self.verdict == "mixed"
+        click = ("click  flip approve / reject" if self.current else
+                 "click  cycle approve / reject / spare" if self.verdict == "mixed"
                  else "click  spare / re-mark")
         self.canvas.itemconfig(self.status, text=(
             f"page {self.page + 1} / {pages}     approve {keep}   reject {reject}   spare {spared}"
@@ -173,7 +180,8 @@ class Grid:
             return
         guess = self._guess(i)
         other = {"keep": "reject", "reject": "keep"}[guess]
-        order = [guess, other, None] if self.verdict == "mixed" else [guess, None]
+        order = ([guess, other] if self.current else
+                 [guess, other, None] if self.verdict == "mixed" else [guess, None])
         self.marks[i] = order[(order.index(self.marks.get(i)) + 1) % len(order)]
         self._paint(i)
         self._draw_status()
@@ -202,8 +210,11 @@ class Grid:
     def confirm(self):
         if self.big is not None:
             return
+        # Unchanged rechecks are not rewritten: the decision is already there.
+        record = [i for i in sorted(self.marked)
+                  if self.marks[i] != self.current.get(self.recs[i]["url"])]
         with R.DECISIONS.open("a", encoding="utf-8") as f:
-            for i in sorted(self.marked):
+            for i in record:
                 rec = self.recs[i]
                 f.write(json.dumps({
                     "url": rec["url"],
@@ -213,9 +224,9 @@ class Grid:
                     "at": int(time.time()),
                     "via": "grid",
                 }) + "\n")
-        for i in self.marked:
+        for i in record:
             R.place(self.recs[i]["url"], self.marks[i])
-        self.done += len(self.marked)
+        self.done += len(record)
         self.page += 1
         self.show()
 
@@ -250,6 +261,9 @@ def main():
     ap.add_argument("--unsure", action="store_true",
                     help="the unsure band instead, each image pre-marked with its own "
                          "guess: approve at 50%% keep or more, otherwise reject")
+    ap.add_argument("--recheck", choices=("keep", "reject"),
+                    help="look over images already approved (keep) or rejected, the ones "
+                         "the model doubts most first; a click flips one")
     args = ap.parse_args()
 
     if not R.SCORES.exists():
@@ -269,21 +283,31 @@ def main():
     seen, items = set(), []
     for rec in R.load_jsonl(R.CANDIDATES):
         u = rec["url"]
-        if u in seen or u in latest or u not in scores:
+        if u in seen or u not in scores:
             continue
         seen.add(u)
         if args.source and rec.get("source") != args.source:
             continue
         s = scores[u]
-        wanted = (lo <= s <= hi if args.unsure else s > hi if args.keep else s < lo)
+        if args.recheck:
+            wanted = latest.get(u) == args.recheck
+        else:
+            wanted = u not in latest and (lo <= s <= hi if args.unsure else
+                                          s > hi if args.keep else s < lo)
         if wanted and R.path_for(u).exists():
             items.append(rec)
     # Least likely to be kept first, except for a keep grid. An unsure grid
     # in that order turns from mostly red to mostly green as you page.
-    items.sort(key=lambda c: scores[c["url"]], reverse=args.keep and not args.unsure)
+    # A recheck shows the decisions the model doubts most first: approvals it
+    # scores lowest, rejections it scores highest.
+    items.sort(key=lambda c: scores[c["url"]],
+               reverse=(args.recheck == "reject") if args.recheck else
+                       (args.keep and not args.unsure))
 
-    verdict = "mixed" if args.unsure else "keep" if args.keep else "reject"
+    verdict = args.recheck or ("mixed" if args.unsure else "keep" if args.keep else "reject")
     what = {"mixed": "unsure images", "keep": "confident keeps", "reject": "confident rejects"}
+    if args.recheck:
+        what[verdict] = f"{'approved' if verdict == 'keep' else 'rejected'} images"
     print(f"{len(items):,} {what[verdict]} to confirm, {COLS * ROWS} to a page. "
           "Click = change, Enter = record page, Esc = quit.")
     if not items:
@@ -292,7 +316,7 @@ def main():
     root.title("SlowFrame — grid")
     root.configure(bg="black")
     root.attributes("-fullscreen", True)
-    Grid(root, items, scores, verdict)
+    Grid(root, items, scores, verdict, latest if args.recheck else None)
     root.mainloop()
 
 
