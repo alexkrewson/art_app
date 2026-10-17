@@ -47,12 +47,12 @@ class Grid:
     def __init__(self, root, items, scores, verdict, current=None):
         self.root = root
         self.items = items          # grouped by category, in the order pages are cut from
-        self.pages = self._paginate()
         self.scores = scores
         self.verdict = verdict      # "reject", "keep", or "mixed": each image its own guess
         # --recheck: url -> decision already recorded. Images start marked with
         # it, a click flips it, and Enter records only the ones that changed.
         self.current = current or {}
+        self.pages = self._paginate()   # needs scores, verdict and current, so after them
         self.page = 0
         self.marks = {}             # index on page -> what Enter records for it; None = spared
         self.done = 0
@@ -84,14 +84,27 @@ class Grid:
         return self.pages[page] if page < len(self.pages) else []
 
     def _paginate(self):
-        """Pages of up to COLS*ROWS that never straddle two categories: items
-        arrive grouped by category, and each category starts a fresh page."""
-        n, pages = COLS * ROWS, []
-        for k, rec in enumerate(self.items):
-            if not pages or len(pages[-1]) == n or rec.get("cat") != self.items[k - 1].get("cat"):
+        """Pages of up to COLS*ROWS that hold one category and one starting
+        verdict: a new category, or the guess flipping from reject to keep,
+        starts a fresh page. Mixed red and green on one page is much harder
+        to judge at a glance (Alex's call, 2026-10-17)."""
+        n, pages, last = COLS * ROWS, [], None
+        for rec in self.items:
+            key = (rec.get("cat"), self._initial(rec))
+            if not pages or len(pages[-1]) == n or key != last:
                 pages.append([])
             pages[-1].append(rec)
+            last = key
         return pages
+
+    def _initial(self, rec):
+        """What an image starts marked as: its recorded decision in a recheck,
+        otherwise the grid's verdict, or in a mixed grid its own guess."""
+        if rec["url"] in self.current:
+            return self.current[rec["url"]]
+        if self.verdict != "mixed":
+            return self.verdict
+        return "keep" if self.scores[rec["url"]] >= 0.5 else "reject"
 
     def _decode(self, recs):
         side = self.cell - 2 * GAP
@@ -157,11 +170,7 @@ class Grid:
         return {i for i, m in self.marks.items() if m}
 
     def _guess(self, i):
-        if self.recs[i]["url"] in self.current:
-            return self.current[self.recs[i]["url"]]
-        if self.verdict != "mixed":
-            return self.verdict
-        return "keep" if self.scores[self.recs[i]["url"]] >= 0.5 else "reject"
+        return self._initial(self.recs[i])
 
     def _paint(self, i):
         m = self.marks.get(i)
