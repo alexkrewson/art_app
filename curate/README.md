@@ -41,7 +41,15 @@ re-tick the categories.
 python curate/score.py --sheets      # embed new images, learn from decisions.jsonl, score the rest
 python curate/review.py --triage     # undecided only, likely rejects first
 python curate/review.py --triage keep   # ...or likely keeps first
+python curate/grid.py --source nasa     # confirm confident rejects 40 at a time
 ```
+
+`grid.py` is the fast way through the confident end. It shows a page of
+likely rejects (or likely keeps with `--keep`), all pre-marked. You click any
+that deserve a second look, which leaves them undecided for the reviewer, and
+press Enter to record the rest. Holding the right button shows an image large.
+It stops at the edge of the unsure band. Close the reviewer before using it:
+an open reviewer still has those images in its list as undecided.
 
 `score.py` runs every image through CLIP (a model that describes what is in a
 picture as 512 numbers) and fits a classifier to your decisions, so it learns
@@ -106,6 +114,7 @@ the comment in `src/sources/nasa.js`.
 | `review.py` | yes | the reviewer |
 | `apply.py` | yes | decisions → `public/approved.json` + `public/blocklist.json` |
 | `score.py` | yes | learns from decisions, scores the rest for `review.py --triage` |
+| `grid.py` | yes | confirms `score.py`'s confident guesses a page at a time |
 | `embeddings.npz`, `scores.json`, `sheets/` | no | `score.py`'s cache, guesses and contact sheets; all regenerable |
 | `decisions.jsonl` | **yes** | hours of human judgement, the one thing here that cannot be regenerated |
 | `candidates.jsonl`, `pool/`, `harvest-state.json`, `failed.jsonl` | no | regenerable, and `pool/` is a couple of GB |

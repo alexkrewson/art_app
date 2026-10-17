@@ -237,7 +237,7 @@ does not. Installing over adb sidesteps it entirely.
    through NASA in `python curate/review.py` on his own. When he has a good
    selection: ship it per "Shipping it" under Curation above. Then Openverse
    and Commons need the same pass before their categories download anything.
-   `python curate/score.py` then `review.py --triage` speeds this up; see
+   `python curate/score.py`, then `grid.py` and `review.py --triage`, speed this up; see
    "Triage" in `curate/README.md`, and retrain after each session.
 1. **Nobody has used the settings UI by hand** since it became tabs. Voting has
    never been used at all — not by Alex, not by me. The logic beneath it is

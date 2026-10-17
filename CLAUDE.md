@@ -24,7 +24,7 @@ imports the app's own `toRecord()` rather than reimplementing it.
 
 ```bash
 node curate/harvest.mjs · python curate/download.py
-python curate/score.py · python curate/review.py [--triage] · python curate/apply.py
+python curate/score.py · python curate/grid.py · python curate/review.py [--triage] · python curate/apply.py
 ```
 
 ## Commands
