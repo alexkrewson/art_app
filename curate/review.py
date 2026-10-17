@@ -20,8 +20,10 @@ ones you rejected by accident, and now you just go back and flip them.
 The previous and next images sit either side of the current one, smaller, with
 their badges, so a decision you just made stays visible on the left after you
 have moved past it. Pressing ↑ or ↓ also stamps the verdict large across the
-image for FLASH_MS before moving on. Any key pressed during the stamp finishes
-it at once, so it confirms what happened without setting the pace.
+image before moving on. Any key pressed during the stamp finishes it at once,
+so it confirms what happened without setting the pace. − and + shorten and
+lengthen the stamp while you work; the length is remembered in
+curate/review-prefs.json.
 
 Every decision is appended to curate/decisions.jsonl before the next image is
 shown, so closing the lid mid-session loses nothing. Changing your mind appends
@@ -58,11 +60,14 @@ CANDIDATES = HERE / "candidates.jsonl"
 DECISIONS = HERE / "decisions.jsonl"
 POOL = HERE / "pool"
 FOLDERS = {"keep": HERE / "approved", "reject": HERE / "rejected"}
+PREFS = HERE / "review-prefs.json"
 
 LOOKAHEAD = 6
 LOOKBEHIND = 2
 FOOTER = 60
-FLASH_MS = 500          # how long the verdict stamp shows before moving on
+FLASH_MS = 500          # default stamp length, until − / + change it
+FLASH_STEP = 50
+FLASH_RANGE = (0, 2000)
 MAIN_FRAC = 0.62        # share of the screen width the current image gets
 PREVIEW_H_FRAC = 0.55   # preview height as a share of the main image's
 SIDE_GAP = 20           # space around the previews
@@ -91,6 +96,20 @@ def load_jsonl(path):
             except json.JSONDecodeError:
                 pass
     return out
+
+
+def load_prefs():
+    try:
+        return json.loads(PREFS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def save_prefs(prefs):
+    try:
+        PREFS.write_text(json.dumps(prefs, indent=2) + "\n", encoding="utf-8")
+    except OSError:
+        pass    # a preference not saving is not worth interrupting a review over
 
 
 def latest_decisions():
@@ -167,6 +186,7 @@ class Reviewer:
         self.cache = {}              # index -> PIL.Image at main size, filled by the loader thread
         self.small = {}              # index -> PIL.Image at preview size, made on demand
         self.pending = None          # Tk `after` id while a verdict stamp is showing
+        self.flash_ms = int(load_prefs().get("flash_ms", FLASH_MS))
         self.want = queue.Queue()
         self.lock = threading.Lock()
 
@@ -216,6 +236,10 @@ class Reviewer:
             root.bind(key, lambda e, a=action: (self._finish_stamp(), a()))
         root.bind("<Escape>", lambda e: self.quit())
         root.bind("q", lambda e: self.quit())
+        for key in ("<minus>", "<KP_Subtract>"):
+            root.bind(key, lambda e: self.adjust_flash(-FLASH_STEP))
+        for key in ("<equal>", "<plus>", "<KP_Add>"):
+            root.bind(key, lambda e: self.adjust_flash(FLASH_STEP))
 
         self.show()
 
@@ -379,7 +403,8 @@ class Reviewer:
         self.canvas.itemconfig(self.status, text=(
             f"{self.i + 1:,} / {len(self.items):,}     {self._tally()}"
             f"     |     {short_cat(rec.get('cat', ''))}"
-            f"     |     ↑ approve   ↓ reject   ← →  move   End  next undecided   Esc  quit"
+            f"     |     ↑ approve   ↓ reject   ← →  move   End  next undecided"
+            f"   − +  stamp {self.flash_ms} ms   Esc  quit"
         ))
 
     def _tally(self):
@@ -437,7 +462,14 @@ class Reviewer:
         self._draw_slot("main", self.i)
         self._draw_status()
         self._show_stamp(what)
-        self.pending = self.root.after(FLASH_MS, self._advance)
+        self.pending = self.root.after(self.flash_ms, self._advance)
+
+    def adjust_flash(self, delta):
+        lo, hi = FLASH_RANGE
+        self.flash_ms = max(lo, min(hi, self.flash_ms + delta))
+        save_prefs({**load_prefs(), "flash_ms": self.flash_ms})
+        if self.i < len(self.items):
+            self._draw_status()
 
     def finish(self):
         for slot in self.slots.values():
