@@ -45,6 +45,7 @@ python curate/grid.py --source nasa     # confirm confident rejects 40 at a time
 python curate/grid.py --source nasa --unsure   # the unsure band, each image marked with its own guess
 python curate/grid.py --source nasa --recheck keep   # look over your approvals again, most doubtful first
 python curate/review.py --source openverse --sample   # a new source: all categories in turn, to train on
+python curate/review.py --source openverse --flash    # recheck approvals by flashing them; Space pauses
 ```
 
 `grid.py` is the fast way through the confident end. Hover over an image for a

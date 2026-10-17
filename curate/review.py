@@ -12,6 +12,7 @@
     python curate/review.py --undecided        # leave already-decided images out of the list
     python curate/review.py --triage           # undecided, likely rejects first (see score.py)
     python curate/review.py --source openverse --sample   # all categories in turn, for training
+    python curate/review.py --source openverse --flash    # recheck approvals, flashed one at a time
     python curate/review.py --triage keep      # undecided, likely keeps first
 
 The list holds decided images as well as undecided ones, so ← walks back into
@@ -70,6 +71,9 @@ SAMPLE_BLOCK = 25           # --sample: images from one category before moving t
 GUESS_BAND = (0.15, 0.85)   # fallback; scores.json carries the band it was checked with
 
 LOOKAHEAD = 6
+FLASH_LOOKAHEAD = 40        # --flash runs through images fast; decode further ahead
+FLASH_INTERVAL_MS = 300     # --flash default time per image, until − / + / [ / ] change it
+FLASH_INTERVAL_RANGE = (20, 5000)
 LOOKBEHIND = 2
 FOOTER = 60
 FLASH_MS = 500          # default stamp length, until − / + change it
@@ -184,7 +188,7 @@ def sync_mirror(latest):
 
 
 class Reviewer:
-    def __init__(self, items, latest, start, root, scores=None):
+    def __init__(self, items, latest, start, root, scores=None, flash=False):
         self.items = items
         self.latest = latest         # url -> "keep" | "reject", kept current as you go
         self.scores = scores or {}   # url -> score.py's chance you'd approve it; --triage only
@@ -196,6 +200,14 @@ class Reviewer:
         self.small = {}              # index -> PIL.Image at preview size, made on demand
         self.pending = None          # Tk `after` id while a verdict stamp is showing
         self.flash_ms = int(load_prefs().get("flash_ms", FLASH_MS))
+        # --flash: approved images advance on their own every interval_ms;
+        # Space pauses. Starts paused, so you are ready before it moves.
+        self.flash = flash
+        self.running = False
+        self.interval_ms = int(load_prefs().get("flash_interval_ms", FLASH_INTERVAL_MS))
+        self.tick_job = None
+        self.ahead = FLASH_LOOKAHEAD if flash else LOOKAHEAD
+        self.position_key = ""       # main() sets it to --source, the key a resume looks up
         self.want = queue.Queue()
         self.lock = threading.Lock()
 
@@ -251,10 +263,18 @@ class Reviewer:
             root.bind(key, lambda e, a=action: (self._finish_stamp(), a()))
         root.bind("<Escape>", lambda e: self.quit())
         root.bind("q", lambda e: self.quit())
-        for key in ("<minus>", "<KP_Subtract>"):
-            root.bind(key, lambda e: self.adjust_flash(-FLASH_STEP))
-        for key in ("<equal>", "<plus>", "<KP_Add>"):
-            root.bind(key, lambda e: self.adjust_flash(FLASH_STEP))
+        if flash:
+            # − / + move the speed 10 ms, [ / ] 1 ms; Space pauses.
+            for key, d in (("<minus>", -10), ("<KP_Subtract>", -10), ("<equal>", 10),
+                           ("<plus>", 10), ("<KP_Add>", 10),
+                           ("<bracketleft>", -1), ("<bracketright>", 1)):
+                root.bind(key, lambda e, d=d: self.adjust_interval(d))
+            root.bind("<space>", lambda e: self.toggle_run())
+        else:
+            for key in ("<minus>", "<KP_Subtract>"):
+                root.bind(key, lambda e: self.adjust_flash(-FLASH_STEP))
+            for key in ("<equal>", "<plus>", "<KP_Add>"):
+                root.bind(key, lambda e: self.adjust_flash(FLASH_STEP))
 
         self.show()
 
@@ -265,7 +285,7 @@ class Reviewer:
             idx = self.want.get()
             if idx is None:
                 return
-            ahead = range(idx, min(idx + LOOKAHEAD, len(self.items)))
+            ahead = range(idx, min(idx + self.ahead, len(self.items)))
             behind = range(idx - 1, max(idx - LOOKBEHIND, 0) - 1, -1)
             for j in [*ahead, *behind]:
                 if not self.want.empty():
@@ -279,12 +299,15 @@ class Reviewer:
                     # Keep only a window around where we are, rather than
                     # holding gigabytes of decoded bitmaps in memory.
                     for k in list(self.cache):
-                        if k < idx - LOOKBEHIND - 2 or k > idx + LOOKAHEAD + 1:
+                        if k < idx - LOOKBEHIND - 2 or k > idx + self.ahead + 1:
                             del self.cache[k]
 
     def _load(self, idx):
         try:
             img = Image.open(path_for(self.items[idx]["url"]))
+            # Let the JPEG decoder skip detail the screen cannot show: several
+            # times faster on big files, which --flash needs at short intervals.
+            img.draft("RGB", self.main_size)
             img.thumbnail(self.main_size, Image.LANCZOS)
             return img.convert("RGB")
         except Exception:  # noqa: BLE001 — a corrupt file is stepped over, not a crash
@@ -369,6 +392,8 @@ class Reviewer:
 
     def _draw_badge(self, slot, w, h, decision):
         c = self.canvas
+        if self.flash and decision == "keep":
+            decision = None          # every image here is approved; only a reject is news
         if decision not in BADGES:
             for item in ("frame", "badge_bg", "badge"):
                 c.itemconfig(slot[item], state="hidden")
@@ -419,6 +444,14 @@ class Reviewer:
 
     def _draw_status(self):
         rec = self.items[self.i]
+        if self.flash:
+            state = "▶ running" if self.running else "❚❚ paused — Space to run"
+            self.canvas.itemconfig(self.status, text=(
+                f"{self.i + 1:,} / {len(self.items):,}     {self._tally()}"
+                f"     |     {short_cat(rec.get('cat', ''))}     |     {state}"
+                f"   {self.interval_ms} ms per image  (− + 10 ms   [ ] 1 ms)"
+                f"     ↓ reject   ↑ approve   ← →  move   Esc  quit"))
+            return
         self.canvas.itemconfig(self.status, text=(
             f"{self.i + 1:,} / {len(self.items):,}     {self._tally()}"
             f"     |     {short_cat(rec.get('cat', ''))}"
@@ -491,7 +524,63 @@ class Reviewer:
         self._draw_slot("main", self.i)
         self._draw_status()
         self._show_stamp(what)
+        if self.flash and self.running:
+            return                   # the flash timer moves on; the next image clears the stamp
         self.pending = self.root.after(self.flash_ms, self._advance)
+
+    # ── --flash ──────────────────────────────────────────────────────────
+    def toggle_run(self):
+        self.running = not self.running
+        if self.tick_job is not None:
+            self.root.after_cancel(self.tick_job)
+            self.tick_job = None
+        if self.running:
+            self.tick_job = self.root.after(self.interval_ms, self._tick)
+        else:
+            self._save_position()
+        if self.i < len(self.items):
+            self._draw_status()
+
+    def _tick(self):
+        """Next image when it is decoded; a few ms' wait rather than a stall
+        on a JPEG decode if the loader has fallen behind."""
+        self.tick_job = None
+        if not self.running:
+            return
+        nxt = self._neighbour_ready(self.i)
+        if nxt == "wait":
+            self.tick_job = self.root.after(5, self._tick)
+            return
+        t0 = time.perf_counter()
+        self.go(self.i + 1)
+        if self.i >= len(self.items):
+            self.running = False
+            return
+        # Drawing an image takes tens of ms; count it inside the interval so
+        # interval_ms is the time from one image to the next, not that plus
+        # however long the draw took.
+        spent = int((time.perf_counter() - t0) * 1000)
+        self.tick_job = self.root.after(max(1, self.interval_ms - spent), self._tick)
+
+    def _neighbour_ready(self, idx):
+        with self.lock:
+            return "ok" if idx + 1 >= len(self.items) or idx + 1 in self.cache else "wait"
+
+    def adjust_interval(self, delta):
+        lo, hi = FLASH_INTERVAL_RANGE
+        self.interval_ms = max(lo, min(hi, self.interval_ms + delta))
+        save_prefs({**load_prefs(), "flash_interval_ms": self.interval_ms})
+        if self.i < len(self.items):
+            self._draw_status()
+
+    def _save_position(self):
+        """Where a --flash pass got to, per source, so the next one resumes."""
+        if not self.flash or self.i >= len(self.items):
+            return
+        rec = self.items[self.i]
+        prefs = load_prefs()
+        prefs.setdefault("flash_position", {})[self.position_key] = rec["url"]
+        save_prefs(prefs)
 
     def adjust_flash(self, delta):
         # Finer steps at the short end, where 10 ms is a noticeable difference:
@@ -519,6 +608,7 @@ class Reviewer:
             "← to go back.   Esc to close, then run  python curate/apply.py"))
 
     def quit(self):
+        self._save_position()
         self.want.put(None)
         self.root.destroy()
 
@@ -532,12 +622,17 @@ def main():
     ap.add_argument("--sample", action="store_true",
                     help="take turns between categories, shuffled within each, so any "
                          "stretch you review covers all of them: for teaching score.py a new source")
+    ap.add_argument("--flash", action="store_true",
+                    help="recheck approved images by flashing them one at a time, "
+                         "the ones the model doubts most first in each category")
     ap.add_argument("--triage", nargs="?", const="reject", choices=("reject", "keep"),
                     help="undecided images only, ordered by score.py's guess: likely "
                          "rejects first (the default) or likely keeps first")
     args = ap.parse_args()
 
     scores = {}
+    if args.flash and SCORES.exists():
+        scores = json.loads(SCORES.read_text(encoding="utf-8"))["scores"]
     if args.triage:
         if not SCORES.exists():
             print("no scores yet: run `python curate/score.py` first.")
@@ -559,7 +654,8 @@ def main():
         candidates.append(rec)
 
     items = [c for c in candidates
-             if (not args.undecided or c["url"] not in latest)
+             if (not args.flash or latest.get(c["url"]) == "keep")
+             and (not args.undecided or c["url"] not in latest)
              and (not args.source or c.get("source") == args.source)
              and (not args.cat or c.get("cat") == args.cat)
              and path_for(c["url"]).exists()]
@@ -577,6 +673,11 @@ def main():
         # Still grouped by category, score order within each.
         items.sort(key=lambda c: (c.get("source", ""), c.get("cat", ""),
                                   c["url"] not in scores, sign * scores.get(c["url"], 0)))
+    elif args.flash:
+        # Grouped by category; within one, the approvals the model doubts
+        # most come first, where a mistake is likeliest.
+        items.sort(key=lambda c: (c.get("source", ""), c.get("cat", ""),
+                                  scores.get(c["url"], 1)))
     elif args.sample:
         # Blocks of SAMPLE_BLOCK from each category in turn: any stretch you
         # review covers them all, without switching category every image.
@@ -600,6 +701,11 @@ def main():
         return
 
     start = next((j for j, c in enumerate(items) if c["url"] not in latest), len(items))
+    if args.flash:
+        # Everything here is decided, so resume where the last flash pass
+        # stopped rather than at the first undecided image.
+        saved = load_prefs().get("flash_position", {}).get(args.source or "", "")
+        start = next((j for j, c in enumerate(items) if c["url"] == saved), 0)
     undecided = sum(1 for c in items if c["url"] not in latest)
 
     # ASCII on purpose: a Windows console is cp1252 and printing the arrow
@@ -612,7 +718,8 @@ def main():
     root.configure(bg="black")
     root.attributes("-fullscreen", True)
     root.config(cursor="none")
-    Reviewer(items, latest, start, root, scores)
+    rv = Reviewer(items, latest, start, root, scores, flash=args.flash)
+    rv.position_key = args.source or ""
     root.mainloop()
 
 
