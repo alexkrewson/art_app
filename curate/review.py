@@ -11,6 +11,7 @@
     python curate/review.py --cat "openverse::wildlife~bird in flight~deer~big cat~whale"
     python curate/review.py --undecided        # leave already-decided images out of the list
     python curate/review.py --triage           # undecided, likely rejects first (see score.py)
+    python curate/review.py --source openverse --sample   # all categories in turn, for training
     python curate/review.py --triage keep      # undecided, likely keeps first
 
 The list holds decided images as well as undecided ones, so ← walks back into
@@ -49,6 +50,7 @@ import argparse
 import json
 import os
 import queue
+import random
 import shutil
 import threading
 import time
@@ -526,6 +528,9 @@ def main():
     ap.add_argument("--cat", help="only this category id")
     ap.add_argument("--undecided", action="store_true",
                     help="leave images already approved or rejected out of the list")
+    ap.add_argument("--sample", action="store_true",
+                    help="take turns between categories, shuffled within each, so any "
+                         "stretch you review covers all of them: for teaching score.py a new source")
     ap.add_argument("--triage", nargs="?", const="reject", choices=("reject", "keep"),
                     help="undecided images only, ordered by score.py's guess: likely "
                          "rejects first (the default) or likely keeps first")
@@ -569,6 +574,17 @@ def main():
         # downloaded, which score.py has not seen, go last.
         sign = 1 if args.triage == "reject" else -1
         items.sort(key=lambda c: (c["url"] not in scores, sign * scores.get(c["url"], 0)))
+    elif args.sample:
+        # Round-robin over categories. The shuffle is seeded so the order is
+        # the same every run and a session picks up where the last one ended.
+        rng = random.Random(0)
+        by_cat = {}
+        for c in items:
+            by_cat.setdefault(c.get("cat", ""), []).append(c)
+        for group in by_cat.values():
+            rng.shuffle(group)
+        items = [g[k] for k in range(max(map(len, by_cat.values())))
+                 for g in by_cat.values() if k < len(g)]
 
     if not items:
         missing = [c for c in candidates if not path_for(c["url"]).exists()]
