@@ -3,6 +3,7 @@
 
     python curate/grid.py --source nasa          # likely rejects, 40 to a page
     python curate/grid.py --source nasa --keep   # likely keeps instead
+    python curate/grid.py --source nasa --below 50   # into the unsure band, up to 50% keep
 
 Every image on the page starts marked with the model's guess. Look over the
 page, then:
@@ -219,6 +220,9 @@ def main():
     ap.add_argument("--source", help="only this source (openverse, wikimedia, nasa)")
     ap.add_argument("--keep", action="store_true",
                     help="confirm likely keeps instead of likely rejects")
+    ap.add_argument("--below", type=float, metavar="PCT",
+                    help="reach into the unsure band: show images scored under PCT%% keep "
+                         "(default: only confident ones). With --keep, over 100-PCT%%.")
     args = ap.parse_args()
 
     if not R.SCORES.exists():
@@ -227,6 +231,11 @@ def main():
     data = json.loads(R.SCORES.read_text(encoding="utf-8"))
     scores = data["scores"]
     lo, hi = R.GUESS_BAND = tuple(data.get("confident", R.GUESS_BAND))
+    if args.below is not None:
+        # Wider than score.py checked itself on, so the pages get mixed sooner:
+        # this is for when you have seen the unsure end and it is still rejects.
+        lo, hi = args.below / 100, 1 - args.below / 100
+        R.GUESS_BAND = (lo, hi)
 
     latest = R.latest_decisions()
     R.sync_mirror(latest)
