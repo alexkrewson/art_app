@@ -6,7 +6,7 @@
 // fantasy genre, so browsing real Commons categories is the closest thing.
 import { shuffle } from './base.js';
 
-const API = 'https://commons.wikimedia.org/w/api.php';
+export const API = 'https://commons.wikimedia.org/w/api.php';
 
 // Commons' `imageinfo.url` is the ORIGINAL file, and on this collection that is
 // not a reasonable thing to put on a phone: a sample of ten "Featured pictures
@@ -21,7 +21,7 @@ const API = 'https://commons.wikimedia.org/w/api.php';
 //
 // 1920 is chosen to still look right on a 1080p wall display with Ken Burns
 // zoomed in, while staying around half a megabyte.
-const THUMB_WIDTH = 1920;
+export const THUMB_WIDTH = 1920;
 
 // Commons' extmetadata values are raw wiki HTML (links, spans) — strip tags
 // for plain-text display in the metadata ribbon.
@@ -34,17 +34,17 @@ function stripHtml(html) {
 // CC0/public-domain only by their own APIs. Anything outside this allowlist
 // (or with no license at all) is excluded rather than risk redistributing
 // something without the terms it requires.
-function isPermissiveLicense(license) {
+export function isPermissiveLicense(license) {
   if (!license) return false;
   const l = license.trim().toLowerCase();
   return l === 'public domain' || l === 'cc0' || l.startsWith('cc by');
 }
 
-function getLicense(meta) {
+export function getLicense(meta) {
   return stripHtml(meta.LicenseShortName?.value);
 }
 
-function toRecord(page) {
+export function toRecord(page) {
   const info = page.imageinfo?.[0];
   const meta = info?.extmetadata || {};
   const title = stripHtml(meta.ObjectName?.value) || page.title.replace(/^File:/, '').replace(/\.[^.]+$/, '');
@@ -71,7 +71,10 @@ export const wikimediaSource = {
   id: 'wikimedia',
   label: 'Wikimedia Commons',
   needsApiKey: false,
-  description: 'Live search against Wikimedia Commons\' media collection.',
+  // Downloads come from curate/'s approved list, not live search — see
+  // approvedFor() in library.js. The jailbreak setting turns this off.
+  curated: true,
+  description: 'Hand-picked from Wikimedia Commons\' featured and quality images.',
 
   listFilters() {
     return [

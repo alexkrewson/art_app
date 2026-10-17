@@ -18,9 +18,9 @@
 // shipping a personal api.data.gov key for Smithsonian).
 import { shuffle } from './base.js';
 
-const API = 'https://api.openverse.org/v1/images/';
-const PAGE_SIZE = 20;   // anonymous cap — larger values 401
-const MAX_PAGE = 12;    // anonymous depth cap is 240 results = 12 * PAGE_SIZE
+export const API = 'https://api.openverse.org/v1/images/';
+export const PAGE_SIZE = 20;   // anonymous cap — larger values 401
+export const MAX_PAGE = 12;    // anonymous depth cap is 240 results = 12 * PAGE_SIZE
 
 // The legal gate, and the whole reason this source can exist at all.
 // `commercial` drops the NC (NonCommercial) licences, because a Play Store
@@ -29,7 +29,7 @@ const MAX_PAGE = 12;    // anonymous depth cap is 240 results = 12 * PAGE_SIZE
 // (NoDerivatives) licences, because Ken Burns pans and crops the image rather
 // than displaying it whole. What survives is CC0, Public Domain Mark, CC BY
 // and CC BY-SA — all of which we can display, with credit where it's due.
-const LICENSE_TYPE = 'commercial,modification';
+export const LICENSE_TYPE = 'commercial,modification';
 
 // CC0 and the Public Domain Mark carry no attribution requirement; everything
 // else that survives LICENSE_TYPE (CC BY, CC BY-SA) does. Same split as
@@ -47,7 +47,7 @@ function requiresCredit(license) {
   return id !== 'cc0' && id !== 'pdm';
 }
 
-function toRecord(r) {
+export function toRecord(r) {
   const license = licenseLabel(r.license, r.license_version);
   return {
     title: r.title || 'Untitled',
@@ -67,7 +67,10 @@ export const openverseSource = {
   id: 'openverse',
   label: 'Openverse',
   needsApiKey: false,
-  description: 'Openly-licensed photography aggregated from Flickr, iNaturalist, Wikimedia and museum collections.',
+  // Downloads come from curate/'s approved list, not live search — see
+  // approvedFor() in library.js. The jailbreak setting turns this off.
+  curated: true,
+  description: 'Hand-picked, openly-licensed photography from Flickr, iNaturalist, Wikimedia and museum collections.',
 
   listFilters() {
     return [

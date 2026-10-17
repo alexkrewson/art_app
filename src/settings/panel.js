@@ -137,6 +137,16 @@ function renderAdvancedSection(settings, lib) {
         screenshot it and turn it back off.</span></span>
       </label>
     </div>
+    <div class="field-group">
+      <label class="radio-row">
+        <input type="checkbox" name="unvetted" ${settings.unvetted ? 'checked' : ''}>
+        <span>Jailbreak: download unvetted images <span class="field-hint">— Openverse,
+        Wikimedia Commons and NASA normally download only hand-picked images.
+        This searches them live instead, so expect selfies, snapshots and the
+        odd thing you'd rather not have on the wall. Your risk. Images you've
+        thumbed down stay blocked, and it only affects downloads from now on.</span></span>
+      </label>
+    </div>
     <p>Density and sound options are planned — see
     <code>maintenance_todo.md</code>.</p>
   `;
@@ -240,7 +250,11 @@ function renderSourceBlock(source, settings, sourceFilters, lib, expanded) {
   }
 
   const cats = categoriesOf(source.id, source);
-  const otherFilters = filters.filter(f => f.type !== 'checkboxGroup');
+  // A curated source's search fields do nothing unless the jailbreak is on —
+  // its downloads come from the approved list — so they are not offered.
+  const otherFilters = source.curated && !settings.unvetted
+    ? []
+    : filters.filter(f => f.type !== 'checkboxGroup');
   const onCount = cats.filter(c => settings.categories?.[c.cat]).length;
   const saved = cats.reduce((n, c) => n + (lib?.byCat?.[c.cat] || 0), 0);
   const anyBusy = cats.some(c => lib?.busy?.[c.cat]);
@@ -547,6 +561,7 @@ export function createSettingsPanel(slideshow, {
       cat: c.cat,
       count: settings.categories?.[c.cat]?.count ?? DEFAULT_COUNT,
       filters: settings.sources[c.sourceId]?.filters || {},
+      unvetted: !!settings.unvetted,
     };
   }
 
@@ -870,6 +885,10 @@ Anything you've thumbed up is kept.`)) return;
       // downloads, which show "needs an API key in Sources" without one.
       if (key === 'apiKey') { refreshSourcesSection(); refreshDownloadsSection(); }
       rebuildPlaylist();
+    } else if (el.name === 'unvetted') {
+      settings.unvetted = el.checked;
+      // Shows or hides the live-search fields under the curated sources.
+      refreshSourcesSection();
     } else if (el.name === 'debugOverlay') {
       settings.debugOverlay = el.checked;
       onDebugOverlayChange(el.checked);

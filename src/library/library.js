@@ -16,6 +16,7 @@
 // leaves disk when its last category does.
 
 import { SOURCES } from '../sources/registry.js';
+import { shuffle } from '../sources/base.js';
 import { storeImage, deleteStored, isNative, usageBytes, freeBytes, clearAll } from '../cache/fileStore.js';
 
 const DB_NAME = 'slowframe-library';
@@ -123,6 +124,41 @@ const getAll = (db, store) => new Promise((resolve, reject) => {
 });
 
 // ── Blocklist ────────────────────────────────────────────────────────────
+//
+// Two blocklists, unioned. `BLOCKED` is what this device's own thumbs-down
+// built. `public/blocklist.json` is what Alex rejected on the PC with the
+// curate/ tools — reviewing a few thousand images at full size on a monitor is
+// a different job from catching the occasional bad one on a tablet, and its
+// result has to reach all three devices without being re-keyed on each.
+//
+// Bundled entries are read once per session and degrade to empty: a build
+// without the file, an offline web preview and a test environment with no
+// `fetch` must all behave exactly like a build with nothing rejected yet.
+let bundledPromise = null;
+
+/** Test seam — the cached fetch would otherwise leak between cases. */
+export function resetBundledBlocklist() {
+  bundledPromise = null;
+}
+
+async function bundledBlocked() {
+  if (!bundledPromise) {
+    bundledPromise = (async () => {
+      try {
+        // Relative, like localManifest.js' images.json — the Capacitor
+        // WebView serves the build root, so no BASE_URL juggling.
+        const res = await fetch('blocklist.json');
+        if (!res.ok) return new Set();
+        const data = await res.json();
+        return new Set(Array.isArray(data) ? data : data.blocked || []);
+      } catch {
+        return new Set();
+      }
+    })();
+  }
+  return bundledPromise;
+}
+
 export async function blockUrl(url) {
   const db = await openDB();
   await tx(db, BLOCKED, 'readwrite', s => s.put({ url, at: Date.now() }));
@@ -130,7 +166,101 @@ export async function blockUrl(url) {
 
 export async function blockedUrls() {
   const db = await openDB();
-  return new Set((await getAll(db, BLOCKED)).map(r => r.url));
+  const local = (await getAll(db, BLOCKED)).map(r => r.url);
+  return new Set([...local, ...(await bundledBlocked())]);
+}
+
+/**
+ * Deletes anything already downloaded that the bundled blocklist now rejects.
+ *
+ * Without this, curation would only ever affect *future* downloads and the
+ * images Alex actually complained about would sit on the tablet until the
+ * category was refreshed. Runs at boot, before the playlist is built, so a
+ * rejected image is gone on the launch after the install rather than the one
+ * after that.
+ *
+ * An upvote does not save an image here. Both signals are Alex's, but a
+ * rejection made while reviewing at full size on a monitor is the later and
+ * more deliberate of the two, and a downvote already deletes outright.
+ */
+export async function reconcileBundledBlocklist() {
+  const bundled = await bundledBlocked();
+  if (!bundled.size) return { deleted: 0 };
+  const db = await openDB();
+  const rows = await getAll(db, IMAGES);
+  let deleted = 0;
+  for (const row of rows) {
+    if (!bundled.has(row.url)) continue;
+    await deleteStored(row.path);
+    await tx(db, IMAGES, 'readwrite', s => s.delete(row.url));
+    deleted++;
+  }
+  return { deleted };
+}
+
+// ── Approved list ────────────────────────────────────────────────────────
+//
+// Openverse, Commons and NASA are aggregators: what they return is whatever
+// people uploaded. Since 2026-10-16 those sources (`curated: true` on the
+// adapter) download only what Alex approved in curate/, read from
+// `approved.json` — complete ImageRecords, so no search API is called at all
+// and the images still come straight from their original hosts.
+//
+// Two copies: the one bundled in the build, and the one deployed to GitHub
+// Pages. Whichever has the later `generated` wins, so approving more images
+// reaches every install on the next push, without a new APK. Either copy can
+// be missing (offline, a build from before curate/) and the other is used.
+//
+// The "jailbreak" setting (settings.unvetted) skips all of this and searches
+// live as before. The blocklist still applies there.
+export const APPROVED_REMOTE = 'https://alexkrewson.github.io/art_app/approved.json';
+const REMOTE_TIMEOUT_MS = 8000;
+
+let approvedPromise = null;
+
+/** Test seam, same reason as resetBundledBlocklist(). */
+export function resetApproved() {
+  approvedPromise = null;
+}
+
+async function fetchApproved(url, timeoutMs) {
+  try {
+    const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ctrl && timeoutMs ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+    try {
+      const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data && typeof data.sources === 'object' ? data : null;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  } catch {
+    return null;
+  }
+}
+
+async function approvedManifest() {
+  if (!approvedPromise) {
+    approvedPromise = (async () => {
+      const [bundled, remote] = await Promise.all([
+        fetchApproved('approved.json'),
+        fetchApproved(APPROVED_REMOTE, REMOTE_TIMEOUT_MS),
+      ]);
+      // ISO timestamps compare correctly as strings.
+      if (bundled && remote) return (remote.generated || '') > (bundled.generated || '') ? remote : bundled;
+      return remote || bundled || null;
+    })();
+  }
+  return approvedPromise;
+}
+
+/** The approved records for one category, or null if no list could be read. */
+export async function approvedFor(sourceId, subject) {
+  const manifest = await approvedManifest();
+  if (!manifest) return null;
+  const list = manifest.sources?.[sourceId]?.[subject ?? ''];
+  return Array.isArray(list) ? list : [];
 }
 
 // ── Reading ──────────────────────────────────────────────────────────────
@@ -244,23 +374,32 @@ export async function removeCategory(cat) {
  * download that half-succeeded is a useful outcome to report, not an error to
  * unwind — and the images already on disk stay there.
  */
-export async function downloadCategory({ sourceId, subjectKey, subject, cat, count, filters = {} }, onProgress = () => {}) {
+export async function downloadCategory({ sourceId, subjectKey, subject, cat, count, filters = {}, unvetted = false }, onProgress = () => {}) {
   const source = SOURCES[sourceId];
   if (!source) return { added: 0, requested: count, reason: 'unknown-source' };
 
-  const scoped = { ...filters };
-  if (subjectKey && subject) scoped[subjectKey] = [subject];
-
   let records;
-  try {
-    // Over-fetch: some records will already be held, blocked, or fail to
-    // download, and asking for exactly `count` reliably returns fewer.
-    records = await source.fetchBatch({ filters: scoped, count: Math.ceil(count * 1.4) });
-  } catch (err) {
-    console.warn(`[SlowFrame] fetch failed for ${cat}:`, err);
-    return { added: 0, requested: count, reason: 'fetch-failed' };
+  if (source.curated && !unvetted) {
+    // The whole approved list, shuffled: the loop below stops at `count`, and
+    // handing it everything means a top-up walks past what's already held
+    // instead of running dry on it.
+    const approved = await approvedFor(sourceId, subject);
+    if (approved === null) return { added: 0, requested: count, reason: 'approved-list-unavailable' };
+    if (!approved.length) return { added: 0, requested: count, exhausted: true, reason: 'none-approved' };
+    records = shuffle(approved);
+  } else {
+    const scoped = { ...filters };
+    if (subjectKey && subject) scoped[subjectKey] = [subject];
+    try {
+      // Over-fetch: some records will already be held, blocked, or fail to
+      // download, and asking for exactly `count` reliably returns fewer.
+      records = await source.fetchBatch({ filters: scoped, count: Math.ceil(count * 1.4) });
+    } catch (err) {
+      console.warn(`[SlowFrame] fetch failed for ${cat}:`, err);
+      return { added: 0, requested: count, reason: 'fetch-failed' };
+    }
+    if (!records.length) return { added: 0, requested: count, reason: 'no-results' };
   }
-  if (!records.length) return { added: 0, requested: count, reason: 'no-results' };
 
   const blocked = await blockedUrls();
   const db = await openDB();

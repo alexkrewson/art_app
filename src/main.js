@@ -304,6 +304,19 @@ async function main() {
   // download model landed because panel.js's rebuildPlaylist was updated and
   // this call site wasn't; caught by watching a tablet with 723 images play
   // Met artworks.
+  // Curation happens on the PC (see curate/) and ships as public/blocklist.json.
+  // Apply it to what is already downloaded before building the playlist, so an
+  // image rejected during review is gone this launch rather than surviving
+  // until its category next refreshes. Never allowed to block boot: a slideshow
+  // that starts with one unwanted image still in it beats one that never starts.
+  try {
+    const { reconcileBundledBlocklist } = await import('./library/library.js');
+    const purged = await reconcileBundledBlocklist();
+    if (purged.deleted) console.log(`[SlowFrame] blocklist removed ${purged.deleted} downloaded image(s)`);
+  } catch (err) {
+    console.warn('[SlowFrame] blocklist reconcile failed:', err);
+  }
+
   const playlist = await buildPlaylist(settings.sources, { categories: settings.categories || {} });
   slideshow.init(orderPlaylist(playlist, settings.order));
 }

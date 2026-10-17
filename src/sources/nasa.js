@@ -8,14 +8,14 @@
 // wikimedia.js's curated-category checkboxes for the other half of that).
 import { shuffle } from './base.js';
 
-const API = 'https://images-api.nasa.gov/search';
+export const API = 'https://images-api.nasa.gov/search';
 
-function bestImageUrl(links) {
+export function bestImageUrl(links) {
   const byRel = links?.find(l => l.href?.includes('~medium')) || links?.[0];
   return byRel?.href;
 }
 
-function toRecord(item, image) {
+export function toRecord(item, image) {
   const data = item.data[0];
   return {
     title: data.title || 'Untitled',
@@ -31,7 +31,10 @@ export const nasaSource = {
   id: 'nasa',
   label: 'NASA Image and Video Library',
   needsApiKey: false,
-  description: 'Live search against NASA\'s public image and video archive.',
+  // Downloads come from curate/'s approved list, not live search — see
+  // approvedFor() in library.js. The jailbreak setting turns this off.
+  curated: true,
+  description: 'Hand-picked from NASA\'s public image and video archive.',
 
   listFilters() {
     return [
@@ -42,19 +45,41 @@ export const nasaSource = {
         // a single tickable entry, which for a collection this varied meant
         // "all of NASA" collapsed to one generic search. Each was checked
         // against the live API and returns a full page of results.
+        //
+        // Rewritten 2026-08-23, for two reasons that turn out to be the same
+        // reason. Alex's complaint was that free-source categories serve
+        // "selfies and pictures of people", and NASA's worst offenders were
+        // the two broadest queries: `international space station` (64,983
+        // hits) and `apollo` (5,908) are overwhelmingly crew portraits and
+        // hardware, not the astrophotography the subject list is there for.
+        //
+        // The second reason is that breadth defeats curation entirely. Unlike
+        // Openverse (hard-capped at 240 results per query) and Commons (whose
+        // curated categories are all under 600 files), this adapter windows
+        // randomly across *every* hit — so a 10-subject list totalling 87,286
+        // hits can never be reviewed, only sampled. Narrowing brings the
+        // reachable universe to ~4,800, which curate/ can enumerate and Alex
+        // can vet once, permanently.
+        //
+        // Every count below was measured against the live API on 2026-08-23.
+        // Multi-word queries are conjunctive and narrow fast — "total solar
+        // eclipse corona" collapses to 9 hits and "ice giant uranus neptune"
+        // to 0 — so these are deliberately two or three words, no more.
         key: 'subjects', label: 'Curated subjects', type: 'checkboxGroup',
         options: [
-          { value: 'nebula', label: 'Nebulae' },
-          { value: 'galaxy', label: 'Galaxies' },
-          { value: 'hubble deep field', label: 'Deep field' },
-          { value: 'mars surface', label: 'Mars' },
-          { value: 'saturn jupiter', label: 'Outer planets' },
-          { value: 'earth from orbit', label: 'Earth from orbit' },
-          { value: 'aurora from space', label: 'Aurora from space' },
-          { value: 'solar eclipse', label: 'Sun & eclipses' },
-          { value: 'apollo', label: 'Apollo' },
-          { value: 'international space station', label: 'Space station' },
-        ],
+          { value: 'nebula', label: 'Nebulae' },                            //  316
+          { value: 'supernova remnant', label: 'Supernova remnants' },      //  426
+          { value: 'spiral galaxy', label: 'Galaxies' },                    //  240
+          { value: 'star cluster', label: 'Star clusters' },                //  182
+          { value: 'hubble deep field', label: 'Deep field' },              //   86
+          { value: 'mars terrain', label: 'Mars' },                         //  752
+          { value: 'moon craters', label: 'The Moon' },                     //  788
+          { value: 'saturn jupiter', label: 'Outer planets' },              //  221
+          { value: 'comet nucleus', label: 'Comets & asteroids' },          //  335
+          { value: 'solar eclipse', label: 'Sun & eclipses' },              //  613
+          { value: 'aurora from space', label: 'Aurora from space' },       //  415
+          { value: 'earth clouds from orbit', label: 'Earth from orbit' },  //  446
+        ],                                                                  // 4,820 total
       },
       { key: 'keyword', label: 'Keyword', type: 'text', placeholder: 'e.g. nebula, apollo, mars' },
     ];

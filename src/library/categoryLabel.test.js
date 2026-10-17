@@ -65,14 +65,14 @@ describe('describeCategories', () => {
   });
 
   it('joins two categories', () => {
-    expect(describeCategories(['nasa::nebula', 'nasa::galaxy']))
+    expect(describeCategories(['nasa::nebula', 'nasa::spiral%20galaxy']))
       .toBe('NASA, Nebulae · NASA, Galaxies');
   });
 
   it('caps the list rather than growing without bound', () => {
     // One image can be downloaded under many categories; the ribbon has to
     // stay one line.
-    const out = describeCategories(['nasa::nebula', 'nasa::galaxy', 'nasa::apollo', 'nasa::mars%20surface']);
+    const out = describeCategories(['nasa::nebula', 'nasa::spiral%20galaxy', 'nasa::moon%20craters', 'nasa::mars%20terrain']);
     expect(out).toBe('NASA, Nebulae · NASA, Galaxies +2');
   });
 

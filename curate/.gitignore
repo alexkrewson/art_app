@@ -1,0 +1,16 @@
+# Regenerable. candidates.jsonl is one `node harvest.mjs` away and pool/ is
+# several gigabytes of image files.
+pool/
+candidates.jsonl
+harvest-state.json
+failed.jsonl
+
+# Hard-link mirrors of decisions.jsonl, rebuilt by review.py on every start.
+approved/
+rejected/
+
+# decisions.jsonl is NOT ignored, deliberately. It is hours of human judgement
+# and the only thing here that cannot be regenerated.
+
+# Python bytecode from review.py importing download.py.
+__pycache__/

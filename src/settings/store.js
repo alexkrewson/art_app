@@ -56,6 +56,11 @@ export const DEFAULTS = {
   // harness of the advance cycle could not reproduce it either — so the next
   // step is measuring the real thing rather than guessing a third time.
   debugOverlay: false,
+  // The "jailbreak" switch (Alex, 2026-10-16). Openverse, Commons and NASA
+  // normally download only images approved in curate/; this searches them
+  // live instead, as they worked before. Off by default — the approved list is
+  // the point — and it only changes future downloads.
+  unvetted: false,
   // Ticked categories, keyed by the ids from library.js's catId(). Each is
   // { count } — how many images that category should keep on the device.
   // Replaces the old cacheEnabled/streaming model entirely: if it isn't in
