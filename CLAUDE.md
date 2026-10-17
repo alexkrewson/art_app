@@ -13,6 +13,20 @@ Vite + Capacitor (Android), plus Python build scripts at the repo root:
 
 No `.env` — the only env vars referenced are Vite built-ins (`BASE_URL`, `PROD`).
 
+## Curation
+
+`curate/` reviews the free sources by hand and produces `public/approved.json`
+(the allowlist Openverse, Commons and NASA download from) and
+`public/blocklist.json`. Status and how to ship it are in
+`maintenance_todo.md` under "Curation". Read
+`curate/README.md` before touching it — particularly the reason `harvest.mjs`
+imports the app's own `toRecord()` rather than reimplementing it.
+
+```bash
+node curate/harvest.mjs · python curate/download.py
+python curate/review.py · python curate/apply.py
+```
+
 ## Commands
 
 ```bash

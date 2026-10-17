@@ -8,7 +8,7 @@ survives a crash or restart. See original spec pasted into the conversation on
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (needs input from Alex)
 
 ---
-## Where things stand (updated 2026-08-13)
+## Where things stand (updated 2026-10-16)
 
 **Live site:** https://alexkrewson.github.io/art_app/ (auto-deploys on push to `main`)
 **Repo:** https://github.com/alexkrewson/art_app
@@ -18,6 +18,21 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 Alex tracks time spent on this project through the commit history, so each
 working session starts with a dated marker commit.
 
+- **2026-10-16** — curation, two parts. First the reviewer (`curate/review.py`)
+  was reworked to Alex's spec: ↑ approve, ↓ reject, ←/→ move without deciding,
+  and a badge plus coloured frame on any image already decided, so a mistake is
+  fixed by going back and pressing the other arrow (this replaced undo and
+  skip). Decisions are mirrored as hard links into `curate/approved/` and
+  `curate/rejected/` for browsing in Explorer. Then the app switched from
+  blocklist to **allowlist** for Openverse, Commons and NASA: they download only
+  what is in `public/approved.json`, plus a Settings → Advanced "jailbreak"
+  switch that restores live search at the user's risk. The Met and every other
+  source are untouched. **Paused here on purpose**: Alex is reviewing NASA
+  first and wants a good approved selection before any tablet or the web app
+  gets this. It is committed on the `curation-allowlist` branch, NOT `main`,
+  because a push to `main` deploys Pages and would put approved-only live with
+  only 176 NASA images and nothing for Openverse or Commons. At pause: 305
+  reviewed, 176 approved, 129 rejected, all NASA, of ~4,600 NASA candidates.
 - **2026-09-24** — Local Folder now works on Android. It never had: the
   source was gated on `showDirectoryPicker`, which Chrome on Android has never
   shipped, so the WebView reported `supported: false` and rendered the "Choose
@@ -30,6 +45,12 @@ working session starts with a dated marker commit.
   DocumentsUI, and Alex picked a folder successfully. Subfolder walking was
   added after that and has NOT been on a device — the tablet was unplugged by
   then, so only the flat listing is hardware-confirmed.
+- **2026-08-23** — bumped `N3XGBIPCHP` to v87 (library and settings kept via
+  `adb install -r`). Then built `curate/`, in response to Alex's complaint that
+  the free sources serve "selfies and pictures of people that aren't the vibes
+  I'm going for". PC-side review producing `public/blocklist.json`; see
+  `curate/README.md`. NASA's curated subjects were rewritten as part of it —
+  the old list totalled 87,286 hits and could never be reviewed, only sampled.
 - **2026-08-13** — start. On-device testing of the two remaining keyless
   sources, Met and AIC. Everything else keyless (Wikimedia, Openverse, NASA)
   is already verified on hardware; NPS, Flickr, Smithsonian, Europeana and
@@ -38,14 +59,15 @@ working session starts with a dated marker commit.
 
 ### The three tablets, and what is outstanding on each
 
-All three are on **versionCode 75** (`v75.87928f7`) as of 2026-08-10, with
-30s dwell, crossfade, bundled starter pack off, ribbon on and voting on.
-Identify by serial, not by model — two of them report model `Star8`.
+`N3XGBIPCHP` is on **versionCode 87** (`v87.5426bd8`) as of 2026-08-23; the
+other two are still on **versionCode 75** (`v75.87928f7`) from 2026-08-10. All
+three run 30s dwell, crossfade, bundled starter pack off, ribbon on and voting
+on. Identify by serial, not by model — two of them report model `Star8`.
 
 | Serial | Alex calls it | Library | Outstanding |
 | --- | --- | --- | --- |
 | `DJJYHHEU91` | the NASA tablet | 1698 images, 8 Openverse + 10 NASA | nothing |
-| `N3XGBIPCHP` | the Openverse tablet | 721 images, 8 Openverse | **top-up owed** |
+| `N3XGBIPCHP` | the Openverse tablet | 720 files, 167M, 8 Openverse | **top-up owed** — bumped to v87 on 2026-08-23, top-up still not run |
 | `CP80A142320800171` | CP80 | 620 images, 6 Wikimedia | nothing |
 
 **Standing instruction from Alex (2026-08-10): next time `N3XGBIPCHP` is
@@ -57,6 +79,51 @@ into narrower `~`-separated queries fixed it, but only for new downloads;
 existing libraries do not benefit retroactively. Re-downloading each category
 de-duplicates against what is held and keeps upvotes, so a top-up accumulates
 rather than churning.
+
+### Curation, and what the NASA retune broke (2026-08-23, model changed 2026-10-16)
+
+`curate/` reviews the free sources on a PC. Since 2026-10-16 `apply.py` emits
+two files. `public/approved.json` is the allowlist: complete ImageRecords
+grouped by source and subject, and the ONLY thing Openverse, Commons and NASA
+download from (`curated: true` on those adapters, `approvedFor()` in
+`library.js`). The app reads the bundled copy and the one deployed to Pages,
+keeping the later `generated`, so new approvals reach installs on a push without
+an APK. `public/blocklist.json` still exists: it guards the jailbreak path and
+`reconcileBundledBlocklist()` deletes rejected images already downloaded. Full
+workflow and the measured universe sizes are in `curate/README.md`.
+
+**Shipping it, when Alex says so** (not before — see the 2026-10-16 log entry):
+`python curate/apply.py`, merge `curation-allowlist` into `main` and push (Pages
+deploys), then build and install on the tablets. Each tablet only becomes
+approved-only after "Delete all downloaded images" and a re-tick; nothing purges
+unapproved images automatically. Until Openverse and Commons have been
+reviewed, their categories download nothing at all under the allowlist.
+
+Open questions left for that moment: whether the blocklist should also update
+from Pages (today it is read from the bundle only, so a rejection needs a new
+APK to reach a tablet), and whether a category with nothing approved should
+say so in Sources (today it silently shows nothing).
+
+Two things a future session needs to know:
+
+**`harvest.mjs` must keep importing the app's own `toRecord()`.** The blocklist
+is keyed on `record.image`. A harvester that computed URLs even slightly
+differently — a different `iiurlwidth`, a different NASA link preference —
+would produce rejections keyed on URLs the app never generates. Nothing would
+error; curation would simply stop working. That is why `openverse.js`,
+`wikimedia.js` and `nasa.js` now export their mappers and constants.
+
+**Retuning NASA's subjects stranded the old categories.** `catId()` is built
+from the subject *value*, so `nasa::apollo` and `nasa::international space
+station` no longer correspond to any checkbox. Images downloaded under them
+keep their files and keep playing (they are still in `settings.categories`) but
+cannot be managed from Sources. `DJJYHHEU91` is the affected tablet — 10 NASA
+categories, 1,698 images. The intended fix is the one wanted anyway after a
+first curation pass: delete all downloaded images on the device and re-tick,
+which comes back vetted because `clearLibrary()` deliberately spares the
+blocklist. Nothing automatic does this — a boot-time purge of unknown
+categories would silently delete images, which is not a thing to do without
+being asked.
 
 ### The app was substantially rebuilt on 2026-08-08/09. Read this before the phase list below, which describes the older design.
 
@@ -155,6 +222,10 @@ does not. Installing over adb sidesteps it entirely.
 
 ### Next up
 
+0. **Curation is paused, waiting on Alex's NASA review.** He is working
+   through NASA in `python curate/review.py` on his own. When he has a good
+   selection: ship it per "Shipping it" under Curation above. Then Openverse
+   and Commons need the same pass before their categories download anything.
 1. **Nobody has used the settings UI by hand** since it became tabs. Voting has
    never been used at all — not by Alex, not by me. The logic beneath it is
    tested; the buttons are not.
