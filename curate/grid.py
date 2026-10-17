@@ -199,6 +199,9 @@ class Grid:
         self.show()
 
     def finish(self):
+        # Nothing left for Enter to record: without this, Enter on the end
+        # screen wrote the last page a second time.
+        self.recs, self.marked = [], set()
         self.canvas.delete("cell")
         self.canvas.itemconfig(self.status, text=f"{self.done:,} recorded this session")
         lo, hi = R.GUESS_BAND
