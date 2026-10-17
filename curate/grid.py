@@ -4,12 +4,14 @@
     python curate/grid.py --source nasa          # likely rejects, 40 to a page
     python curate/grid.py --source nasa --keep   # likely keeps instead
     python curate/grid.py --source nasa --below 50   # into the unsure band, up to 50% keep
+    python curate/grid.py --source nasa --unsure     # the unsure band, each image its own guess
 
 Every image on the page starts marked with the model's guess. Look over the
 page, then:
 
     left click     spare an image: it stays undecided, for the reviewer
-                   (click again to mark it once more)
+                   (click again to mark it once more). In an --unsure grid a
+                   click cycles: its guess, the other verdict, spared, back.
     right button   hold to see that image large
     Enter / Space  record the marked ones and show the next page
     Esc / q        quit; the page on screen is NOT recorded
@@ -44,9 +46,9 @@ class Grid:
         self.root = root
         self.items = items          # in the order pages are cut from
         self.scores = scores
-        self.verdict = verdict      # what Enter records: "reject" or "keep"
+        self.verdict = verdict      # "reject", "keep", or "mixed": each image its own guess
         self.page = 0
-        self.marked = set()         # indices on this page that Enter will record
+        self.marks = {}             # index on page -> what Enter records for it; None = spared
         self.done = 0
         self.photos = {}            # index on page -> PhotoImage; Tk does not keep them
         self.big = None
@@ -107,7 +109,7 @@ class Grid:
         self.canvas.delete("cell")
         self.photos = {}
         self.recs = recs
-        self.marked = {i for i, img in enumerate(imgs) if img is not None}
+        self.marks = {i: self._guess(i) for i, img in enumerate(imgs) if img is not None}
         for i, img in enumerate(imgs):
             x, y = self._origin(i)
             c = self.cell
@@ -134,26 +136,45 @@ class Grid:
             return i
         return None
 
+    @property
+    def marked(self):
+        """Indices on this page that Enter will record."""
+        return {i for i, m in self.marks.items() if m}
+
+    def _guess(self, i):
+        if self.verdict != "mixed":
+            return self.verdict
+        return "keep" if self.scores[self.recs[i]["url"]] >= 0.5 else "reject"
+
     def _paint(self, i):
-        on = i in self.marked
-        self.canvas.itemconfig(f"frame{i}", outline=MARK[self.verdict] if on else "#444444",
-                               dash=() if on else (4, 4))
-        self.canvas.itemconfig(f"pct{i}", fill="white" if on else "#777777")
+        m = self.marks.get(i)
+        self.canvas.itemconfig(f"frame{i}", outline=MARK[m] if m else "#444444",
+                               dash=() if m else (4, 4))
+        self.canvas.itemconfig(f"pct{i}", fill="white" if m else "#777777")
 
     def _draw_status(self):
         pages = (len(self.items) + COLS * ROWS - 1) // (COLS * ROWS)
-        word = "reject" if self.verdict == "reject" else "approve"
+        keep = sum(m == "keep" for m in self.marks.values())
+        reject = sum(m == "reject" for m in self.marks.values())
+        spared = len(self.recs) - keep - reject
+        click = ("click  cycle approve / reject / spare" if self.verdict == "mixed"
+                 else "click  spare / re-mark")
         self.canvas.itemconfig(self.status, text=(
-            f"page {self.page + 1} / {pages}     {len(self.marked)} of {len(self.recs)} marked to {word}"
-            f"     {self.done:,} recorded this session     |     click  spare / re-mark"
-            f"   hold right button  enlarge   Enter  {word} marked + next page   Esc  quit"))
+            f"page {self.page + 1} / {pages}     approve {keep}   reject {reject}   spare {spared}"
+            f"     {self.done:,} recorded this session     |     {click}"
+            f"   hold right button  enlarge   Enter  record + next page   Esc  quit"))
 
     # ── mouse ────────────────────────────────────────────────────────────
     def toggle(self, e):
+        """Single-verdict grids flip between the verdict and spared. A mixed
+        grid cycles from the guess to the other verdict, to spared, and back."""
         i = self._at(e.x, e.y)
         if i is None or i not in self.photos:
             return
-        self.marked ^= {i}
+        guess = self._guess(i)
+        other = {"keep": "reject", "reject": "keep"}[guess]
+        order = [guess, other, None] if self.verdict == "mixed" else [guess, None]
+        self.marks[i] = order[(order.index(self.marks.get(i)) + 1) % len(order)]
         self._paint(i)
         self._draw_status()
 
@@ -186,14 +207,14 @@ class Grid:
                 rec = self.recs[i]
                 f.write(json.dumps({
                     "url": rec["url"],
-                    "decision": self.verdict,
+                    "decision": self.marks[i],
                     "source": rec.get("source", ""),
                     "cat": rec.get("cat", ""),
                     "at": int(time.time()),
                     "via": "grid",
                 }) + "\n")
         for i in self.marked:
-            R.place(self.recs[i]["url"], self.verdict)
+            R.place(self.recs[i]["url"], self.marks[i])
         self.done += len(self.marked)
         self.page += 1
         self.show()
@@ -201,7 +222,7 @@ class Grid:
     def finish(self):
         # Nothing left for Enter to record: without this, Enter on the end
         # screen wrote the last page a second time.
-        self.recs, self.marked = [], set()
+        self.recs, self.marks = [], {}
         self.canvas.delete("cell")
         self.canvas.itemconfig(self.status, text=f"{self.done:,} recorded this session")
         lo, hi = R.GUESS_BAND
@@ -226,6 +247,9 @@ def main():
     ap.add_argument("--below", type=float, metavar="PCT",
                     help="reach into the unsure band: show images scored under PCT%% keep "
                          "(default: only confident ones). With --keep, over 100-PCT%%.")
+    ap.add_argument("--unsure", action="store_true",
+                    help="the unsure band instead, each image pre-marked with its own "
+                         "guess: approve at 50%% keep or more, otherwise reject")
     args = ap.parse_args()
 
     if not R.SCORES.exists():
@@ -250,14 +274,18 @@ def main():
         seen.add(u)
         if args.source and rec.get("source") != args.source:
             continue
-        if (scores[u] > hi) if args.keep else (scores[u] < lo):
-            if R.path_for(u).exists():
-                items.append(rec)
-    items.sort(key=lambda c: scores[c["url"]], reverse=args.keep)
+        s = scores[u]
+        wanted = (lo <= s <= hi if args.unsure else s > hi if args.keep else s < lo)
+        if wanted and R.path_for(u).exists():
+            items.append(rec)
+    # Least likely to be kept first, except for a keep grid. An unsure grid
+    # in that order turns from mostly red to mostly green as you page.
+    items.sort(key=lambda c: scores[c["url"]], reverse=args.keep and not args.unsure)
 
-    verdict = "keep" if args.keep else "reject"
-    print(f"{len(items):,} confident {'keeps' if args.keep else 'rejects'} to confirm, "
-          f"{COLS * ROWS} to a page. Click = spare, Enter = record page, Esc = quit.")
+    verdict = "mixed" if args.unsure else "keep" if args.keep else "reject"
+    what = {"mixed": "unsure images", "keep": "confident keeps", "reject": "confident rejects"}
+    print(f"{len(items):,} {what[verdict]} to confirm, {COLS * ROWS} to a page. "
+          "Click = change, Enter = record page, Esc = quit.")
     if not items:
         return
     root = tk.Tk()
