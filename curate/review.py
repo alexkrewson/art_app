@@ -10,6 +10,8 @@
     python curate/review.py --source openverse # one source at a time
     python curate/review.py --cat "openverse::wildlife~bird in flight~deer~big cat~whale"
     python curate/review.py --undecided        # leave already-decided images out of the list
+    python curate/review.py --triage           # undecided, likely rejects first (see score.py)
+    python curate/review.py --triage keep      # undecided, likely keeps first
 
 The list holds decided images as well as undecided ones, so ← walks back into
 earlier sessions too. An image you have already decided shows a badge and a
@@ -61,6 +63,8 @@ DECISIONS = HERE / "decisions.jsonl"
 POOL = HERE / "pool"
 FOLDERS = {"keep": HERE / "approved", "reject": HERE / "rejected"}
 PREFS = HERE / "review-prefs.json"
+SCORES = HERE / "scores.json"
+GUESS_BAND = (0.15, 0.85)   # fallback; scores.json carries the band it was checked with
 
 LOOKAHEAD = 6
 LOOKBEHIND = 2
@@ -177,9 +181,10 @@ def sync_mirror(latest):
 
 
 class Reviewer:
-    def __init__(self, items, latest, start, root):
+    def __init__(self, items, latest, start, root, scores=None):
         self.items = items
         self.latest = latest         # url -> "keep" | "reject", kept current as you go
+        self.scores = scores or {}   # url -> score.py's chance you'd approve it; --triage only
         self.root = root
         self.i = start
         self.dir = 1                 # last direction of travel, for stepping over bad files
@@ -220,6 +225,12 @@ class Reviewer:
         self.notice = self.canvas.create_text(
             cx, cy, anchor="center", fill="#cccccc", justify="center",
             font=("Segoe UI", 16), text="")
+        # The model's guess, in the footer opposite the title: a hint to read,
+        # not a verdict, so it looks nothing like the badges. Not over the
+        # image, where a tall bright photo would swallow it.
+        self.guess = self.canvas.create_text(
+            self.sw - 24, self.sh - 20, anchor="e", fill="#8a8a8a",
+            font=("Segoe UI", 12), text="")
 
         threading.Thread(target=self._loader, daemon=True).start()
 
@@ -395,9 +406,13 @@ class Reviewer:
 
         self._draw_status()
         rec = self.items[self.i]
+        text, colour = self._guess(rec["url"])
+        self.canvas.itemconfig(self.guess, text=text, fill=colour)
         title = rec.get("title", "") or "Untitled"
         artist = rec.get("artist", "")
-        self.canvas.itemconfig(self.title_txt, text=f"{title}{'  —  ' + artist if artist else ''}"[:180])
+        # Shorter when a guess shares the line, so the two never overlap.
+        self.canvas.itemconfig(self.title_txt, text=f"{title}{'  —  ' + artist if artist else ''}"
+                               [:130 if text else 180])
 
     def _draw_status(self):
         rec = self.items[self.i]
@@ -407,6 +422,16 @@ class Reviewer:
             f"     |     ↑ approve   ↓ reject   ← →  move   End  next undecided"
             f"   − +  stamp {self.flash_ms} ms   Esc  quit"
         ))
+
+    def _guess(self, url):
+        """score.py's guess for this image as (text, colour); ("", …) without --triage."""
+        s = self.scores.get(url)
+        if s is None:
+            return "", "#8a8a8a"
+        lo, hi = GUESS_BAND
+        word, colour = (("likely reject", "#d98880") if s < lo else
+                        ("likely keep", "#7dcea0") if s > hi else ("unsure", "#8a8a8a"))
+        return f"model guess:  {word}  ({s:.0%} keep)", colour
 
     def _tally(self):
         keep = reject = 0
@@ -482,6 +507,7 @@ class Reviewer:
         self._hide_stamp()
         self.canvas.itemconfig(self.status, text=self._tally())
         self.canvas.itemconfig(self.title_txt, text="")
+        self.canvas.itemconfig(self.guess, text="")
         left = sum(1 for r in self.items if r["url"] not in self.latest)
         more = (f"{left:,} still undecided — End jumps to the first one.\n"
                 if left else "Everything here is decided.\n")
@@ -500,7 +526,21 @@ def main():
     ap.add_argument("--cat", help="only this category id")
     ap.add_argument("--undecided", action="store_true",
                     help="leave images already approved or rejected out of the list")
+    ap.add_argument("--triage", nargs="?", const="reject", choices=("reject", "keep"),
+                    help="undecided images only, ordered by score.py's guess: likely "
+                         "rejects first (the default) or likely keeps first")
     args = ap.parse_args()
+
+    scores = {}
+    if args.triage:
+        if not SCORES.exists():
+            print("no scores yet: run `python curate/score.py` first.")
+            return
+        data = json.loads(SCORES.read_text(encoding="utf-8"))
+        scores = data["scores"]
+        global GUESS_BAND
+        GUESS_BAND = tuple(data.get("confident", GUESS_BAND))
+        args.undecided = True
 
     latest = latest_decisions()
     sync_mirror(latest)
@@ -523,6 +563,12 @@ def main():
     # is stable, so the order is the same every run and ← always finds the
     # image you were just looking at.
     items.sort(key=lambda c: (c.get("source", ""), c.get("cat", "")))
+    if args.triage:
+        # Score order instead, so the obvious ones arrive in a run and go
+        # by at the speed of one key. Images scored before they were
+        # downloaded, which score.py has not seen, go last.
+        sign = 1 if args.triage == "reject" else -1
+        items.sort(key=lambda c: (c["url"] not in scores, sign * scores.get(c["url"], 0)))
 
     if not items:
         missing = [c for c in candidates if not path_for(c["url"]).exists()]
@@ -544,7 +590,7 @@ def main():
     root.configure(bg="black")
     root.attributes("-fullscreen", True)
     root.config(cursor="none")
-    Reviewer(items, latest, start, root)
+    Reviewer(items, latest, start, root, scores)
     root.mainloop()
 
 

@@ -8,7 +8,7 @@ survives a crash or restart. See original spec pasted into the conversation on
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (needs input from Alex)
 
 ---
-## Where things stand (updated 2026-10-16)
+## Where things stand (updated 2026-10-17)
 
 **Live site:** https://alexkrewson.github.io/art_app/ (auto-deploys on push to `main`)
 **Repo:** https://github.com/alexkrewson/art_app
@@ -18,6 +18,17 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 Alex tracks time spent on this project through the commit history, so each
 working session starts with a dated marker commit.
 
+- **2026-10-17** — model-assisted triage for the reviewer. Alex asked whether
+  AI could take the obvious rejects (NASA staff portraits, clean-room crews,
+  slides) off the manual pass. New `curate/score.py`: CLIP ViT-B-32 embeddings
+  for the whole pool (cached, ~13 min on CPU) plus a logistic regression fitted
+  to `decisions.jsonl`. Checked on held-out decisions (2,136, all NASA): AUC
+  0.975, with 98% agreement on its confident rejects and 97% on its confident
+  keeps, covering 80% of images. Its top rejects on the contact sheets are all
+  people. `review.py --triage` orders undecided images by that score and shows
+  the guess bottom right. It never writes decisions. Openverse and Commons
+  have no decisions yet, so their scores are untested. Still on the
+  `curation-allowlist` branch; nothing shipped.
 - **2026-10-16** — curation, two parts. First the reviewer (`curate/review.py`)
   was reworked to Alex's spec: ↑ approve, ↓ reject, ←/→ move without deciding,
   and a badge plus coloured frame on any image already decided, so a mistake is
@@ -226,6 +237,8 @@ does not. Installing over adb sidesteps it entirely.
    through NASA in `python curate/review.py` on his own. When he has a good
    selection: ship it per "Shipping it" under Curation above. Then Openverse
    and Commons need the same pass before their categories download anything.
+   `python curate/score.py` then `review.py --triage` speeds this up; see
+   "Triage" in `curate/README.md`, and retrain after each session.
 1. **Nobody has used the settings UI by hand** since it became tabs. Voting has
    never been used at all — not by Alex, not by me. The logic beneath it is
    tested; the buttons are not.

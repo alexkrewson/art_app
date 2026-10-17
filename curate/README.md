@@ -35,6 +35,40 @@ Images a device already holds are not purged for being unapproved. To make an
 existing library approved-only, delete all downloaded images on the device and
 re-tick the categories.
 
+## Triage: letting a model put the obvious ones together
+
+```
+python curate/score.py --sheets      # embed new images, learn from decisions.jsonl, score the rest
+python curate/review.py --triage     # undecided only, likely rejects first
+python curate/review.py --triage keep   # ...or likely keeps first
+```
+
+`score.py` runs every image through CLIP (a model that describes what is in a
+picture as 512 numbers) and fits a classifier to your decisions, so it learns
+what *you* reject — staff portraits, clean-room crews, slides — rather than a
+generic idea of a good photo. In triage mode the reviewer orders undecided
+images by its guess and shows the guess, tinted, bottom right. The obvious
+rejects then arrive in one long run that goes by at the speed of ↓.
+
+It never decides anything. Only the reviewer writes `decisions.jsonl`.
+
+Read the report it prints every time. It checks itself on decisions it was not
+trained on (5-fold cross-validation) and says how often its confident calls
+match yours. On 2026-10-17, trained on 2,136 NASA decisions: AUC 0.975; it was
+confident on 80% of them, and you agreed with 98% of its "likely reject" calls
+and 97% of its "likely keep" calls. The contact sheets in `curate/sheets/`
+show its most confident guesses, and where it disagreed with you most.
+
+Retrain after each session; it gets better with more decisions. A source with
+no decisions (Openverse and Commons, so far) gets scores, but they are
+untested guesses borrowed from what you thought of NASA. Review a few hundred
+of a source by hand before trusting triage on it.
+
+The first run downloads the model (~600 MB, once) and embeds at ~15 images/s
+on a laptop CPU, about 13 minutes for the whole pool. Later runs only embed
+what `download.py` has added. Needs `torch` (CPU build), `open_clip_torch` and
+`scikit-learn`; the install lines are in the docstring of `score.py`.
+
 ## Why enumeration is possible at all
 
 The reason this is a finite job rather than an endless one is that two of the
@@ -71,6 +105,8 @@ the comment in `src/sources/nasa.js`.
 | `download.py` | yes | fetches them to `pool/`, resumable |
 | `review.py` | yes | the reviewer |
 | `apply.py` | yes | decisions → `public/approved.json` + `public/blocklist.json` |
+| `score.py` | yes | learns from decisions, scores the rest for `review.py --triage` |
+| `embeddings.npz`, `scores.json`, `sheets/` | no | `score.py`'s cache, guesses and contact sheets; all regenerable |
 | `decisions.jsonl` | **yes** | hours of human judgement, the one thing here that cannot be regenerated |
 | `candidates.jsonl`, `pool/`, `harvest-state.json`, `failed.jsonl` | no | regenerable, and `pool/` is a couple of GB |
 | `approved/`, `rejected/` | no | hard links into `pool/` mirroring `decisions.jsonl`, for browsing in Explorer; rebuilt on every `review.py` start |

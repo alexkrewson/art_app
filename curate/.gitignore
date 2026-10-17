@@ -17,3 +17,10 @@ __pycache__/
 
 # Personal reviewer settings (stamp length), written by the - / + keys.
 review-prefs.json
+
+# score.py: CLIP embeddings (rebuilt from pool/), its guesses, and the
+# contact sheets it writes for eyeballing them.
+embeddings.npz
+embeddings.tmp.npz
+scores.json
+sheets/
