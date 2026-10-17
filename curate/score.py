@@ -56,6 +56,7 @@ BATCH = 32
 # A call counts as "confident" outside this band. The report shows how often
 # confident calls match your decisions; triage mode uses the same band.
 CONFIDENT = (0.15, 0.85)
+MIN_PER_CAT = 30        # below this, a category's agreement figure is noise
 
 
 def load_jsonl(path):
@@ -187,6 +188,30 @@ def report(labelled, latest, by_url, y, p, auc):
                   f"you agreed with {agree:5.1%}  ->  {int(n - agree * n):,} it got wrong")
     unsure = ((p >= lo) & (p <= hi)).sum()
     print(f"  {'unsure':13}  {unsure:5,} images ({unsure / len(y):4.0%})")
+    by_category(labelled, by_url, y, p)
+
+
+def by_category(labelled, by_url, y, p):
+    """One model serves every category, so check it per category: a category
+    with too few decisions shows up here as low agreement, and the fix is more
+    decisions there (review.py --cat), not a separate model."""
+    lo, hi = CONFIDENT
+    groups = {}
+    for k, u in enumerate(labelled):
+        groups.setdefault(by_url[u][0].get("cat", ""), []).append(k)
+    print(f"\n  per category        decided  approved  confident  agreed   (fewer than "
+          f"{MIN_PER_CAT} decided: not enough to judge)")
+    for cat in sorted(groups):
+        ks = np.array(groups[cat])
+        name = cat.split("::")[-1].split("~")[0]
+        src = cat.split("::")[0]
+        line = f"  {src[:9]:9} {name[:16]:16} {len(ks):5,}    {y[ks].mean():5.0%}"
+        if len(ks) >= MIN_PER_CAT:
+            sure = (p[ks] < lo) | (p[ks] > hi)
+            if sure.any():
+                agree = ((p[ks][sure] > hi) == y[ks][sure]).mean()
+                line += f"     {sure.mean():5.0%}    {agree:5.1%}"
+        print(line)
 
 
 def undecided_report(by_url, latest, scores):
