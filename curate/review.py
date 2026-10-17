@@ -67,6 +67,7 @@ LOOKBEHIND = 2
 FOOTER = 60
 FLASH_MS = 500          # default stamp length, until − / + change it
 FLASH_STEP = 50
+FLASH_FINE_STEP = 10    # used below FLASH_STEP
 FLASH_RANGE = (0, 2000)
 MAIN_FRAC = 0.62        # share of the screen width the current image gets
 PREVIEW_H_FRAC = 0.55   # preview height as a share of the main image's
@@ -465,8 +466,12 @@ class Reviewer:
         self.pending = self.root.after(self.flash_ms, self._advance)
 
     def adjust_flash(self, delta):
+        # Finer steps at the short end, where 10 ms is a noticeable difference:
+        # … 100, 50, 40, 30, 20, 10, 0 and back up the same way.
+        fine = self.flash_ms < FLASH_STEP or (delta < 0 and self.flash_ms == FLASH_STEP)
+        step = FLASH_FINE_STEP if fine else FLASH_STEP
         lo, hi = FLASH_RANGE
-        self.flash_ms = max(lo, min(hi, self.flash_ms + delta))
+        self.flash_ms = max(lo, min(hi, self.flash_ms + (step if delta > 0 else -step)))
         save_prefs({**load_prefs(), "flash_ms": self.flash_ms})
         if self.i < len(self.items):
             self._draw_status()
