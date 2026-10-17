@@ -47,7 +47,9 @@ python curate/grid.py --source nasa --recheck keep   # look over your approvals 
 python curate/review.py --source openverse --sample   # a new source: all categories in turn, to train on
 ```
 
-`grid.py` is the fast way through the confident end. It shows a page of
+`grid.py` is the fast way through the confident end. Hover over an image for a
+large preview, drag a rectangle to flip many at once, → / ← between pages
+(only moving forward records). It shows a page of
 likely rejects (or likely keeps with `--keep`), all pre-marked. You click any
 that deserve a second look, which leaves them undecided for the reviewer, and
 press Enter to record the rest. Holding the right button shows an image large.

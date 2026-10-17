@@ -13,8 +13,14 @@ page, then:
     left click     spare an image: it stays undecided, for the reviewer
                    (click again to mark it once more). In an --unsure grid a
                    click cycles: its guess, the other verdict, spared, back.
-    right button   hold to see that image large
-    Enter / Space  record the marked ones and show the next page
+    left drag      every image the rectangle touches goes the same way: off if
+                   the one you started on was marked, on otherwise
+    hover          a large preview on the other half of the screen
+    right button   hold to see that image full screen
+    → / Enter / Space   record this page and show the next one
+    ←              back to the previous page, as you left it. Nothing is
+                   recorded going back; what you change there is written when
+                   you move forward off it again, and only what changed
     Esc / q        quit; the page on screen is NOT recorded
 
 Only images the model is confident about are shown (outside the band score.py
@@ -41,25 +47,39 @@ COLS, ROWS = 8, 5
 FOOTER = 60
 GAP = 6
 MARK = {"reject": "#c0392b", "keep": "#2e9e4f"}
+DRAG_PX = 6         # a press that moves further than this is a drag, not a click
+HOVER_MS = 250      # rest the pointer this long on an image to preview it
 
 
 class Grid:
-    def __init__(self, root, items, scores, verdict, current=None):
+    def __init__(self, root, items, scores, verdict, current=None, recorded=None):
         self.root = root
         self.items = items          # grouped by category, in the order pages are cut from
         self.scores = scores
         self.verdict = verdict      # "reject", "keep", or "mixed": each image its own guess
         # --recheck: url -> decision already recorded. Images start marked with
-        # it, a click flips it, and Enter records only the ones that changed.
+        # it, and a click flips it rather than sparing it.
         self.current = current or {}
+        # url -> decision as decisions.jsonl stands, kept current as pages are
+        # left. Leaving a page writes only what differs from this, so going
+        # back and forth never writes the same decision twice.
+        self.recorded = dict(recorded if recorded is not None else self.current)
         self.pages = self._paginate()   # needs scores, verdict and current, so after them
         self.page = 0
-        self.marks = {}             # index on page -> what Enter records for it; None = spared
+        self.page_marks = {}        # page -> its marks when last left, for ← to bring back
+        self.recs = []
+        self.marks = {}             # index on page -> what leaving records for it; None = spared
         self.done = 0
         self.photos = {}            # index on page -> PhotoImage; Tk does not keep them
         self.big = None
         self.next_imgs = None       # the following page, decoded in the background
         self.loading = None
+        self.press = None           # (x, y) of a left press, until its release
+        self.dragging = False
+        self.hover_i = None
+        self.hover_job = None
+        self.hover_photo = None
+        self.preview_cache = {}     # url -> PIL image at preview size, a few at most
 
         sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
         self.sw, self.sh = sw, sh
@@ -70,18 +90,23 @@ class Grid:
         self.status = self.canvas.create_text(24, sh - 30, anchor="w", fill="#cccccc",
                                               font=("Segoe UI", 13), text="")
 
-        self.canvas.bind("<Button-1>", self.toggle)
+        self.canvas.bind("<ButtonPress-1>", self.on_press)
+        self.canvas.bind("<B1-Motion>", self.on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_release)
+        self.canvas.bind("<Motion>", self.on_motion)
+        self.canvas.bind("<Leave>", lambda e: self._unhover())
         self.canvas.bind("<ButtonPress-3>", self.enlarge)
         self.canvas.bind("<ButtonRelease-3>", self.shrink)
-        for key in ("<Return>", "<KP_Enter>", "<space>"):
-            root.bind(key, lambda e: self.confirm())
+        for key in ("<Return>", "<KP_Enter>", "<space>", "<Right>"):
+            root.bind(key, lambda e: self.go(1))
+        root.bind("<Left>", lambda e: self.go(-1))
         root.bind("<Escape>", lambda e: self.quit())
         root.bind("q", lambda e: self.quit())
         self.show()
 
     # ── pages ────────────────────────────────────────────────────────────
     def _slice(self, page):
-        return self.pages[page] if page < len(self.pages) else []
+        return self.pages[page] if 0 <= page < len(self.pages) else []
 
     def _paginate(self):
         """Pages of up to COLS*ROWS that hold one category and one starting
@@ -127,6 +152,7 @@ class Grid:
         self.loading.start()
 
     def show(self):
+        self._unhover()
         recs = self._slice(self.page)
         if not recs:
             return self.finish()
@@ -134,10 +160,12 @@ class Grid:
             self.loading.join()
         imgs = (self.next_imgs[1] if self.next_imgs and self.next_imgs[0] == self.page
                 else self._decode(recs))
-        self.canvas.delete("cell")
+        self.canvas.delete("cell", "end")
         self.photos = {}
         self.recs = recs
-        self.marks = {i: self._guess(i) for i, img in enumerate(imgs) if img is not None}
+        # A page you come back to shows what you left it as.
+        self.marks = dict(self.page_marks.get(self.page) or {
+            i: self._guess(i) for i, img in enumerate(imgs) if img is not None})
         for i, img in enumerate(imgs):
             x, y = self._origin(i)
             c = self.cell
@@ -166,11 +194,18 @@ class Grid:
 
     @property
     def marked(self):
-        """Indices on this page that Enter will record."""
+        """Indices on this page that leaving it will record."""
         return {i for i, m in self.marks.items() if m}
 
     def _guess(self, i):
         return self._initial(self.recs[i])
+
+    def _off(self, i):
+        """The state a drag takes a marked image to: spared, or in a recheck,
+        the other verdict."""
+        if self.current:
+            return {"keep": "reject", "reject": "keep"}[self._guess(i)]
+        return None
 
     def _paint(self, i):
         m = self.marks.get(i)
@@ -184,18 +219,62 @@ class Grid:
         keep = sum(m == "keep" for m in self.marks.values())
         reject = sum(m == "reject" for m in self.marks.values())
         spared = len(self.recs) - keep - reject
-        click = ("click  flip approve / reject" if self.current else
-                 "click  cycle approve / reject / spare" if self.verdict == "mixed"
-                 else "click  spare / re-mark")
         self.canvas.itemconfig(self.status, text=(
-            f"{cat}     page {self.page + 1} / {pages}     approve {keep}   reject {reject}   spare {spared}"
-            f"     {self.done:,} recorded this session     |     {click}"
-            f"   hold right button  enlarge   Enter  record + next page   Esc  quit"))
+            f"{cat}     page {self.page + 1} / {pages}     approve {keep}   reject {reject}"
+            f"   spare {spared}     {self.done:,} recorded     |     click / drag  change"
+            f"   hover  preview   hold right  full screen   →  record + next   ←  back   Esc  quit"))
 
     # ── mouse ────────────────────────────────────────────────────────────
+    def on_press(self, e):
+        self._unhover()
+        self.press, self.dragging = (e.x, e.y), False
+
+    def on_drag(self, e):
+        if self.press is None:
+            return
+        x0, y0 = self.press
+        if not self.dragging and max(abs(e.x - x0), abs(e.y - y0)) < DRAG_PX:
+            return
+        self.dragging = True
+        self.canvas.delete("lasso")
+        self.canvas.create_rectangle(x0, y0, e.x, e.y, outline="white", width=2,
+                                     dash=(6, 4), tags=("lasso",))
+
+    def on_release(self, e):
+        if self.press is None:
+            return
+        x0, y0 = self.press
+        self.press = None
+        self.canvas.delete("lasso")
+        if self.dragging:
+            self.drag_select(x0, y0, e.x, e.y)
+        else:
+            self.toggle(e)
+
+    def drag_select(self, x0, y0, x1, y1):
+        """Every image the rectangle touches goes the same way: off if the one
+        the drag started on was marked, on otherwise."""
+        lx, rx, ty, by = min(x0, x1), max(x0, x1), min(y0, y1), max(y0, y1)
+        c = self.cell
+        hit = []
+        for i in sorted(self.photos):
+            ox, oy = self._origin(i)
+            if ox < rx and ox + c > lx and oy < by and oy + c > ty:
+                hit.append(i)
+        if not hit:
+            return
+        ref = self._at(x0, y0)
+        ref = ref if ref in self.photos else hit[0]
+        turn_off = self.marks.get(ref) == self._guess(ref)
+        for i in hit:
+            self.marks[i] = self._off(i) if turn_off else self._guess(i)
+            self._paint(i)
+        self._draw_status()
+
     def toggle(self, e):
         """Single-verdict grids flip between the verdict and spared. A mixed
-        grid cycles from the guess to the other verdict, to spared, and back."""
+        grid cycles from the guess to the other verdict, to spared, and back.
+        A recheck flips between the two verdicts."""
         i = self._at(e.x, e.y)
         if i is None or i not in self.photos:
             return
@@ -207,7 +286,59 @@ class Grid:
         self._paint(i)
         self._draw_status()
 
+    # ── previews ─────────────────────────────────────────────────────────
+    def on_motion(self, e):
+        if self.press is not None or self.big is not None:
+            return
+        i = self._at(e.x, e.y)
+        i = i if i in self.photos else None
+        if i == self.hover_i:
+            return
+        self._unhover()
+        self.hover_i = i
+        if i is not None:
+            self.hover_job = self.root.after(HOVER_MS, lambda: self._hover(i))
+
+    def _hover(self, i):
+        """A large preview on the half of the screen away from the pointer,
+        so it never covers the image being pointed at."""
+        self.hover_job = None
+        if i != self.hover_i or i >= len(self.recs):
+            return
+        url = self.recs[i]["url"]
+        w, h = self.sw // 2 - 40, self.sh - FOOTER - 40
+        img = self.preview_cache.get(url)
+        if img is None:
+            try:
+                with Image.open(R.path_for(url)) as im:
+                    img = im.convert("RGB")
+                    img.thumbnail((w, h), Image.LANCZOS)
+            except Exception:  # noqa: BLE001
+                return
+            if len(self.preview_cache) > 8:
+                self.preview_cache.pop(next(iter(self.preview_cache)))
+            self.preview_cache[url] = img
+        ox, _ = self._origin(i)
+        cx = self.sw * 3 // 4 if ox + self.cell // 2 < self.sw // 2 else self.sw // 4
+        cy = (self.sh - FOOTER) // 2
+        self.hover_photo = ImageTk.PhotoImage(img)
+        m = self.marks.get(i)
+        self.canvas.create_rectangle(cx - img.width // 2 - 6, cy - img.height // 2 - 6,
+                                     cx + img.width // 2 + 6, cy + img.height // 2 + 6,
+                                     fill="black", outline=MARK[m] if m else "#444444",
+                                     width=4, tags=("hover",))
+        self.canvas.create_image(cx, cy, image=self.hover_photo, tags=("hover",))
+
+    def _unhover(self):
+        if self.hover_job is not None:
+            self.root.after_cancel(self.hover_job)
+            self.hover_job = None
+        self.hover_i = None
+        self.canvas.delete("hover")
+        self.hover_photo = None
+
     def enlarge(self, e):
+        self._unhover()
         i = self._at(e.x, e.y)
         if i is None or i not in self.photos:
             return
@@ -228,46 +359,68 @@ class Grid:
         self.big = None
 
     # ── recording ────────────────────────────────────────────────────────
-    def confirm(self):
-        if self.big is not None:
+    def go(self, step):
+        """Show the next or previous page. Only moving forward records: going
+        back to fix the page before must not commit a page you have only
+        glanced at. Going back keeps this page's marks for when you return."""
+        if self.big is not None or self.press is not None:
             return
-        # Unchanged rechecks are not rewritten: the decision is already there.
-        record = [i for i in sorted(self.marked)
-                  if self.marks[i] != self.current.get(self.recs[i]["url"])]
+        if self.recs:
+            if step > 0:
+                self._record_page()
+            else:
+                self.page_marks[self.page] = dict(self.marks)
+        self.page = max(0, min(self.page + step, len(self.pages)))
+        self.show()
+
+    def confirm(self):
+        self.go(1)
+
+    def _record_page(self):
+        """Writes each image whose mark differs from what is recorded. A spared
+        image that had a decision gets a "skip" line, which clears it."""
+        self.page_marks[self.page] = dict(self.marks)
+        changes = []
+        for i in sorted(self.photos):
+            url = self.recs[i]["url"]
+            new = self.marks.get(i)
+            if new != self.recorded.get(url):
+                changes.append((i, new or "skip"))
         with R.DECISIONS.open("a", encoding="utf-8") as f:
-            for i in record:
+            for i, decision in changes:
                 rec = self.recs[i]
                 f.write(json.dumps({
                     "url": rec["url"],
-                    "decision": self.marks[i],
+                    "decision": decision,
                     "source": rec.get("source", ""),
                     "cat": rec.get("cat", ""),
                     "at": int(time.time()),
                     "via": "grid",
                 }) + "\n")
-        for i in record:
-            R.place(self.recs[i]["url"], self.marks[i])
-        self.done += len(record)
-        self.page += 1
-        self.show()
+        for i, decision in changes:
+            url = self.recs[i]["url"]
+            R.place(url, decision)
+            if decision == "skip":
+                self.recorded.pop(url, None)
+            else:
+                self.recorded[url] = decision
+        self.done += len(changes)
 
     def finish(self):
-        # Nothing left for Enter to record: without this, Enter on the end
-        # screen wrote the last page a second time.
-        self.recs, self.marks = [], {}
-        self.canvas.delete("cell")
-        self.canvas.itemconfig(self.status, text=f"{self.done:,} recorded this session")
-        lo, hi = R.GUESS_BAND
+        self.recs, self.marks, self.photos = [], {}, {}
+        self.canvas.delete("cell", "end")
+        self.canvas.itemconfig(self.status, text=f"{self.done:,} recorded this session     "
+                                                 "←  back to the last page   Esc  quit")
         self.canvas.create_text(
             self.sw // 2, self.sh // 2, anchor="center", fill="#cccccc", justify="center",
-            font=("Segoe UI", 16), tags=("cell",), text=(
-                "No more confident guesses.\n\n"
-                f"What is left scored between {lo:.0%} and {hi:.0%}: review it one by one with\n"
-                "python curate/review.py --triage\n\n"
-                "Retrain first (python curate/score.py) — it learns from what you just did.\n"
-                "Esc to close."))
+            font=("Segoe UI", 16), tags=("end",), text=(
+                "That was the last page.\n\n"
+                "← goes back if you want another look.\n"
+                "Esc to close; I retrain on what you did."))
 
     def quit(self):
+        # The page on screen is left unrecorded, as before: Esc is the way out
+        # without committing to it.
         self.root.destroy()
 
 
@@ -339,7 +492,7 @@ def main():
     root.title("SlowFrame — grid")
     root.configure(bg="black")
     root.attributes("-fullscreen", True)
-    Grid(root, items, scores, verdict, latest if args.recheck else None)
+    Grid(root, items, scores, verdict, latest if args.recheck else None, latest)
     root.mainloop()
 
 
