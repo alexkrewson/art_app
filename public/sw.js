@@ -11,7 +11,7 @@
 //    can never read back out. A service worker can still hand that same
 //    opaque Response to the browser's own image loader, though — which is
 //    exactly what the cross-origin branch below does.
-const SHELL_CACHE = 'slowframe-shell-v2';
+const SHELL_CACHE = 'slowframe-shell-v3';
 const IMAGE_CACHE = 'slowframe-images'; // must match CACHE_NAME in src/cache/imageCache.js
 
 // Relative to this file's scope (the site root), so this works both at `/`
@@ -86,7 +86,12 @@ self.addEventListener('fetch', event => {
   // cache only when offline) for the shell HTML; the hashed JS/CSS/image
   // assets it references stay cache-first below, since a new deploy always
   // gives those a new filename rather than reusing one.
-  const isShellDocument = event.request.mode === 'navigate' || url.pathname.endsWith('/index.html');
+  //
+  // The JSON manifests are the same case: approved.json and blocklist.json
+  // change on every curation push under the same URL, and cache-first would
+  // pin each browser to whichever copy it fetched first (images.json too).
+  const isShellDocument = event.request.mode === 'navigate' || url.pathname.endsWith('/index.html')
+    || url.pathname.endsWith('.json');
   if (url.origin === self.location.origin && isShellDocument) {
     event.respondWith(
       fetch(event.request).then(res => {
