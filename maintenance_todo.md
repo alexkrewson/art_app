@@ -27,8 +27,16 @@ working session starts with a dated marker commit.
   keeps, covering 80% of images. Its top rejects on the contact sheets are all
   people. `review.py --triage` orders undecided images by that score and shows
   the guess bottom right. It never writes decisions. Openverse and Commons
-  have no decisions yet, so their scores are untested. Still on the
-  `curation-allowlist` branch; nothing shipped.
+  have no decisions yet, so their scores are untested. Later the same day
+  `grid.py` (bulk-confirm pages, one category and one verdict per page, 20 to
+  a page) and `review.py --flash` (approvals flashed at a tunable speed) took
+  all three sources to done: 8,440 approved, 5,025 rejected, 3 never
+  downloaded. Flash rechecks caught 229 Openverse and 52 Commons approvals
+  the grids had let through. **Shipped**: `apply.py`, fast-forwarded `main`,
+  Pages live (approved.json `generated` 2026-10-18T01:52:49Z). `sw.js` now
+  fetches same-origin `.json` network-first (shell cache v3): cache-first would
+  have pinned each browser to its first approved.json and blocklist.json.
+  `cap:sync` done; the APK still has to be installed on the tablets.
 - **2026-10-16** — curation, two parts. First the reviewer (`curate/review.py`)
   was reworked to Alex's spec: ↑ approve, ↓ reject, ←/→ move without deciding,
   and a badge plus coloured frame on any image already decided, so a mistake is
@@ -233,12 +241,11 @@ does not. Installing over adb sidesteps it entirely.
 
 ### Next up
 
-0. **Curation is paused, waiting on Alex's NASA review.** He is working
-   through NASA in `python curate/review.py` on his own. When he has a good
-   selection: ship it per "Shipping it" under Curation above. Then Openverse
-   and Commons need the same pass before their categories download anything.
-   `python curate/score.py`, then `grid.py` and `review.py --triage`, speed this up; see
-   "Triage" in `curate/README.md`, and retrain after each session.
+0. **Install the curated APK on the tablets** (built and synced 2026-10-17;
+   no device was attached). Until then they read the new approved.json from
+   Pages but keep the old bundled blocklist, so images rejected in curate/
+   that they already downloaded are not purged. For an approved-only library
+   on any device: Settings → "Delete all downloaded images", then re-tick.
 1. **Nobody has used the settings UI by hand** since it became tabs. Voting has
    never been used at all — not by Alex, not by me. The logic beneath it is
    tested; the buttons are not.
