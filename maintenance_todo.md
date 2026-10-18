@@ -232,7 +232,7 @@ serial collision.
 | Device | Content | Settings |
 |---|---|---|
 | CP80 (Android 14) | all 6 Wikimedia Commons categories | 5s slides, 2000ms crossfade |
-| Star8 (Android 12) | Openverse (725) + NASA (976), bundled set off | 10s slides, random transitions |
+| Star8 N3XGBIPCHP (Android 12) | Openverse, curated: all 4,563 approved (2026-10-17) + 1 thumbed-up keeper | 30s slides, crossfade |
 
 Sideloading on the Star8 needed Play Protect's install verifier disabled
 (`settings put global package_verifier_user_consent -1`) — its APK Analysis scan
@@ -241,8 +241,8 @@ does not. Installing over adb sidesteps it entirely.
 
 ### Next up
 
-0. **Install the curated APK on the tablets** (built and synced 2026-10-17;
-   no device was attached). Until then a tablet runs whatever APK it has: one
+0. **Install the curated APK on the CP80** (the Star8 is done: curated APK,
+   every approved Openverse image, pre-curation images deleted). Until then a tablet runs whatever APK it has: one
    built from `main` before today has no allowlist code at all, and even one
    with it reads the blocklist from its own bundle, so rejected images it
    already downloaded are not purged. For an approved-only library
