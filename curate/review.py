@@ -575,11 +575,14 @@ class Reviewer:
 
     def _save_position(self):
         """Where a --flash pass got to, per source, so the next one resumes."""
-        if not self.flash or self.i >= len(self.items):
+        if not self.flash:
             return
-        rec = self.items[self.i]
         prefs = load_prefs()
-        prefs.setdefault("flash_position", {})[self.position_key] = rec["url"]
+        where = prefs.setdefault("flash_position", {})
+        if self.i >= len(self.items):
+            where.pop(self.position_key, None)   # finished: next pass starts over
+        else:
+            where[self.position_key] = self.items[self.i]["url"]
         save_prefs(prefs)
 
     def adjust_flash(self, delta):
