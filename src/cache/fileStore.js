@@ -65,8 +65,15 @@ async function ensureFolder() {
 // the project rather than embedding a personal email in a public repo. Node
 // gets a 200 without it, which is why this only ever showed up on-device:
 // every AIC download silently stored nothing.
+//
+// StockSnap (an Openverse provider) is the same story with the plain
+// User-Agent: it 403s Android's default "Dalvik/2.1.0 ..." and serves anything
+// else. Measured 2026-10-17: 122 approved Openverse images failed on the Star8
+// for this alone.
+const PROJECT_UA = 'SlowFrame (https://github.com/alexkrewson/art_app)';
 const HOST_HEADERS = [
-  [/(^|\.)artic\.edu$/i, { 'AIC-User-Agent': 'SlowFrame (https://github.com/alexkrewson/art_app)' }],
+  [/(^|\.)artic\.edu$/i, { 'AIC-User-Agent': PROJECT_UA }],
+  [/(^|\.)stocksnap\.io$/i, { 'User-Agent': PROJECT_UA }],
 ];
 
 export function headersFor(url) {

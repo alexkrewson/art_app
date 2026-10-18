@@ -23,6 +23,11 @@ describe('headersFor', () => {
     expect(headersFor('https://artic.edu.evil.example/x.jpg')).toEqual({});
   });
 
+  it('gives StockSnap a User-Agent other than Dalvik, which it refuses', () => {
+    // Measured 2026-10-17: Dalvik/2.1.0 -> 403, anything else -> 200.
+    expect(headersFor('https://cdn.stocksnap.io/img-thumbs/960w/1X7TDFQBZO.jpg')['User-Agent']).toMatch(/SlowFrame/);
+  });
+
   it('sends nothing for hosts that need nothing', () => {
     expect(headersFor('https://images.metmuseum.org/CRDImages/dp/web-large/x.jpg')).toEqual({});
     expect(headersFor('https://upload.wikimedia.org/thumb/x.jpg')).toEqual({});
