@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { headersFor } from './fileStore.js';
+import { headersFor, withTimeout, TIMED_OUT } from './fileStore.js';
 
 // Measured on the CP80 on 2026-08-13: an AIC IIIF image URL returns 403 with
 // no headers, 403 with a generic or browser-like User-Agent, and 200 only with
@@ -41,5 +41,15 @@ describe('headersFor', () => {
   it('survives a malformed url instead of throwing mid-download', () => {
     expect(headersFor('not a url')).toEqual({});
     expect(headersFor('')).toEqual({});
+  });
+});
+
+describe('withTimeout', () => {
+  it('passes a settled result through', async () => {
+    expect(await withTimeout(Promise.resolve(7), 1000)).toBe(7);
+  });
+
+  it('gives up on a promise that never settles', async () => {
+    expect(await withTimeout(new Promise(() => {}), 10)).toBe(TIMED_OUT);
   });
 });

@@ -86,6 +86,21 @@ export function headersFor(url) {
 // without decoding the whole thing again.
 const decodedSize = b64 => Math.floor((b64.length * 3) / 4);
 
+// A download that never settles used to hold its whole category: the loop
+// awaits each image in turn, and the panel keeps the category busy (its
+// controls disabled) until the loop ends. Seen on the CP80 on 2026-10-17 with a
+// 101 MB animated GIF among the approved Commons images — the base64 bridge
+// never came back, and the images queued behind it never downloaded. The
+// native request may run on after this gives up; the loop no longer waits.
+export const DOWNLOAD_TIMEOUT_MS = 90_000;
+export const TIMED_OUT = Symbol('timed out');
+
+export function withTimeout(promise, ms) {
+  let timer;
+  const expiry = new Promise(resolve => { timer = setTimeout(() => resolve(TIMED_OUT), ms); });
+  return Promise.race([promise, expiry]).finally(() => clearTimeout(timer));
+}
+
 /**
  * Downloads one image and stores it.
  *
@@ -108,7 +123,11 @@ export async function storeImage(url) {
     //
     // responseType 'blob' hands back base64 on native, which is exactly the
     // format Filesystem.writeFile wants — no intermediate decode.
-    const res = await CapacitorHttp.get({ url, responseType: 'blob', headers: headersFor(url) });
+    const res = await withTimeout(
+      CapacitorHttp.get({ url, responseType: 'blob', headers: headersFor(url) }),
+      DOWNLOAD_TIMEOUT_MS,
+    );
+    if (res === TIMED_OUT) return { ok: false, reason: 'timeout', bytes: 0 };
     if (res.status < 200 || res.status >= 300) {
       return { ok: false, reason: `http-${res.status}`, bytes: 0 };
     }
