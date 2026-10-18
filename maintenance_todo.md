@@ -242,9 +242,10 @@ does not. Installing over adb sidesteps it entirely.
 ### Next up
 
 0. **Install the curated APK on the tablets** (built and synced 2026-10-17;
-   no device was attached). Until then they read the new approved.json from
-   Pages but keep the old bundled blocklist, so images rejected in curate/
-   that they already downloaded are not purged. For an approved-only library
+   no device was attached). Until then a tablet runs whatever APK it has: one
+   built from `main` before today has no allowlist code at all, and even one
+   with it reads the blocklist from its own bundle, so rejected images it
+   already downloaded are not purged. For an approved-only library
    on any device: Settings → "Delete all downloaded images", then re-tick.
 1. **Nobody has used the settings UI by hand** since it became tabs. Voting has
    never been used at all — not by Alex, not by me. The logic beneath it is
