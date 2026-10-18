@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Confirms score.py's confident guesses a page at a time instead of one by one.
 
-    python curate/grid.py --source nasa          # likely rejects, 40 to a page
+    python curate/grid.py --source nasa          # likely rejects, 20 to a page
     python curate/grid.py --source nasa --keep   # likely keeps instead
     python curate/grid.py --source nasa --below 50   # into the unsure band, up to 50% keep
     python curate/grid.py --source nasa --unsure     # the unsure band, each image its own guess
@@ -43,7 +43,8 @@ from PIL import Image, ImageTk
 
 import review as R
 
-COLS, ROWS = 8, 5
+LAYOUTS = {20: (5, 4), 40: (8, 5)}   # images per page -> columns, rows
+COLS, ROWS = LAYOUTS[20]
 FOOTER = 60
 GAP = 6
 MARK = {"reject": "#c0392b", "keep": "#2e9e4f"}
@@ -438,7 +439,11 @@ def main():
     ap.add_argument("--recheck", choices=("keep", "reject"),
                     help="look over images already approved (keep) or rejected, the ones "
                          "the model doubts most first; a click flips one")
+    ap.add_argument("--per-page", type=int, choices=sorted(LAYOUTS), default=20,
+                    help="images per page (default 20; 40 is denser)")
     args = ap.parse_args()
+    global COLS, ROWS
+    COLS, ROWS = LAYOUTS[args.per_page]
 
     if not R.SCORES.exists():
         print("no scores yet: run `python curate/score.py` first.")
