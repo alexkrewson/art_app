@@ -180,6 +180,11 @@ cycle. **Still not covered:** the settings-panel DOM itself. Every bug found on
 
 ### Driving a device directly (this is the good loop)
 
+**Commit before building an APK.** The on-screen stamp (ribbon and About) is
+`v<commit count>.<short sha>`, the same on web and APK, but a build from an
+uncommitted tree names the commit *before* its own change. The Drive upload
+marks such builds `-dirty`; do not put those on a tablet.
+
 A debug build exposes a WebView debugging socket. With a tablet plugged in:
 
 ```

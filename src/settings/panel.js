@@ -15,6 +15,12 @@ import {
   refreshCategory, stats as libraryStats, estimateBytes, formatBytes, clearLibrary,
 } from '../library/library.js';
 
+// The same stamp the ribbon shows (vite.config.js): commit count plus short
+// sha, identical in the APK and on the web when both come from one commit.
+// This used to be a hand-typed "0.1.0" that never changed. The guard is for
+// tests, where the Vite define is not always applied.
+const BUILD_STAMP = typeof __BUILD_STAMP__ === 'string' ? __BUILD_STAMP__ : 'v0.dev';
+
 // Per-category ceiling. 500 was plenty for live searches; curated categories
 // now hold up to ~830 approved images (Openverse night sky), and a category
 // you want whole should fit in the box.
@@ -389,7 +395,7 @@ const SECTIONS = [
       <p><strong>Gestures:</strong> tap to pause/resume, tap the gear to open
       settings, pinch or scroll to zoom while paused, swipe (or drag while
       paused) left/right for next/previous.</p>
-      <p><strong>Version:</strong> 0.1.0 &middot;
+      <p><strong>Version:</strong> ${BUILD_STAMP} &middot;
       <a href="https://github.com/alexkrewson/art_app" target="_blank" rel="noopener">github.com/alexkrewson/art_app</a></p>`,
   },
   {
