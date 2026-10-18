@@ -15,6 +15,11 @@ import {
   refreshCategory, stats as libraryStats, estimateBytes, formatBytes, clearLibrary,
 } from '../library/library.js';
 
+// Per-category ceiling. 500 was plenty for live searches; curated categories
+// now hold up to ~830 approved images (Openverse night sky), and a category
+// you want whole should fit in the box.
+const MAX_COUNT = 1000;
+
 const DISPLAY_MODES = [
   { id: 'kenburns', label: 'Ken Burns', hint: 'Slow pan & zoom' },
   { id: 'static', label: 'Static', hint: 'No motion, crossfade' },
@@ -287,7 +292,7 @@ function renderSourceBlock(source, settings, sourceFilters, lib, expanded) {
           <span>${c.label}${note ? ` <span class="field-hint">${note}</span>` : ''}</span>
         </label>
         <input type="number" class="field field-inline" name="catcount::${c.cat}"
-               min="10" max="500" step="10" value="${count}" ${busy ? 'disabled' : ''}
+               min="10" max="${MAX_COUNT}" step="10" value="${count}" ${busy ? 'disabled' : ''}
                aria-label="Images to keep for ${c.label}">
         <button type="button" class="btn-secondary btn-tiny" data-refresh="${c.cat}"
                 ${on && have && !busy ? '' : 'disabled'}
@@ -845,7 +850,7 @@ Anything you've thumbed up is kept.`)) return;
       return;
     } else if (el.name.startsWith('catcount::')) {
       const cat = el.name.slice(10);
-      const count = Math.max(10, Math.min(500, Number(el.value) || DEFAULT_COUNT));
+      const count = Math.max(10, Math.min(MAX_COUNT, Number(el.value) || DEFAULT_COUNT));
       settings.categories = settings.categories || {};
       settings.categories[cat] = { ...(settings.categories[cat] || {}), count };
       saveSettings(settings);
