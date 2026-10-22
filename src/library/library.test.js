@@ -337,6 +337,64 @@ describe('bundled blocklist', () => {
     expect(await lib.blockedUrls()).toEqual(new Set());
   });
 
+  describe('the Pages copy', () => {
+    // A rejection made after a tablet's APK was built reaches it through the
+    // copy deployed to Pages, the same way new approvals do. `null` means
+    // unreachable; `'hang'` means a request that never answers on its own.
+    const serveTwo = ({ bundled = null, remote = null }) => {
+      globalThis.fetch = vi.fn(async (url, opts) => {
+        const body = url === 'blocklist.json' ? bundled : url === lib.BLOCKLIST_REMOTE ? remote : null;
+        if (body === 'hang') {
+          return new Promise((_, reject) => opts?.signal?.addEventListener('abort', () => reject(new Error('aborted'))));
+        }
+        return body ? { ok: true, json: async () => body } : { ok: false, status: 404 };
+      });
+    };
+    const list = (generated, ...ids) => ({ version: 1, generated, blocked: ids.map(id => `https://x/${id}.jpg`) });
+
+    it('deletes an image rejected after the APK was built', async () => {
+      fetchBatch.mockResolvedValue(recs('a', 'b'));
+      await lib.downloadCategory({ ...LANDSCAPE, count: 2 });
+
+      lib.resetBundledBlocklist();
+      serveTwo({ bundled: list('2026-10-17T00:00:00Z'), remote: list('2026-10-22T00:00:00Z', 'a') });
+
+      expect(await lib.reconcileBundledBlocklist()).toEqual({ deleted: 1 });
+      expect((await lib.playlistFor(['openverse::landscape'])).map(p => p.url)).toEqual(['https://x/b.jpg']);
+    });
+
+    it('keeps the bundled copy when Pages is older', async () => {
+      // An un-rejection on the PC has to win too, so this is "newer wins",
+      // not a union of the two.
+      serveTwo({ bundled: list('2026-10-22T00:00:00Z', 'b'), remote: list('2026-10-17T00:00:00Z', 'a') });
+      expect(await lib.blockedUrls()).toEqual(new Set(['https://x/b.jpg']));
+    });
+
+    it('falls back to the bundled copy when Pages is unreachable', async () => {
+      serveTwo({ bundled: list('2026-10-17T00:00:00Z', 'a') });
+      expect(await lib.blockedUrls()).toEqual(new Set(['https://x/a.jpg']));
+    });
+
+    it('stops waiting for Pages after 3 s, so an offline tablet still boots', async () => {
+      fetchBatch.mockResolvedValue(recs('a', 'b'));
+      await lib.downloadCategory({ ...LANDSCAPE, count: 2 });
+      lib.resetBundledBlocklist();
+      serveTwo({ bundled: list('2026-10-17T00:00:00Z', 'a'), remote: 'hang' });
+
+      // The boot path. reconcile asks for the list before touching the
+      // database, so the timeout is already running when the clock moves.
+      // Only that clock is faked: fake-indexeddb schedules on setImmediate.
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        const result = lib.reconcileBundledBlocklist();
+        await vi.advanceTimersByTimeAsync(3000);
+        expect(await result).toEqual({ deleted: 1 });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   it('unions with the device\'s own downvotes rather than replacing them', async () => {
     serve(['https://x/bundled.jpg']);
     await lib.blockUrl('https://x/thumbed-down.jpg');

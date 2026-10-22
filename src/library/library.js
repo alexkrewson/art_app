@@ -131,9 +131,19 @@ const getAll = (db, store) => new Promise((resolve, reject) => {
 // a different job from catching the occasional bad one on a tablet, and its
 // result has to reach all three devices without being re-keyed on each.
 //
-// Bundled entries are read once per session and degrade to empty: a build
-// without the file, an offline web preview and a test environment with no
-// `fetch` must all behave exactly like a build with nothing rejected yet.
+// The PC list is read once per session from two copies, like approved.json
+// below: the one bundled in the build and the one deployed to Pages, keeping
+// the later `generated`. Without the Pages copy a rejection made after a
+// tablet's APK was built could never reach it short of a new install.
+//
+// Either copy degrades to empty: a build without the file, an offline tablet,
+// an offline web preview and a test environment with no `fetch` must all
+// behave exactly like a build with nothing rejected yet.
+export const BLOCKLIST_REMOTE = 'https://alexkrewson.github.io/art_app/blocklist.json';
+// Shorter than approved.json's: this one is awaited at boot, before the
+// slideshow starts, so an offline tablet pays it on every launch.
+const BLOCKLIST_TIMEOUT_MS = 3000;
+
 let bundledPromise = null;
 
 /** Test seam — the cached fetch would otherwise leak between cases. */
@@ -141,19 +151,20 @@ export function resetBundledBlocklist() {
   bundledPromise = null;
 }
 
+const isBlocklist = data => Array.isArray(data) || Array.isArray(data?.blocked);
+
 async function bundledBlocked() {
   if (!bundledPromise) {
     bundledPromise = (async () => {
-      try {
-        // Relative, like localManifest.js' images.json — the Capacitor
-        // WebView serves the build root, so no BASE_URL juggling.
-        const res = await fetch('blocklist.json');
-        if (!res.ok) return new Set();
-        const data = await res.json();
-        return new Set(Array.isArray(data) ? data : data.blocked || []);
-      } catch {
-        return new Set();
-      }
+      // Relative, like localManifest.js' images.json — the Capacitor
+      // WebView serves the build root, so no BASE_URL juggling.
+      const [bundled, remote] = await Promise.all([
+        fetchManifest('blocklist.json', 0, isBlocklist),
+        fetchManifest(BLOCKLIST_REMOTE, BLOCKLIST_TIMEOUT_MS, isBlocklist),
+      ]);
+      const data = newer(bundled, remote);
+      if (!data) return new Set();
+      return new Set(Array.isArray(data) ? data : data.blocked);
     })();
   }
   return bundledPromise;
@@ -171,7 +182,8 @@ export async function blockedUrls() {
 }
 
 /**
- * Deletes anything already downloaded that the bundled blocklist now rejects.
+ * Deletes anything already downloaded that the PC blocklist (bundled or Pages)
+ * now rejects.
  *
  * Without this, curation would only ever affect *future* downloads and the
  * images Alex actually complained about would sit on the tablet until the
@@ -218,12 +230,23 @@ const REMOTE_TIMEOUT_MS = 8000;
 
 let approvedPromise = null;
 
+const isApproved = data => !!data && typeof data.sources === 'object';
+
+/** Whichever copy has the later `generated`, the bundled one on a tie. */
+function newer(bundled, remote) {
+  // ISO timestamps compare correctly as strings.
+  if (bundled && remote) return (remote.generated || '') > (bundled.generated || '') ? remote : bundled;
+  return remote || bundled || null;
+}
+
 /** Test seam, same reason as resetBundledBlocklist(). */
 export function resetApproved() {
   approvedPromise = null;
 }
 
-async function fetchApproved(url, timeoutMs) {
+// One of the two copies of approved.json or blocklist.json, or null if it
+// can't be read or isn't the expected shape.
+async function fetchManifest(url, timeoutMs, isValid) {
   try {
     const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
     const timer = ctrl && timeoutMs ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
@@ -231,7 +254,7 @@ async function fetchApproved(url, timeoutMs) {
       const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
       if (!res.ok) return null;
       const data = await res.json();
-      return data && typeof data.sources === 'object' ? data : null;
+      return isValid(data) ? data : null;
     } finally {
       if (timer) clearTimeout(timer);
     }
@@ -244,12 +267,10 @@ async function approvedManifest() {
   if (!approvedPromise) {
     approvedPromise = (async () => {
       const [bundled, remote] = await Promise.all([
-        fetchApproved('approved.json'),
-        fetchApproved(APPROVED_REMOTE, REMOTE_TIMEOUT_MS),
+        fetchManifest('approved.json', 0, isApproved),
+        fetchManifest(APPROVED_REMOTE, REMOTE_TIMEOUT_MS, isApproved),
       ]);
-      // ISO timestamps compare correctly as strings.
-      if (bundled && remote) return (remote.generated || '') > (bundled.generated || '') ? remote : bundled;
-      return remote || bundled || null;
+      return newer(bundled, remote);
     })();
   }
   return approvedPromise;

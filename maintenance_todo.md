@@ -22,6 +22,9 @@ working session starts with a dated marker commit.
   date: one tablet table instead of two, the stale July "Next up" list and
   "done but uncommitted" note removed, shipping instructions rewritten for
   `main`. The merged `curation-allowlist` branch deleted locally and on GitHub.
+  Then the blocklist started being read from Pages as well as the bundle
+  (newer wins, 3 s timeout), so a rejection no longer needs a new APK once a
+  tablet has this build.
 - **2026-10-17** — model-assisted triage for the reviewer. Alex asked whether
   AI could take the obvious rejects (NASA staff portraits, clean-room crews,
   slides) off the manual pass. New `curate/score.py`: CLIP ViT-B-32 embeddings
@@ -115,16 +118,18 @@ workflow and the measured universe sizes are in `curate/README.md`.
 **Shipped 2026-10-17** (8,440 approved, 5,025 blocked). The
 `curation-allowlist` branch was merged and deleted; curation work now goes on
 `main`. To ship further decisions: `python curate/apply.py`, commit, push to
-`main` (Pages deploys). New approvals reach every install from Pages; new
-rejections do not yet (next paragraph). A tablet only becomes approved-only after
+`main` (Pages deploys). Approvals and rejections both reach every install from
+Pages — rejections only on an APK built 2026-10-22 or later, which no tablet has
+yet. A tablet only becomes approved-only after
 "Delete all downloaded images" and a re-tick; nothing purges unapproved images
 automatically.
 
-Open questions, raised with Alex 2026-10-22: whether the blocklist should also
-update from Pages (today it is read from the bundle only, so a rejection needs a
-new APK to reach a tablet), and whether a category with nothing approved should
-say so in Sources (today it silently shows nothing; no category is empty as of
-2026-10-18, the smallest is NASA at 10).
+Both open rollout questions were settled with Alex on 2026-10-22. The
+blocklist now updates from Pages too: newer `generated` wins, as with
+approved.json, but with a 3 s timeout because it is awaited at boot. Empty
+categories in Sources: not wanted, and approved counts beside each category
+were offered and declined. No category is empty as of 2026-10-18; the smallest
+is NASA at 10.
 
 Two things a future session needs to know:
 
@@ -239,8 +244,9 @@ serial collision.
 
 The tablets are tracked in the table under "The three tablets" above.
 
-1. **Curation follow-ups**, the two open questions under "Curation" above —
-   blocklist from Pages, and empty categories in Sources.
+1. **The tablets need an APK built from 2026-10-22 or later** before
+   rejections reach them from Pages. Nothing else needs it, so do it the next
+   time one is plugged in.
 2. **`DJJYHHEU91`**: curated APK, then delete and re-tick. Deferred by Alex
    2026-10-22.
 3. **Nobody has used the settings UI by hand** since it became tabs. Voting has

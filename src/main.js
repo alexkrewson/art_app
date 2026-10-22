@@ -304,7 +304,8 @@ async function main() {
   // download model landed because panel.js's rebuildPlaylist was updated and
   // this call site wasn't; caught by watching a tablet with 723 images play
   // Met artworks.
-  // Curation happens on the PC (see curate/) and ships as public/blocklist.json.
+  // Curation happens on the PC (see curate/) and ships as public/blocklist.json,
+  // read from the bundle and from Pages (whichever is newer, 3 s timeout).
   // Apply it to what is already downloaded before building the playlist, so an
   // image rejected during review is gone this launch rather than surviving
   // until its category next refreshes. Never allowed to block boot: a slideshow

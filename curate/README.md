@@ -27,9 +27,11 @@ git commit + push            # Pages deploys approved.json; devices pick it up
 
 The app reads both the bundled `approved.json` and the deployed one at
 `alexkrewson.github.io/art_app/approved.json`, keeping whichever has the later
-`generated`. So more approvals reach every install on the next push, without a
-new APK. `npm run cap:sync` and a reinstall are only needed for the blocklist,
-which is read from the bundle alone, or to change what a fresh install ships.
+`generated`. `blocklist.json` is read the same way (since 2026-10-22), and at
+boot deletes any rejected image already downloaded. So both approvals and
+rejections reach every install on the next push, without a new APK.
+`npm run cap:sync` and a reinstall are only needed to change what a fresh
+install ships, or for a tablet whose APK predates 2026-10-22.
 
 Images a device already holds are not purged for being unapproved. To make an
 existing library approved-only, delete all downloaded images on the device and
