@@ -8,7 +8,7 @@ survives a crash or restart. See original spec pasted into the conversation on
 Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (needs input from Alex)
 
 ---
-## Where things stand (updated 2026-10-17)
+## Where things stand (updated 2026-10-22)
 
 **Live site:** https://alexkrewson.github.io/art_app/ (auto-deploys on push to `main`)
 **Repo:** https://github.com/alexkrewson/art_app
@@ -18,6 +18,10 @@ Legend: `[ ]` not started · `[~]` in progress · `[x]` done · `[!]` blocked (n
 Alex tracks time spent on this project through the commit history, so each
 working session starts with a dated marker commit.
 
+- **2026-10-22** — housekeeping after curation shipped. This file brought up to
+  date: one tablet table instead of two, the stale July "Next up" list and
+  "done but uncommitted" note removed, shipping instructions rewritten for
+  `main`. The merged `curation-allowlist` branch deleted locally and on GitHub.
 - **2026-10-17** — model-assisted triage for the reviewer. Alex asked whether
   AI could take the obvious rejects (NASA staff portraits, clean-room crews,
   slides) off the manual pass. New `curate/score.py`: CLIP ViT-B-32 embeddings
@@ -78,26 +82,23 @@ working session starts with a dated marker commit.
 
 ### The three tablets, and what is outstanding on each
 
-`N3XGBIPCHP` is on **versionCode 87** (`v87.5426bd8`) as of 2026-08-23; the
-other two are still on **versionCode 75** (`v75.87928f7`) from 2026-08-10. All
-three run 30s dwell, crossfade, bundled starter pack off, ribbon on and voting
-on. Identify by serial, not by model — two of them report model `Star8`.
+Identify by serial, not by model — two of them report model `Star8`. All three
+run 30s dwell and crossfade.
 
-| Serial | Alex calls it | Library | Outstanding |
-| --- | --- | --- | --- |
-| `DJJYHHEU91` | the NASA tablet | 1698 images, 8 Openverse + 10 NASA | nothing |
-| `N3XGBIPCHP` | the Openverse tablet | 720 files, 167M, 8 Openverse | **top-up owed** — bumped to v87 on 2026-08-23, top-up still not run |
-| `CP80A142320800171` | CP80 | 620 images, 6 Wikimedia | nothing |
+| Serial | Alex calls it | APK | Library | Outstanding |
+| --- | --- | --- | --- | --- |
+| `CP80A142320800171` | CP80 (Android 14) | curated, 2026-10-17 | Commons, curated: 1,606 of 1,607 approved (the 101 MB Magic_Circle.gif times out, since rejected) | nothing. Local folder "Tilly Pictures" saved but off |
+| `N3XGBIPCHP` | the Openverse tablet (Android 12) | curated, 2026-10-17 | Openverse, curated: all 4,563 approved + 1 thumbed-up keeper | nothing |
+| `DJJYHHEU91` | the NASA tablet | v75 (`v75.87928f7`), 2026-08-10 | 1,698 images, 8 Openverse + 10 NASA, uncurated, NASA categories stranded (see Curation) | **curated APK + delete and re-tick.** Alex deferred this on 2026-10-22 |
 
-**Standing instruction from Alex (2026-08-10): next time `N3XGBIPCHP` is
-plugged in, bump it AND run the Openverse top-up.** It holds 721 against a
-target of 800. The shortfall is the old per-query ceiling — Openverse caps an
-anonymous caller 240 results deep *per query* and repeats heavily inside that
-window, so one broad term topped out near 40-80 unique. Splitting each subject
-into narrower `~`-separated queries fixed it, but only for new downloads;
-existing libraries do not benefit retroactively. Re-downloading each category
-de-duplicates against what is held and keeps upvotes, so a top-up accumulates
-rather than churning.
+The 2026-08-10 standing instruction to top up `N3XGBIPCHP`'s Openverse library
+is superseded: Openverse now downloads from `approved.json`, not live search, so
+the per-query ceiling that caused the shortfall no longer applies.
+
+Sideloading on the Star8 needed Play Protect's install verifier disabled
+(`settings put global package_verifier_user_consent -1`) — its APK Analysis scan
+took 15s and errored, and the GUI installer blocks on that while `adb install`
+does not. Installing over adb sidesteps it entirely.
 
 ### Curation, and what the NASA retune broke (2026-08-23, model changed 2026-10-16)
 
@@ -111,17 +112,19 @@ an APK. `public/blocklist.json` still exists: it guards the jailbreak path and
 `reconcileBundledBlocklist()` deletes rejected images already downloaded. Full
 workflow and the measured universe sizes are in `curate/README.md`.
 
-**Shipping it, when Alex says so** (not before — see the 2026-10-16 log entry):
-`python curate/apply.py`, merge `curation-allowlist` into `main` and push (Pages
-deploys), then build and install on the tablets. Each tablet only becomes
-approved-only after "Delete all downloaded images" and a re-tick; nothing purges
-unapproved images automatically. Until Openverse and Commons have been
-reviewed, their categories download nothing at all under the allowlist.
+**Shipped 2026-10-17** (8,440 approved, 5,025 blocked). The
+`curation-allowlist` branch was merged and deleted; curation work now goes on
+`main`. To ship further decisions: `python curate/apply.py`, commit, push to
+`main` (Pages deploys). New approvals reach every install from Pages; new
+rejections do not yet (next paragraph). A tablet only becomes approved-only after
+"Delete all downloaded images" and a re-tick; nothing purges unapproved images
+automatically.
 
-Open questions left for that moment: whether the blocklist should also update
-from Pages (today it is read from the bundle only, so a rejection needs a new
-APK to reach a tablet), and whether a category with nothing approved should
-say so in Sources (today it silently shows nothing).
+Open questions, raised with Alex 2026-10-22: whether the blocklist should also
+update from Pages (today it is read from the bundle only, so a rejection needs a
+new APK to reach a tablet), and whether a category with nothing approved should
+say so in Sources (today it silently shows nothing; no category is empty as of
+2026-10-18, the smallest is NASA at 10).
 
 Two things a future session needs to know:
 
@@ -232,58 +235,29 @@ library follow the serial?") was a single command and wasn't run. Two Star8
 tablets with the same model string and build fingerprint is not evidence of a
 serial collision.
 
-### Devices currently configured
-
-| Device | Content | Settings |
-|---|---|---|
-| CP80 (Android 14) | Commons, curated: 1,606 of 1,607 approved (2026-10-17; the 101 MB Magic_Circle.gif times out) | 30s slides, 2500ms crossfade, shuffle; local folder "Tilly Pictures" saved but off |
-| Star8 N3XGBIPCHP (Android 12) | Openverse, curated: all 4,563 approved (2026-10-17) + 1 thumbed-up keeper | 30s slides, crossfade |
-
-Sideloading on the Star8 needed Play Protect's install verifier disabled
-(`settings put global package_verifier_user_consent -1`) — its APK Analysis scan
-took 15s and errored, and the GUI installer blocks on that while `adb install`
-does not. Installing over adb sidesteps it entirely.
-
 ### Next up
 
-0. **Both tablets run the curated APK** with their full approved sets
-   (2026-10-17). Until then a tablet runs whatever APK it has: one
-   built from `main` before today has no allowlist code at all, and even one
-   with it reads the blocklist from its own bundle, so rejected images it
-   already downloaded are not purged. For an approved-only library
-   on any device: Settings → "Delete all downloaded images", then re-tick.
-1. **Nobody has used the settings UI by hand** since it became tabs. Voting has
+The tablets are tracked in the table under "The three tablets" above.
+
+1. **Curation follow-ups**, the two open questions under "Curation" above —
+   blocklist from Pages, and empty categories in Sources.
+2. **`DJJYHHEU91`**: curated APK, then delete and re-tick. Deferred by Alex
+   2026-10-22.
+3. **Nobody has used the settings UI by hand** since it became tabs. Voting has
    never been used at all — not by Alex, not by me. The logic beneath it is
-   tested; the buttons are not.
-2. Google Photos (Phase 7) — still needs an OAuth client ID.
-3. A release keystore, which would also stop Play Protect treating every build as
+   tested; the buttons are not. Alex: not important yet (2026-10-22).
+4. Google Photos (Phase 7) — still needs an OAuth client ID.
+5. A release keystore, which would also stop Play Protect treating every build as
    an unknown stranger.
-4. `rclone`'s shared Google Drive `client_id` retires during 2026; the upload
+6. `rclone`'s shared Google Drive `client_id` retires during 2026; the upload
    script needs Alex's own before then.
+7. Phase 5 (the curated-preset set and a custom preset builder; only the one
+   "Sci-Fi & Fantasy" preset exists) and Phase 9 polish.
 
-**Done — Phases 0 through 3:** project scaffold (Vite, vanilla JS), the full
-kiosk.html engine ported (Ken Burns, touch gestures, metadata ribbon), GitHub Pages
-live deploy, the shared Ember/light theme + settings menu (Themes, About, Help),
-display modes (Ken Burns/Static/Fade Only), a 10-transition pluggable transition
-engine, and a multi-source image architecture with a **live** Met Museum API source
-(department/keyword/medium/date filters), the original local starter set, and a
-local-folder source (Chrome/Edge only).
-
-**Done but uncommitted — Phase 4, part of Phase 5, Phase 6, Phase 8 scaffold:** a
-prior session built all six remaining Phase 4 sources (AIC, Wikimedia Commons, NASA,
-Smithsonian, Europeana, Rijksmuseum — see per-phase detail below), the one-off
-"Sci-Fi & Fantasy" preset (`src/sources/presets.js` — not the full Phase 5 builder),
-Phase 6's offline image cache (`src/cache/imageCache.js` + `public/sw.js` service
-worker, gated by a new "Cache images for offline use" setting), and a Phase 8
-Capacitor Android project scaffold (`android/`, `capacitor.config.json`,
-`npm run cap:sync`/`cap:open:android`) — all still sitting as uncommitted working-tree
-changes, without having gone through their manual-testing checkpoints. This session
-added the automated test coverage above and verified `vite build` + the full
-`npm test` suite pass, but has **not** done a live/browser pass on any of it yet.
-
-**Known gaps, already flagged rather than hidden:**
+**Known gaps, already flagged rather than hidden** (rechecked 2026-10-22):
 - 4 of 7 "atmospheric" transitions (Burn/Dissolve/Shatter/Ripple) fall back to
-  Crossfade — a good version of each needs canvas/WebGL, not yet built
+  Crossfade (`planned: true` in `transitions/index.js`) — a good version of each
+  needs canvas/WebGL, not yet built
 - "Random" transition mode cycles *all* implemented transitions, not a
   user-chosen enabled subset (spec describes the latter)
 - Smithsonian/Europeana/Rijksmuseum sources are built against documented API shapes
@@ -291,18 +265,6 @@ added the automated test coverage above and verified `vite build` + the full
   — re-check field paths once real keys are in hand
 - Rijksmuseum's CORS support from a browser origin is unconfirmed; may need a small
   proxy in front of it
-- The uncommitted Phase 4/6/8 work above hasn't had its manual checkpoint yet
-
-**Next up, in order:**
-1. Commit the uncommitted Phase 4/6/8 work (logical chunks: sources, caching,
-   Android scaffold) and run the Phase 4/6 manual-testing checkpoints that never
-   happened
-2. Phase 5: the real curated-preset set + custom preset builder (save/load) —
-   currently only the one "Sci-Fi & Fantasy" preset exists
-3. Phase 7: Google Photos — `[!]` needs a Google Cloud OAuth client ID from Alex
-4. Finish Phase 8: Alex needs to actually build/run the Android scaffold on his own
-   machine (Android SDK/device) — can't be verified from this environment
-5. Phase 9: polish (perf guardrails, accessibility pass, README)
 
 **How to resume a session on this:** read this summary, then skim the decisions log
 at the bottom for anything non-obvious, then check `git status` and `git log
