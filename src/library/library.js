@@ -284,6 +284,46 @@ export async function approvedFor(sourceId, subject) {
   return Array.isArray(list) ? list : [];
 }
 
+/**
+ * Deletes anything already downloaded from a curated source that the approved
+ * list does not contain.
+ *
+ * downloadCategory() only enforces the list on new downloads, and the
+ * blocklist only names images that were harvested and rejected. An image a
+ * device fetched by live search before curation shipped (2026-10-16), or with
+ * the jailbreak on, was in neither, so it kept playing for good (unreviewed
+ * news photos and social-media graphics turned up among Openverse
+ * landscapes). Runs at boot beside the blocklist reconcile.
+ *
+ * Does nothing with the jailbreak on, when no list can be read (offline must
+ * not empty a library), or for a source the list has no entry for.
+ */
+export async function reconcileApproved({ unvetted = false } = {}) {
+  if (unvetted) return { deleted: 0 };
+  const manifest = await approvedManifest();
+  if (!manifest) return { deleted: 0 };
+  const approved = new Map();
+  for (const [sourceId, subjects] of Object.entries(manifest.sources || {})) {
+    const urls = new Set();
+    for (const list of Object.values(subjects || {})) {
+      if (Array.isArray(list)) for (const r of list) if (r?.image) urls.add(r.image);
+    }
+    approved.set(sourceId, urls);
+  }
+  const db = await openDB();
+  const rows = await getAll(db, IMAGES);
+  let deleted = 0;
+  for (const row of rows) {
+    const sourceId = row.record?.source || String((row.cats || [])[0] || '').split('::')[0];
+    if (!SOURCES[sourceId]?.curated || !approved.has(sourceId)) continue;
+    if (approved.get(sourceId).has(row.url)) continue;
+    await deleteStored(row.path);
+    await tx(db, IMAGES, 'readwrite', s => s.delete(row.url));
+    deleted++;
+  }
+  return { deleted };
+}
+
 // ── Reading ──────────────────────────────────────────────────────────────
 export async function allImages() {
   const db = await openDB();

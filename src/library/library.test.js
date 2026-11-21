@@ -490,6 +490,49 @@ describe('approved list (curated sources)', () => {
     expect(await held()).toEqual(['https://x/live1.jpg', 'https://x/live2.jpg']);
   });
 
+  describe('reconcileApproved (images already held)', () => {
+    // Downloaded by live search before curation, or with the jailbreak on.
+    const holdLive = async names => {
+      serve();
+      fetchBatch.mockResolvedValue(names.map(n => ({ image: `https://x/${n}.jpg`, title: n, source: 'nasa' })));
+      await lib.downloadCategory({ ...NEBULA, count: names.length, unvetted: true });
+      lib.resetApproved();
+    };
+
+    it('deletes a held curated-source image the list does not approve', async () => {
+      await holdLive(['ok', 'trump']);
+      serve({ remote: manifest('2026-10-18T00:00:00Z', ['ok']) });
+
+      expect(await lib.reconcileApproved()).toEqual({ deleted: 1 });
+      expect(await held()).toEqual(['https://x/ok.jpg']);
+      expect(stored.size).toBe(1); // the file too
+    });
+
+    it('keeps everything when no list can be read', async () => {
+      await holdLive(['a', 'b']);
+      serve();
+      expect(await lib.reconcileApproved()).toEqual({ deleted: 0 });
+      expect((await held()).length).toBe(2);
+    });
+
+    it('keeps everything with the jailbreak on', async () => {
+      await holdLive(['a']);
+      serve({ bundled: manifest('2026-10-18T00:00:00Z', []) });
+      expect(await lib.reconcileApproved({ unvetted: true })).toEqual({ deleted: 0 });
+    });
+
+    it('leaves uncurated sources and sources the list lacks alone', async () => {
+      serve();
+      fetchBatch.mockResolvedValue(recs('met1'));
+      await lib.downloadCategory({ sourceId: 'met', cat: 'met', count: 1 });
+      fetchBatch.mockResolvedValue(recs('ov1'));
+      await lib.downloadCategory({ ...LANDSCAPE, count: 1 }); // openverse: not curated in this mock
+      lib.resetApproved();
+      serve({ bundled: manifest('2026-10-18T00:00:00Z', []) });
+      expect(await lib.reconcileApproved()).toEqual({ deleted: 0 });
+    });
+  });
+
   it('leaves uncurated sources like the Met searching live', async () => {
     serve({ bundled: manifest('2026-10-16T00:00:00Z', ['a']) });
     fetchBatch.mockResolvedValue(recs('met1'));

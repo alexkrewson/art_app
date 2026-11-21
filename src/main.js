@@ -311,9 +311,18 @@ async function main() {
   // until its category next refreshes. Never allowed to block boot: a slideshow
   // that starts with one unwanted image still in it beats one that never starts.
   try {
-    const { reconcileBundledBlocklist } = await import('./library/library.js');
+    const { reconcileBundledBlocklist, reconcileApproved } = await import('./library/library.js');
+    // Same idea for the approved list: an Openverse/Commons/NASA image held
+    // from before curation (or the jailbreak) and not approved is deleted.
+    // Started alongside the blocklist and given at most 3 s, like it; if the
+    // list is slower than that the purge still finishes in the background and
+    // the image is gone by the next launch.
+    const approvedRun = reconcileApproved({ unvetted: !!settings.unvetted })
+      .then(r => { if (r.deleted) console.log(`[SlowFrame] approved list removed ${r.deleted} unapproved image(s)`); })
+      .catch(err => console.warn('[SlowFrame] approved-list reconcile failed:', err));
     const purged = await reconcileBundledBlocklist();
     if (purged.deleted) console.log(`[SlowFrame] blocklist removed ${purged.deleted} downloaded image(s)`);
+    await Promise.race([approvedRun, new Promise(ok => setTimeout(ok, 3000))]);
   } catch (err) {
     console.warn('[SlowFrame] blocklist reconcile failed:', err);
   }
